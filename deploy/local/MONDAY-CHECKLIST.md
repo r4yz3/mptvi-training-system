@@ -69,6 +69,23 @@ On every other PC, open **http://192.168.1.50/** (your static IP) and bookmark i
 
 ---
 
+## After go-live — good to know
+- **Customize the form:** Settings → **Form Builder**. Hide a field you don't need
+  (pencil → untick "Show this field on the form"), or hide a whole section with its
+  Shown/Hidden toggle. The 5 padlocked fields (Last name, First name, Barangay, Contact
+  no., Sex) can be renamed but not hidden.
+- **Certificate assessor:** set the default in Settings → **Signatories**. You can
+  override it per student in **Assessment & certs** (pencil in the *Assessor* column) —
+  Admin, Secretary, Registrar and Training Coordinator can edit it.
+- **Backups:** view, run and download them in Settings → **Backups**; the daily time is
+  set there too. Run `deploy\local\install-backup-task.bat` (as admin) once so they run
+  automatically.
+- **Health check anytime:** `php artisan app:check` (or `deploy\local\check.bat`)
+  diagnoses the install and points to any fix.
+- **Forgot a login password?** On the server: `php artisan user:password`
+
+---
+
 ## Keep in mind
 - The **server PC must be ON** whenever staff use the system. Enable Laragon auto-start (Laragon → Preferences).
 - **Copy backups off this PC** regularly: `storage\backups\*.enc` → a USB drive or another computer.
