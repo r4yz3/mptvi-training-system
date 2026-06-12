@@ -81,7 +81,7 @@ export default function Dashboard({
                             Signed in as <span className="font-medium text-white">{roleLabel}</span> · Maximino Pellerin Sr. TVI
                         </p>
                     </div>
-                    <div className="hidden h-16 w-16 items-center justify-center rounded-2xl bg-white/10 sm:flex">
+                    <div className="hidden h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-white/40 sm:flex">
                         <img src="/mptvi-logo.png" alt="MPTVI" className="h-12 w-12 object-contain" />
                     </div>
                 </div>
