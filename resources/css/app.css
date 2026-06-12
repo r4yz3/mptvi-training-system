@@ -1,0 +1,34 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Brand palette as RGB channels — overridable at runtime (Settings → Branding). */
+:root {
+    --brand-50: 238 243 251;
+    --brand-100: 214 225 243;
+    --brand-200: 174 195 231;
+    --brand-300: 125 157 214;
+    --brand-400: 74 114 191;
+    --brand-500: 42 82 160;
+    --brand-600: 21 54 107;
+    --brand-700: 18 45 89;
+    --brand-800: 15 37 72;
+    --brand-900: 12 29 57;
+    --brand-950: 7 15 31;
+}
+
+@layer components {
+    .input {
+        @apply block w-full rounded-lg border-slate-300 text-sm shadow-sm
+            focus:border-brand-500 focus:ring-brand-500;
+    }
+    .btn-ghost {
+        @apply inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white
+            px-3 py-2 text-sm font-medium text-slate-600 shadow-sm
+            hover:bg-slate-50 disabled:opacity-50;
+    }
+    .btn-primary {
+        @apply inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2
+            text-sm font-medium text-white shadow-sm hover:bg-brand-700 disabled:opacity-50;
+    }
+}

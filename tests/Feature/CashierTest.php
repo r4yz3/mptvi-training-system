@@ -1,0 +1,134 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Applicant;
+use App\Models\Payment;
+use App\Models\Program;
+use App\Models\User;
+use Database\Seeders\ProgramSeeder;
+use Database\Seeders\RbacSeeder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
+use Tests\TestCase;
+
+class CashierTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed(RbacSeeder::class);
+        $this->seed(ProgramSeeder::class);
+    }
+
+    private function as(string $role): User
+    {
+        return User::role($role)->firstOrFail();
+    }
+
+    private function qualified(): Applicant
+    {
+        return Applicant::create([
+            'program_id' => Program::first()->id, // fee 1000
+            'status' => 'Qualified', 'active' => true,
+            'last_name' => 'Cruz', 'first_name' => 'Juan', 'barangay' => 'Poblacion', 'contact' => '0917',
+        ]);
+    }
+
+    public function test_module_scoped_to_admin_and_cashier(): void
+    {
+        $this->actingAs($this->as('cashier'))->get('/cashier')->assertOk();
+        $this->actingAs($this->as('admin'))->get('/cashier')->assertOk();
+        $this->actingAs($this->as('registrar'))->get('/cashier')->assertForbidden();
+        $this->actingAs($this->as('coordinator'))->get('/cashier')->assertForbidden();
+    }
+
+    public function test_partial_payment_keeps_qualified_full_payment_advances_to_paid(): void
+    {
+        $a = $this->qualified();
+        $cashier = $this->as('cashier');
+
+        $this->actingAs($cashier)->post("/cashier/{$a->id}/payments", [
+            'amount' => 400, 'type' => 'Partial', 'method' => 'Cash', 'paid_at' => '2026-06-01',
+        ])->assertRedirect();
+        $this->assertSame('Qualified', $a->fresh()->status);
+        $this->assertSame(600, $a->fresh()->balance());
+
+        $this->actingAs($cashier)->post("/cashier/{$a->id}/payments", [
+            'amount' => 600, 'type' => 'Full', 'method' => 'GCash', 'paid_at' => '2026-06-05',
+        ])->assertRedirect();
+        $this->assertSame('Paid', $a->fresh()->status);
+        $this->assertSame(0, $a->fresh()->balance());
+    }
+
+    public function test_voiding_completing_payment_reverts_to_qualified(): void
+    {
+        $a = $this->qualified();
+        $cashier = $this->as('cashier');
+
+        $this->actingAs($cashier)->post("/cashier/{$a->id}/payments", [
+            'amount' => 1000, 'type' => 'Full', 'method' => 'Cash', 'paid_at' => '2026-06-01',
+        ]);
+        $this->assertSame('Paid', $a->fresh()->status);
+
+        $payment = Payment::first();
+        $this->actingAs($cashier)->put("/cashier/payments/{$payment->id}/void", ['reason' => 'Bounced cheque'])
+            ->assertRedirect();
+
+        $this->assertNotNull($payment->fresh()->voided_at);
+        $this->assertSame('Qualified', $a->fresh()->status);
+    }
+
+    public function test_registrar_cannot_record_payment(): void
+    {
+        $a = $this->qualified();
+        $this->actingAs($this->as('registrar'))
+            ->post("/cashier/{$a->id}/payments", ['amount' => 100, 'type' => 'Partial', 'method' => 'Cash', 'paid_at' => '2026-06-01'])
+            ->assertForbidden();
+    }
+
+    public function test_payments_report_and_csv_are_finance_gated(): void
+    {
+        $a = $this->qualified();
+        $cashier = $this->as('cashier');
+        $this->actingAs($cashier)->post("/cashier/{$a->id}/payments", [
+            'amount' => 500, 'type' => 'Partial', 'method' => 'Cash', 'paid_at' => '2026-06-01',
+        ]);
+
+        // cashier (no finance.view) blocked
+        $this->actingAs($cashier)->get('/cashier/export.csv')->assertForbidden();
+        $this->actingAs($cashier)->get('/cashier/report')->assertForbidden();
+
+        // admin: CSV + PDF
+        $res = $this->actingAs($this->as('admin'))->get('/cashier/export.csv?method=Cash');
+        $res->assertOk();
+        $this->assertStringContainsString('Date,"OR No.",Learner', $res->streamedContent());
+        $this->assertStringContainsString('Cruz', $res->streamedContent());
+
+        $this->actingAs($this->as('admin'))->get('/cashier/report?status=valid')
+            ->assertOk()->assertSee('PAYMENTS / COLLECTIONS REPORT', false);
+    }
+
+    public function test_cashier_ledger_is_own_only_admin_sees_all(): void
+    {
+        $a = $this->qualified();
+        $cashier = $this->as('cashier');
+        // a payment by the cashier
+        $this->actingAs($cashier)->post("/cashier/{$a->id}/payments", [
+            'amount' => 200, 'type' => 'Partial', 'method' => 'Cash', 'paid_at' => '2026-06-01',
+        ]);
+        // a payment attributed to admin directly
+        Payment::create(['applicant_id' => $a->id, 'amount' => 100, 'type' => 'Partial', 'method' => 'Cash',
+            'paid_at' => '2026-06-02', 'cashier_id' => $this->as('admin')->id]);
+
+        // cashier sees only their 1 entry, no aggregates
+        $this->actingAs($cashier)->get('/cashier')
+            ->assertInertia(fn (Assert $p) => $p->where('canFinance', false)->has('ledger', 1)->missing('aggregates'));
+
+        // admin sees both + aggregates
+        $this->actingAs($this->as('admin'))->get('/cashier')
+            ->assertInertia(fn (Assert $p) => $p->where('canFinance', true)->has('ledger', 2)->has('aggregates'));
+    }
+}
