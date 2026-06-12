@@ -34,11 +34,15 @@ class AssessmentController extends Controller
                 'rate' => $a->attendanceRate(),
                 'cert_number' => $a->cert_number,
                 'last_result' => $a->assessments->first()?->result,
+                // assessor printed on the certificate (override → recorded → default)
+                'cert_assessor' => $a->cert_assessor,
+                'assessor' => $this->effectiveAssessor($a),
             ]);
 
         return Inertia::render('Assessment/Index', [
             'applicants' => $applicants,
             'canAssess' => $request->user()->can('assess'),
+            'canEditAssessor' => $request->user()->can('cert.assessor'),
             'defaultAssessor' => Setting::assessor(),
         ]);
     }
@@ -82,6 +86,24 @@ class AssessmentController extends Controller
         return back()->with('success', "Assessment recorded: {$data['result']}.");
     }
 
+    /** Set the assessor printed on a trainee's certificate (admin/secretary/registrar/coordinator). */
+    public function updateAssessor(Request $request, Applicant $applicant): RedirectResponse
+    {
+        abort_unless($request->user()->can('cert.assessor'), 403);
+
+        $data = $request->validate(['assessor' => ['nullable', 'string', 'max:160']]);
+        $applicant->update(['cert_assessor' => $data['assessor'] !== '' ? $data['assessor'] : null]);
+
+        return back()->with('success', "Certificate assessor updated for {$applicant->display_name}.");
+    }
+
+    /** Assessor used on the certificate: per-trainee override → recorded → configured default. */
+    private function effectiveAssessor(Applicant $applicant): ?string
+    {
+        return $applicant->cert_assessor
+            ?: ($applicant->assessments->firstWhere('result', 'Competent')?->assessor ?: (Setting::assessor() ?: null));
+    }
+
     /** Printable National Certificate (A4 landscape) — only for certified trainees. */
     public function certificate(Applicant $applicant): \Illuminate\Contracts\View\View
     {
@@ -94,8 +116,8 @@ class AssessmentController extends Controller
         return view('certificates.print', [
             'a' => $applicant,
             'program' => $applicant->program,
-            // Prefer the assessment's recorded assessor; fall back to the configured one.
-            'assessor' => $assessment?->assessor ?: Setting::assessor(),
+            // Per-trainee override → the assessment's recorded assessor → the configured default.
+            'assessor' => $applicant->cert_assessor ?: ($assessment?->assessor ?: Setting::assessor()),
             'issued' => $issued,
             // TESDA National Certificates are valid for 5 years from issuance.
             'validUntil' => $issued?->copy()->addYears(5),

@@ -102,6 +102,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/assessment', [AssessmentController::class, 'index'])->name('assessment.index');
         Route::put('/assessment/{applicant}/for-assessment', [AssessmentController::class, 'markForAssessment'])->name('assessment.mark');
         Route::post('/assessment/{applicant}/result', [AssessmentController::class, 'record'])->name('assessment.record');
+        Route::put('/assessment/{applicant}/assessor', [AssessmentController::class, 'updateAssessor'])->name('assessment.assessor');
         Route::get('/assessment/{applicant}/certificate', [AssessmentController::class, 'certificate'])->name('assessment.certificate');
     });
 

@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { Award, ClipboardList, GraduationCap, BadgeCheck, Printer, X, ChevronRight } from 'lucide-react';
+import { Award, ClipboardList, GraduationCap, BadgeCheck, Printer, Pencil, X, ChevronRight } from 'lucide-react';
 import AppShell from '@/Layouts/AppShell';
 import StatusBadge from '@/Components/StatusBadge';
 
 interface Row {
     id: number; name: string; uli: string | null; program: string | null; level: string | null;
     status: string; rate: number; cert_number: string | null; last_result: string | null;
+    cert_assessor: string | null; assessor: string | null;
 }
 
 const STAGES = [
@@ -20,8 +21,9 @@ function initials(name: string) {
     return ((p[0]?.[0] ?? '') + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase();
 }
 
-export default function AssessmentIndex({ applicants, canAssess, defaultAssessor }: { applicants: Row[]; canAssess: boolean; defaultAssessor: string }) {
+export default function AssessmentIndex({ applicants, canAssess, canEditAssessor, defaultAssessor }: { applicants: Row[]; canAssess: boolean; canEditAssessor: boolean; defaultAssessor: string }) {
     const [recording, setRecording] = useState<Row | null>(null);
+    const [editingAssessor, setEditingAssessor] = useState<Row | null>(null);
     const count = (key: string) => applicants.filter((a) => a.status === key).length;
 
     return (
@@ -55,6 +57,7 @@ export default function AssessmentIndex({ applicants, canAssess, defaultAssessor
                                 <th className="px-4 py-3">Attendance</th>
                                 <th className="px-4 py-3">Stage</th>
                                 <th className="px-4 py-3">Certificate</th>
+                                <th className="px-4 py-3">Assessor</th>
                                 <th className="px-4 py-3 text-right">Action</th>
                             </tr>
                         </thead>
@@ -86,6 +89,16 @@ export default function AssessmentIndex({ applicants, canAssess, defaultAssessor
                                             : <span className="text-xs text-slate-300">—</span>}
                                     </td>
                                     <td className="px-4 py-3">
+                                        <div className="flex items-center gap-1.5">
+                                            <span className={`text-xs ${a.assessor ? 'text-slate-600' : 'text-slate-300'}`}>{a.assessor ?? '—'}</span>
+                                            {canEditAssessor && (
+                                                <button onClick={() => setEditingAssessor(a)} className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-brand-600" title="Edit certificate assessor">
+                                                    <Pencil className="h-3.5 w-3.5" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3">
                                         <div className="flex justify-end gap-2">
                                             {canAssess && a.status === 'In training' && (
                                                 <button onClick={() => router.put(`/assessment/${a.id}/for-assessment`, {}, { preserveScroll: true })}
@@ -113,7 +126,7 @@ export default function AssessmentIndex({ applicants, canAssess, defaultAssessor
                                 </tr>
                             ))}
                             {applicants.length === 0 && (
-                                <tr><td colSpan={6} className="px-4 py-14 text-center text-sm text-slate-400">
+                                <tr><td colSpan={7} className="px-4 py-14 text-center text-sm text-slate-400">
                                     <Award className="mx-auto mb-2 h-8 w-8 text-slate-300" />
                                     No trainees in the assessment pipeline yet.
                                 </td></tr>
@@ -124,7 +137,44 @@ export default function AssessmentIndex({ applicants, canAssess, defaultAssessor
             </div>
 
             {recording && <ResultModal applicant={recording} defaultAssessor={defaultAssessor} onClose={() => setRecording(null)} />}
+            {editingAssessor && <AssessorModal applicant={editingAssessor} defaultAssessor={defaultAssessor} onClose={() => setEditingAssessor(null)} />}
         </AppShell>
+    );
+}
+
+function AssessorModal({ applicant, defaultAssessor, onClose }: { applicant: Row; defaultAssessor: string; onClose: () => void }) {
+    const { data, setData, put, processing } = useForm({ assessor: applicant.cert_assessor ?? '' });
+    const submit = (e: React.FormEvent) => {
+        e.preventDefault();
+        put(`/assessment/${applicant.id}/assessor`, { preserveScroll: true, onSuccess: onClose });
+    };
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div className="w-full max-w-md overflow-hidden rounded-xl bg-white shadow-xl">
+                <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 text-brand-600"><Award className="h-5 w-5" /></span>
+                        <div>
+                            <h3 className="text-base font-semibold text-slate-800">Certificate assessor</h3>
+                            <p className="text-xs text-slate-500">{applicant.name}</p>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="rounded-md p-1 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+                </div>
+                <form onSubmit={submit} className="space-y-3 px-5 py-4">
+                    <label className="block"><span className="mb-1 block text-xs font-medium text-slate-600">Accredited assessor (prints on this trainee's certificate)</span>
+                        <input className="input" value={data.assessor} placeholder={defaultAssessor || 'Full name of assessor'} onChange={(e) => setData('assessor', e.target.value)} autoFocus />
+                    </label>
+                    <p className="rounded-md bg-slate-50 px-2.5 py-1.5 text-xs text-slate-500">
+                        Leave blank to fall back to the assessment's recorded assessor, then the default in Settings → Signatories{defaultAssessor ? ` (${defaultAssessor})` : ''}.
+                    </p>
+                    <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
+                        <button type="button" onClick={onClose} className="btn-ghost">Cancel</button>
+                        <button type="submit" disabled={processing} className="btn-primary">Save assessor</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     );
 }
 

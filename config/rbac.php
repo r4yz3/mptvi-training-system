@@ -33,6 +33,7 @@ return [
         'payment.void',
         'attendance',
         'assess',
+        'cert.assessor',    // edit the assessor printed on a trainee's certificate
         'id.issue',
         'program.manage',
         'event.manage',
@@ -46,17 +47,17 @@ return [
     'matrix' => [
         'manager' => [
             'applicant.create', 'applicant.edit', 'active', 'screen', 'docs.verify',
-            'attendance', 'assess', 'id.issue', 'program.manage', 'event.manage', 'pii.view',
+            'attendance', 'assess', 'cert.assessor', 'id.issue', 'program.manage', 'event.manage', 'pii.view',
         ],
         'registrar' => [
             'applicant.create', 'applicant.edit', 'active', 'screen', 'docs.verify',
-            'id.issue', 'export', 'pii.view',
+            'cert.assessor', 'id.issue', 'export', 'pii.view',
         ],
         'cashier' => [
             'payment.record', 'payment.void',
         ],
         'coordinator' => [
-            'attendance', 'assess', 'program.manage',
+            'attendance', 'assess', 'cert.assessor', 'program.manage',
         ],
     ],
 
@@ -68,7 +69,7 @@ return [
         ['id' => 'cashier',    'label' => 'Cashier',               'icon' => 'banknote',         'group' => 'Enrollment',     'roles' => ['admin', 'cashier']],
         ['id' => 'programs',   'label' => 'Programs & batches',    'icon' => 'calendar-days',    'group' => 'Training',       'roles' => ['admin', 'manager', 'coordinator']],
         ['id' => 'training',   'label' => 'Training & attendance', 'icon' => 'graduation-cap',   'group' => 'Training',       'roles' => ['admin', 'manager', 'coordinator']],
-        ['id' => 'assessment', 'label' => 'Assessment & certs',    'icon' => 'award',            'group' => 'Training',       'roles' => ['admin', 'manager', 'coordinator']],
+        ['id' => 'assessment', 'label' => 'Assessment & certs',    'icon' => 'award',            'group' => 'Training',       'roles' => ['admin', 'manager', 'registrar', 'coordinator']],
         ['id' => 'idsystem',   'label' => 'ID system',             'icon' => 'id-card',          'group' => 'Training',       'roles' => ['admin', 'manager', 'registrar']],
         ['id' => 'messages',   'label' => 'Messages',              'icon' => 'message-square',   'group' => 'Communication',  'roles' => ['admin', 'manager', 'registrar', 'cashier', 'coordinator']],
         ['id' => 'events',     'label' => 'Calendar & events',     'icon' => 'megaphone',        'group' => 'Communication',  'roles' => ['admin', 'manager', 'registrar', 'cashier', 'coordinator']],
