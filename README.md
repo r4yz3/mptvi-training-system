@@ -85,3 +85,10 @@ php artisan serve
 ```
 
 Tests: `php artisan test`. Optimize stored images: `php artisan images:optimize`.
+
+---
+
+## Credits
+
+Designed and developed by **Justin Paelden** / **[Adfirm.net](https://adfirm.net)**.
+© Adfirm.net — proprietary software. See [AUTHORS.md](AUTHORS.md).

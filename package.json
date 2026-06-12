@@ -1,5 +1,13 @@
 {
     "$schema": "https://www.schemastore.org/package.json",
+    "name": "mptvi-training-system",
+    "version": "1.0.0",
+    "description": "MPTVI Training Management System — built by Justin Paelden / Adfirm.net",
+    "author": "Justin Paelden <justin@adfirm.net> (https://adfirm.net)",
+    "contributors": [
+        "Adfirm.net (https://adfirm.net)"
+    ],
+    "license": "UNLICENSED",
     "private": true,
     "type": "module",
     "scripts": {
