@@ -249,6 +249,7 @@ class ApplicantController extends Controller
                 'key' => $req['key'],
                 'label' => $req['label'],
                 'physical' => $req['physical'],
+                'copies' => (int) ($req['copies'] ?? 1),
                 'status' => $doc?->status ?? 'Pending',
                 'reject_reason' => $doc?->reject_reason,
                 'document_id' => $doc?->id,

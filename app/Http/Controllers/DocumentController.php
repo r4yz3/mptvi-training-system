@@ -21,7 +21,9 @@ class DocumentController extends Controller
 
         $data = $request->validate([
             'requirement_key' => ['required', 'integer'],
-            'file' => ['required', 'file', 'max:8192', 'mimes:jpg,jpeg,png,pdf,webp'],
+            // Accept one or many files in a single upload (e.g. 2×2 = 2 pcs, PSA = 2 pcs).
+            'files' => ['required', 'array', 'min:1', 'max:20'],
+            'files.*' => ['file', 'max:8192', 'mimes:jpg,jpeg,png,pdf,webp'],
         ]);
 
         $req = $this->req($data['requirement_key']);
@@ -32,26 +34,31 @@ class DocumentController extends Controller
             ['status' => 'Pending'],
         );
 
-        // Compress scanned images (birth certs, IDs) before storing; PDFs pass through untouched.
-        ImageOptimizer::uploaded($request->file('file'), 2000, 85);
+        $names = [];
+        foreach ($request->file('files') as $upload) {
+            // Compress scanned images (birth certs, IDs) before storing; PDFs pass through untouched.
+            ImageOptimizer::uploaded($upload, 2000, 85);
 
-        // PRIVATE disk — never web-served. DB stores the path only.
-        $path = $request->file('file')->store("documents/{$applicant->id}", 'local');
+            // PRIVATE disk — never web-served. DB stores the path only.
+            $path = $upload->store("documents/{$applicant->id}", 'local');
 
-        $file = $document->files()->create([
-            'path' => $path,
-            'original_name' => $request->file('file')->getClientOriginalName(),
-            'mime' => $request->file('file')->getMimeType(),
-            'size' => $request->file('file')->getSize(),
-            'uploaded_by' => $request->user()->id,
-        ]);
+            $file = $document->files()->create([
+                'path' => $path,
+                'original_name' => $upload->getClientOriginalName(),
+                'mime' => $upload->getMimeType(),
+                'size' => $upload->getSize(),
+                'uploaded_by' => $request->user()->id,
+            ]);
+            $names[] = $upload->getClientOriginalName();
+            $this->audit($document->id, $request->user()->id, 'upload', $upload->getClientOriginalName(), $file->id);
+        }
 
         // New upload resets a previously-rejected/verified item to Submitted for re-review.
         $document->update(['status' => 'Submitted', 'reject_reason' => null, 'verified_at' => null, 'verified_by' => null]);
 
-        $this->audit($document->id, $request->user()->id, 'upload', $request->file('file')->getClientOriginalName(), $file->id);
+        $n = count($names);
 
-        return back()->with('success', "Uploaded “{$file->original_name}”.");
+        return back()->with('success', $n === 1 ? "Uploaded “{$names[0]}”." : "Uploaded {$n} files.");
     }
 
     public function verify(Request $request, Document $document): RedirectResponse

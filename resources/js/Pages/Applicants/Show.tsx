@@ -42,7 +42,7 @@ interface Applicant {
 }
 
 interface DocItem {
-    key: number; label: string; physical: boolean; status: string;
+    key: number; label: string; physical: boolean; copies: number; status: string;
     reject_reason: string | null; document_id: number | null;
     files: { id: number; name: string; size: number }[];
 }

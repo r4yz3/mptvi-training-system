@@ -46,7 +46,7 @@ class DocumentTest extends TestCase
         $this->actingAs($this->as('registrar'))
             ->post("/applicants/{$a->id}/documents", [
                 'requirement_key' => 1,
-                'file' => UploadedFile::fake()->create('barangay.pdf', 100, 'application/pdf'),
+                'files' => [UploadedFile::fake()->create('barangay.pdf', 100, 'application/pdf')],
             ])
             ->assertRedirect();
 
@@ -60,13 +60,32 @@ class DocumentTest extends TestCase
         $this->assertSame(1, DocumentAudit::where('action', 'upload')->count());
     }
 
+    public function test_uploads_multiple_files_in_one_request(): void
+    {
+        $a = $this->applicant();
+        $this->actingAs($this->as('registrar'))
+            ->post("/applicants/{$a->id}/documents", [
+                'requirement_key' => 0, // 2x2 Picture (2 pcs)
+                'files' => [
+                    UploadedFile::fake()->image('pic1.jpg'),
+                    UploadedFile::fake()->image('pic2.jpg'),
+                ],
+            ])
+            ->assertRedirect();
+
+        $doc = Document::where('applicant_id', $a->id)->where('requirement_key', 0)->first();
+        $this->assertNotNull($doc);
+        $this->assertCount(2, $doc->files);
+        $this->assertSame(2, DocumentAudit::where('action', 'upload')->count());
+    }
+
     public function test_cashier_cannot_upload_or_download(): void
     {
         $a = $this->applicant();
         $this->actingAs($this->as('cashier'))
             ->post("/applicants/{$a->id}/documents", [
                 'requirement_key' => 1,
-                'file' => UploadedFile::fake()->create('x.pdf', 10, 'application/pdf'),
+                'files' => [UploadedFile::fake()->create('x.pdf', 10, 'application/pdf')],
             ])
             ->assertForbidden();
     }
@@ -78,7 +97,7 @@ class DocumentTest extends TestCase
 
         $this->actingAs($registrar)->post("/applicants/{$a->id}/documents", [
             'requirement_key' => 0,
-            'file' => UploadedFile::fake()->image('photo.jpg'),
+            'files' => [UploadedFile::fake()->image('photo.jpg')],
         ]);
         $doc = Document::first();
 
@@ -107,7 +126,7 @@ class DocumentTest extends TestCase
         $a = $this->applicant();
         $this->actingAs($this->as('registrar'))->post("/applicants/{$a->id}/documents", [
             'requirement_key' => 1,
-            'file' => UploadedFile::fake()->create('doc.pdf', 50, 'application/pdf'),
+            'files' => [UploadedFile::fake()->create('doc.pdf', 50, 'application/pdf')],
         ]);
         $file = \App\Models\DocumentFile::first();
 

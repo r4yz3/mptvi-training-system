@@ -119,6 +119,7 @@ class SettingsController extends Controller
                 'key' => $r['key'],
                 'label' => $r['label'],
                 'physical' => (bool) ($r['physical'] ?? false),
+                'copies' => (int) ($r['copies'] ?? 1),
                 'enabled' => (bool) ($r['enabled'] ?? true),
             ])->values(),
         ]);
@@ -133,6 +134,7 @@ class SettingsController extends Controller
             'requirements.*.key' => ['required', 'integer'],
             'requirements.*.label' => ['required', 'string', 'max:200'],
             'requirements.*.physical' => ['boolean'],
+            'requirements.*.copies' => ['integer', 'min:1', 'max:20'],
             'requirements.*.enabled' => ['boolean'],
         ]);
 
@@ -141,7 +143,13 @@ class SettingsController extends Controller
         $items = collect($data['requirements'])->map(function ($r) use (&$maxKey) {
             $key = $r['key'] >= 0 ? $r['key'] : ++$maxKey;
 
-            return ['key' => $key, 'label' => $r['label'], 'physical' => (bool) ($r['physical'] ?? false), 'enabled' => (bool) ($r['enabled'] ?? true)];
+            return [
+                'key' => $key,
+                'label' => $r['label'],
+                'physical' => (bool) ($r['physical'] ?? false),
+                'copies' => max(1, (int) ($r['copies'] ?? 1)),
+                'enabled' => (bool) ($r['enabled'] ?? true),
+            ];
         })->values()->all();
 
         Setting::putJson('requirements', $items);

@@ -3,7 +3,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import { ArrowLeft, ListChecks, Plus, Trash2, GripVertical, CheckCircle2, FileText, Package } from 'lucide-react';
 import AppShell from '@/Layouts/AppShell';
 
-interface Req { key: number; label: string; physical: boolean; enabled: boolean }
+interface Req { key: number; label: string; physical: boolean; copies: number; enabled: boolean }
 
 export default function Requirements({ requirements }: { requirements: Req[] }) {
     const [rows, setRows] = useState<Req[]>(requirements);
@@ -12,7 +12,7 @@ export default function Requirements({ requirements }: { requirements: Req[] }) 
 
     const update = (i: number, patch: Partial<Req>) => setRows(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
     const remove = (i: number) => setRows(rows.filter((_, idx) => idx !== i));
-    const add = () => setRows([...rows, { key: -1, label: '', physical: false, enabled: true }]);
+    const add = () => setRows([...rows, { key: -1, label: '', physical: false, copies: 1, enabled: true }]);
 
     const save = () => {
         setProcessing(true);
@@ -47,6 +47,17 @@ export default function Requirements({ requirements }: { requirements: Req[] }) 
                                 value={r.label}
                                 onChange={(e) => update(i, { label: e.target.value })}
                             />
+                            <label className="flex shrink-0 items-center gap-1 text-xs text-slate-500" title="Copies / pieces required">
+                                <input
+                                    type="number"
+                                    min={1}
+                                    max={20}
+                                    className="input w-14 text-center"
+                                    value={r.copies}
+                                    onChange={(e) => update(i, { copies: Math.max(1, Number(e.target.value) || 1) })}
+                                />
+                                pcs
+                            </label>
                             <button
                                 type="button"
                                 onClick={() => update(i, { physical: !r.physical })}

@@ -11,10 +11,10 @@
 */
 
 return [
-    ['key' => 0, 'label' => '2×2 Picture (2 pcs)',                                          'physical' => false],
-    ['key' => 1, 'label' => 'Barangay Clearance',                                           'physical' => false],
-    ['key' => 2, 'label' => 'PSA Birth Certificate or Marriage Contract (photocopy, 2 pcs)', 'physical' => false],
-    ['key' => 3, 'label' => 'School Record — Form 137 / Diploma / Report Card (+ TOR if college grad)', 'physical' => false],
-    ['key' => 4, 'label' => 'Brown Envelope, Long (2 pcs)',                                  'physical' => true],
-    ['key' => 5, 'label' => 'Brown Folder, Long (1 pc)',                                     'physical' => true],
+    ['key' => 0, 'label' => '2×2 Picture (2 pcs)',                                          'physical' => false, 'copies' => 2],
+    ['key' => 1, 'label' => 'Barangay Clearance',                                           'physical' => false, 'copies' => 1],
+    ['key' => 2, 'label' => 'PSA Birth Certificate or Marriage Contract (photocopy, 2 pcs)', 'physical' => false, 'copies' => 2],
+    ['key' => 3, 'label' => 'School Record — Form 137 / Diploma / Report Card (+ TOR if college grad)', 'physical' => false, 'copies' => 1],
+    ['key' => 4, 'label' => 'Brown Envelope, Long (2 pcs)',                                  'physical' => true,  'copies' => 2],
+    ['key' => 5, 'label' => 'Brown Folder, Long (1 pc)',                                     'physical' => true,  'copies' => 1],
 ];

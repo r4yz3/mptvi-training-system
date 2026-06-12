@@ -9,6 +9,7 @@ interface DocItem {
     key: number;
     label: string;
     physical: boolean;
+    copies: number;
     status: string;
     reject_reason: string | null;
     document_id: number | null;
@@ -55,12 +56,18 @@ export default function DocumentChecklist({
                             <div>
                                 <div className="flex flex-wrap items-center gap-2">
                                     <span className="text-sm font-medium text-slate-800">{d.label}</span>
+                                    {d.copies > 1 && <span className="rounded bg-brand-50 px-1.5 py-0.5 text-[10px] font-medium text-brand-700">{d.copies} pcs</span>}
                                     <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLE[d.status]}`}>
                                         {d.status === 'Verified' && <CheckCircle2 className="h-3 w-3" />}
                                         {d.status === 'Pending' && <Clock className="h-3 w-3" />}
                                         {d.status}
                                     </span>
                                     {d.physical && <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500">Physical</span>}
+                                    {!d.physical && d.copies > 1 && (
+                                        <span className={`text-[10px] font-medium ${d.files.length >= d.copies ? 'text-emerald-600' : 'text-amber-600'}`}>
+                                            {d.files.length}/{d.copies} uploaded
+                                        </span>
+                                    )}
                                 </div>
                                 {d.reject_reason && <div className="mt-0.5 text-xs text-rose-500">Reason: {d.reject_reason}</div>}
                                 {d.files.length > 0 && (
@@ -93,7 +100,7 @@ export default function DocumentChecklist({
                                     <PhysicalToggle applicantId={applicantId} item={d} />
                                 ) : (
                                     <>
-                                        <UploadButton applicantId={applicantId} requirementKey={d.key} />
+                                        <UploadButton applicantId={applicantId} requirementKey={d.key} copies={d.copies} />
                                         {d.document_id && d.status !== 'Verified' && (
                                             <button
                                                 onClick={() => router.put(`/documents/${d.document_id}/verify`, {}, { preserveScroll: true })}
@@ -123,25 +130,25 @@ export default function DocumentChecklist({
     );
 }
 
-function UploadButton({ applicantId, requirementKey }: { applicantId: number; requirementKey: number }) {
+function UploadButton({ applicantId, requirementKey, copies }: { applicantId: number; requirementKey: number; copies: number }) {
     const ref = useRef<HTMLInputElement>(null);
     const [busy, setBusy] = useState(false);
 
     const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+        const files = Array.from(e.target.files ?? []);
+        if (!files.length) return;
         setBusy(true);
         router.post(`/applicants/${applicantId}/documents`,
-            { requirement_key: requirementKey, file },
+            { requirement_key: requirementKey, files },
             { forceFormData: true, preserveScroll: true, onFinish: () => { setBusy(false); if (ref.current) ref.current.value = ''; } });
     };
 
     return (
         <>
             <button onClick={() => ref.current?.click()} disabled={busy} className="btn-ghost px-2.5 py-1.5 text-xs">
-                <UploadCloud className="h-3.5 w-3.5" /> {busy ? 'Uploading…' : 'Upload'}
+                <UploadCloud className="h-3.5 w-3.5" /> {busy ? 'Uploading…' : copies > 1 ? `Upload (${copies} pcs)` : 'Upload'}
             </button>
-            <input ref={ref} type="file" accept="image/*,application/pdf" className="hidden" onChange={onPick} />
+            <input ref={ref} type="file" accept="image/*,application/pdf" multiple className="hidden" onChange={onPick} />
         </>
     );
 }
