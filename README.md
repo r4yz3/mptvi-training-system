@@ -19,10 +19,10 @@ The PC needs **Laragon (Full)** — it bundles PHP 8.3+, Composer and Node. (The
 **GD** and **SQLite** extensions must be enabled; they are by default in Laragon.)
 
 ```bat
-:: 1. Get the code into Laragon's www folder
-cd C:\laragon\www
-git clone <YOUR-PRIVATE-REPO-URL> mptvi
-cd mptvi
+:: 1. Get the code onto a SEPARATE drive (survives a C:/Windows reinstall)
+D:
+git clone <YOUR-PRIVATE-REPO-URL> D:\mptvi
+cd /d D:\mptvi
 
 :: 2. Install dependencies and build the front-end (one time)
 composer install --no-dev --optimize-autoloader

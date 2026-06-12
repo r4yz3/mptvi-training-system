@@ -10,7 +10,7 @@ REM   - APP  : the app folder (the one containing "artisan")
 REM ============================================================
 
 set "PHP=C:\laragon\bin\php\php-8.3\php.exe"
-set "APP=C:\laragon\www\mptvi"
+set "APP=D:\mptvi"
 
 cd /d "%APP%"
 "%PHP%" artisan schedule:run >> "%APP%\storage\logs\schedule.log" 2>&1

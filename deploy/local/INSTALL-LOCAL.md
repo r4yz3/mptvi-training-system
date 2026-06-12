@@ -9,21 +9,34 @@ browser over the office network. No internet required.
 
 ---
 
-## 0. What you ship to the client PC
+## 0. Where to install — use a separate drive (D:)
 
-Copy the **whole project folder already built**, i.e. with:
+Install the **app + data on a non-system drive** (e.g. `D:\mptvi`), keeping
+**Laragon on C:**. Why:
 
-- `vendor/` present (run `composer install --no-dev --optimize-autoloader` first)
-- `public/build/` present (run `npm run build` first)
+- If **Windows / C: ever corrupts or is reinstalled**, the app code, the database
+  (`database\database.sqlite`), all uploaded documents and the backups on **D:
+  survive**. Recovery = reinstall Laragon, re-point the vhost to `D:\mptvi\public`,
+  done — no data loss.
+- **Best case:** D: is a *physically separate disk/SSD*, not just a partition — then
+  it also survives a C: drive failure. A second partition on the *same* physical disk
+  does **not** survive that disk dying — so still copy backups off the machine (USB /
+  another PC). See step 8.
 
-so the client PC needs **no Composer and no Node**. Put it at:
+Get the code onto the PC and build it once (Laragon Full includes Composer + Node) —
+the full commands are in the project **README** ("Install on the admin / server PC").
+In short:
 
+```bat
+D:
+git clone <YOUR-PRIVATE-REPO-URL> D:\mptvi
+cd D:\mptvi
+composer install --no-dev --optimize-autoloader
+npm ci && npm run build
 ```
-C:\laragon\www\mptvi\
-```
 
-> Do **not** copy your own `.env` or `database/database.sqlite` — you'll create
-> fresh ones below.
+> Never copy a previous `.env` or `database\database.sqlite` between installs — each
+> install gets fresh ones below.
 
 ---
 
@@ -38,12 +51,13 @@ C:\laragon\www\mptvi\
 
 1. Copy `deploy\local\apache-vhost.conf` to
    `C:\laragon\etc\apache2\sites-enabled\mptvi.conf`
-   (adjust the path inside if you didn't use `C:\laragon\www\mptvi`).
+   (its `DocumentRoot` already points at `D:\mptvi\public` — adjust if you used a
+   different drive/folder).
 2. Laragon → Menu → **Apache → Reload**.
 
 ## 3. Configure the app
 
-Open a terminal in `C:\laragon\www\mptvi` (Laragon → Menu → Terminal), then:
+Open a terminal in `D:\mptvi` (Laragon → Menu → Terminal, then `cd /d D:\mptvi`), then:
 
 ```bat
 copy deploy\local\env.local.example .env
@@ -120,7 +134,7 @@ and run a backup on demand. To make the daily run fire on Windows, add a **Task 
 2. Task Scheduler → Create Task →
    - General: "Run whether user is logged on or not", "Run with highest privileges".
    - Triggers: **Daily**, then *Repeat task every 1 minute for a duration of 1 day*.
-   - Actions: Start a program → `C:\laragon\www\mptvi\deploy\local\schedule-run.bat`.
+   - Actions: Start a program → `D:\mptvi\deploy\local\schedule-run.bat`.
 
 **Simpler alternative (fixed 5 PM, ignores the UI time):**
 - Schedule `deploy\local\backup-now.bat` to run **Daily at 5:00 PM**.

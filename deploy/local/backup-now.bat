@@ -8,7 +8,7 @@ REM  EDIT the two paths below to match this PC.
 REM ============================================================
 
 set "PHP=C:\laragon\bin\php\php-8.3\php.exe"
-set "APP=C:\laragon\www\mptvi"
+set "APP=D:\mptvi"
 
 cd /d "%APP%"
 "%PHP%" artisan backup:run
