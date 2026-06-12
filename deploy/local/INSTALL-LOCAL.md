@@ -57,6 +57,18 @@ npm ci && npm run build
 
 ## 3. Configure the app
 
+### One-click (recommended)
+
+In the app folder, run **`deploy\local\setup.bat`** (double-click, or from the Laragon
+Terminal). On the **first** run it creates `.env` from the template and opens it — set
+`APP_URL` + `BACKUP_PASSWORD`, save, then **run `setup.bat` again** to finish. It does
+composer install, npm build, key generate, database create + migrate + seed (RBAC +
+Programs), storage link, optimize, installs the Apache vhost, and adds the firewall rule.
+Then skip to **step 4**. (Steps 2 and 5 are handled by the script; static IP and the
+backup task are still manual — steps 6 and 8.)
+
+### Or do it manually
+
 Open a terminal in `D:\mptvi` (Laragon → Menu → Terminal, then `cd /d D:\mptvi`), then:
 
 ```bat

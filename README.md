@@ -18,6 +18,12 @@ office over the local network (LAN).
 The PC needs **Laragon (Full)** — it bundles PHP 8.3+, Composer and Node. (The PHP
 **GD** and **SQLite** extensions must be enabled; they are by default in Laragon.)
 
+> **Shortcut (recommended):** after cloning, just run **`deploy\local\setup.bat`**.
+> It runs composer + npm build, creates `.env` (opens it for you to set `APP_URL` +
+> `BACKUP_PASSWORD`), generates the key, creates + migrates + seeds the database,
+> links storage, optimizes, installs the Apache vhost, and adds the firewall rule.
+> The manual commands below are the same steps, for reference.
+
 ```bat
 :: 1. Get the code onto a SEPARATE drive (survives a C:/Windows reinstall)
 D:
