@@ -152,6 +152,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/settings/backups', [BackupController::class, 'index'])->name('settings.backups');
         Route::post('/settings/backups/run', [BackupController::class, 'run'])->name('settings.backups.run');
         Route::put('/settings/backups/schedule', [BackupController::class, 'updateSchedule'])->name('settings.backups.schedule');
+        Route::put('/settings/backups/path', [BackupController::class, 'updatePath'])->name('settings.backups.path');
         Route::get('/settings/backups/{name}/download', [BackupController::class, 'download'])->name('settings.backups.download');
         Route::delete('/settings/backups/{name}', [BackupController::class, 'destroy'])->name('settings.backups.destroy');
         Route::get('/settings/form-builder', [FormBuilderController::class, 'index'])->name('formbuilder.index');

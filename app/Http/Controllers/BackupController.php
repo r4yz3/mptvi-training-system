@@ -16,7 +16,7 @@ class BackupController extends Controller
     /** Backups contain PII — admin (settings cap) only, and never web-served except via these routes. */
     private function dir(): string
     {
-        return storage_path('backups');
+        return Setting::backupDir();
     }
 
     private const NAME = '/^mptvi-backup-\d{8}-\d{6}\.tar\.gz(\.enc)?$/';
@@ -37,10 +37,16 @@ class BackupController extends Controller
 
         $time = Setting::get('backup_time', '17:00');
         $enabled = Setting::get('backup_enabled', '1') !== '0';
+        $dir = $this->dir();
 
         return Inertia::render('Settings/Backups', [
             'backups' => $files,
             'schedule' => ['time' => $time, 'enabled' => $enabled],
+            'location' => [
+                'path' => $dir,
+                'is_default' => trim((string) Setting::get('backup_dir', '')) === '',
+                'writable' => is_dir($dir) && is_writable($dir),
+            ],
             'stats' => [
                 'count' => $files->count(),
                 'total' => $this->fmt((int) $files->sum('bytes')),
@@ -79,6 +85,40 @@ class BackupController extends Controller
         Setting::put('backup_enabled', $request->boolean('enabled') ? '1' : '0');
 
         return back()->with('success', 'Backup schedule updated.');
+    }
+
+    /** Set the folder where backups are saved (e.g. another drive). Empty = default storage/backups. */
+    public function updatePath(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->can('settings'), 403);
+
+        $data = $request->validate(['path' => ['nullable', 'string', 'max:255']]);
+        $path = trim((string) ($data['path'] ?? ''));
+
+        if ($path === '') {
+            Setting::put('backup_dir', '');
+
+            return back()->with('success', 'Backups will save to the default folder.');
+        }
+
+        $path = rtrim($path, "/\\");
+
+        // Create it if missing.
+        if (! is_dir($path) && ! @mkdir($path, 0775, true)) {
+            return back()->with('error', "Could not create the folder: {$path}");
+        }
+        if (! is_writable($path)) {
+            return back()->with('error', "The folder is not writable: {$path}");
+        }
+        // Never inside the public web root — backups contain PII and must not be web-served.
+        $real = realpath($path);
+        if ($real !== false && str_starts_with($real, (string) realpath(public_path()))) {
+            return back()->with('error', 'Choose a folder outside the public web folder — backups must not be web-accessible.');
+        }
+
+        Setting::put('backup_dir', $path);
+
+        return back()->with('success', 'Backup folder updated.');
     }
 
     public function download(Request $request, string $name): BinaryFileResponse

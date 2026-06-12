@@ -47,6 +47,14 @@ class Setting extends Model
         return (string) static::get('brand_color', '');
     }
 
+    /** Folder where backups are written. Admin-configurable; defaults to storage/backups. */
+    public static function backupDir(): string
+    {
+        $custom = trim((string) static::get('backup_dir', ''));
+
+        return $custom !== '' ? rtrim($custom, "/\\") : storage_path('backups');
+    }
+
     /** Lists (config/lpf.php keys) that admins may edit from the UI. */
     public const EDITABLE_LISTS = [
         'civil_status', 'emp_status', 'emp_type', 'education', 'scholarship',

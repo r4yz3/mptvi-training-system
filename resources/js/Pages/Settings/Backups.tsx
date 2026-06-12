@@ -1,18 +1,23 @@
 import { useState } from 'react';
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { ArrowLeft, DatabaseBackup, Download, Trash2, Lock, Unlock, Clock, HardDrive, ShieldAlert, RefreshCw, CalendarClock, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, DatabaseBackup, Download, Trash2, Lock, Unlock, Clock, HardDrive, ShieldAlert, RefreshCw, CalendarClock, CheckCircle2, FolderOpen, RotateCcw } from 'lucide-react';
 import AppShell from '@/Layouts/AppShell';
 
 interface Backup { name: string; size: string; bytes: number; created: string; encrypted: boolean }
 interface Stats { count: number; total: string; last: string | null; encrypted: boolean; schedule: string }
 interface ScheduleCfg { time: string; enabled: boolean }
+interface Location { path: string; is_default: boolean; writable: boolean }
 
-export default function Backups({ backups, stats, schedule }: { backups: Backup[]; stats: Stats; schedule: ScheduleCfg }) {
+export default function Backups({ backups, stats, schedule, location }: { backups: Backup[]; stats: Stats; schedule: ScheduleCfg; location: Location }) {
     const { post, processing } = useForm();
     const [confirming, setConfirming] = useState<string | null>(null);
 
     const sched = useForm({ time: schedule.time, enabled: schedule.enabled });
     const saveSchedule = (e: React.FormEvent) => { e.preventDefault(); sched.put('/settings/backups/schedule', { preserveScroll: true }); };
+
+    const loc = useForm({ path: location.is_default ? '' : location.path });
+    const saveLocation = (e: React.FormEvent) => { e.preventDefault(); loc.put('/settings/backups/path', { preserveScroll: true }); };
+    const useDefault = () => { loc.setData('path', ''); loc.put('/settings/backups/path', { preserveScroll: true }); };
 
     const run = () => post('/settings/backups/run', { preserveScroll: true });
     const del = (name: string) => router.delete(`/settings/backups/${name}`, { preserveScroll: true, onFinish: () => setConfirming(null) });
@@ -60,6 +65,39 @@ export default function Backups({ backups, stats, schedule }: { backups: Backup[
                     <span>Backups are <b>not encrypted</b> — they contain personal data. Set <code className="rounded bg-amber-100 px-1">BACKUP_PASSWORD</code> in the server <code className="rounded bg-amber-100 px-1">.env</code> to enable AES-256 encryption.</span>
                 </div>
             )}
+
+            {/* Backup location */}
+            <form onSubmit={saveLocation} className="mb-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                <header className="flex items-center gap-2.5 border-b border-slate-100 bg-slate-50/60 px-5 py-3">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-600"><FolderOpen className="h-4 w-4" /></span>
+                    <div>
+                        <h3 className="text-sm font-semibold text-slate-800">Backup folder</h3>
+                        <p className="text-xs text-slate-500">Where backups are saved on the server. Point it at another drive to keep copies off the main disk.</p>
+                    </div>
+                </header>
+                <div className="space-y-2 px-5 py-4">
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                        <span className="text-slate-400">Current:</span>
+                        <span className="rounded bg-slate-100 px-2 py-0.5 font-mono text-slate-700">{location.path}</span>
+                        {location.is_default && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-500">default</span>}
+                        {location.writable
+                            ? <span className="inline-flex items-center gap-1 text-emerald-600"><CheckCircle2 className="h-3.5 w-3.5" /> writable</span>
+                            : <span className="inline-flex items-center gap-1 text-rose-600"><ShieldAlert className="h-3.5 w-3.5" /> not writable</span>}
+                    </div>
+                    <input
+                        className="input font-mono text-sm"
+                        placeholder="e.g. D:\mptvi-backups   (leave blank for the default folder)"
+                        value={loc.data.path}
+                        onChange={(e) => loc.setData('path', e.target.value)}
+                    />
+                    <p className="text-[11px] text-slate-400">Use a full path. The folder is created if it doesn't exist. It must be outside the public web folder. A removable/USB drive must be connected when the backup runs.</p>
+                    <div className="flex items-center gap-3 pt-1">
+                        <button type="submit" disabled={loc.processing} className="btn-primary">Save folder</button>
+                        {!location.is_default && <button type="button" onClick={useDefault} className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-brand-600"><RotateCcw className="h-3.5 w-3.5" /> Use default</button>}
+                        {loc.recentlySuccessful && <span className="inline-flex items-center gap-1 text-sm font-medium text-emerald-600"><CheckCircle2 className="h-4 w-4" /> Saved</span>}
+                    </div>
+                </div>
+            </form>
 
             {/* Schedule editor */}
             <form onSubmit={saveSchedule} className="mb-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">

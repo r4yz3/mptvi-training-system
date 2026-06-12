@@ -25,7 +25,7 @@ class BackupRun extends Command
     public function handle(): int
     {
         $stamp = now()->format('Ymd-His');
-        $backupDir = storage_path('backups');
+        $backupDir = \App\Models\Setting::backupDir();
         File::ensureDirectoryExists($backupDir);
 
         $stage = storage_path("app/_backup-{$stamp}");
