@@ -27,7 +27,7 @@ const SECTIONS: SectionMeta[] = [
     { title: '5–6 · Disability (PWD only) & Emergency contact', id: 'sec-disability', nav: 'Emergency', icon: LifeBuoy },
     { title: 'Additional Information', id: 'sec-additional', nav: 'Additional', icon: Sparkles },
     { title: '9 · Privacy Consent', id: 'sec-consent', nav: 'Consent', icon: ShieldCheck },
-    { title: '10 · Verification', id: 'sec-verify', nav: 'Verification', icon: FileSignature },
+    { title: '10 · Verification & Signatures', id: 'sec-verify', nav: 'Signatures', icon: FileSignature },
 ];
 const META = Object.fromEntries(SECTIONS.map((s, i) => [s.title, { ...s, num: i + 1 }]));
 
@@ -394,8 +394,8 @@ export default function ApplicantForm({
                     </div>
                 </Section>
 
-                {/* Verification */}
-                <Section title="10 · Verification">
+                {/* Verification & Signatures */}
+                <Section title="10 · Verification & Signatures">
                     <p className="col-span-full text-center text-sm italic text-slate-500">
                         This is to certify that the information stated above is true and correct.
                     </p>
