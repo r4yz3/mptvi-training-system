@@ -104,7 +104,7 @@ echo   Still to do by hand ^(see deploy\local\INSTALL-LOCAL.md^):
 echo     1. Reload Apache in Laragon (if the vhost was just installed)
 echo     2. Give this PC a STATIC IP, then set APP_URL in .env to it
 echo        and run:  php artisan optimize
-echo     3. Create the daily backup task in Task Scheduler
+echo     3. Right-click deploy\local\install-backup-task.bat - Run as administrator
 echo     4. Open the site, log in (admin@mptvi.test / password),
 echo        create real staff and DELETE the demo accounts
 echo ============================================================

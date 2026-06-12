@@ -139,17 +139,18 @@ http://192.168.1.50/
 ## 8. Automatic daily backups
 
 The app's **Settings → Backups** page lets the admin set the daily time (default 5:00 PM)
-and run a backup on demand. To make the daily run fire on Windows, add a **Task Scheduler** job:
+and run a backup on demand. To make the daily run fire on Windows:
 
-**Recommended (honors the time set in the UI):**
-1. Edit the paths inside `deploy\local\schedule-run.bat`.
-2. Task Scheduler → Create Task →
-   - General: "Run whether user is logged on or not", "Run with highest privileges".
-   - Triggers: **Daily**, then *Repeat task every 1 minute for a duration of 1 day*.
-   - Actions: Start a program → `D:\mptvi\deploy\local\schedule-run.bat`.
+**One-click (recommended):**
+1. First edit the two paths inside `deploy\local\schedule-run.bat` (PHP + APP) if they
+   differ from the defaults.
+2. **Right-click `deploy\local\install-backup-task.bat` → Run as administrator.**
+   It registers a Task Scheduler job that ticks the scheduler every minute, so the
+   backup fires at the time set in the app. (Remove it later with
+   `schtasks /delete /tn "MPTVI Backup Scheduler" /f`.)
 
 **Simpler alternative (fixed 5 PM, ignores the UI time):**
-- Schedule `deploy\local\backup-now.bat` to run **Daily at 5:00 PM**.
+- Schedule `deploy\local\backup-now.bat` to run **Daily at 5:00 PM** in Task Scheduler.
 
 Backups land in `storage\backups\` (encrypted if `BACKUP_PASSWORD` is set) and are
 visible/downloadable in **Settings → Backups**. Old ones auto-prune (14 daily + 8 weekly).
