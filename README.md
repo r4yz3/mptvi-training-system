@@ -146,10 +146,16 @@ ignored and hold the live config + data.
 
 ```bat
 php artisan app:check        :: installation health check
+php artisan user:password    :: reset a login password (lists accounts, then prompts)
 php artisan backup:run       :: create an encrypted backup now
 php artisan images:optimize  :: re-compress previously uploaded images
 php artisan test             :: run the test suite
 ```
+
+**Forgot the admin password?** On the server, run `php artisan user:password` — it lists
+the accounts and prompts for a new password (hidden input). Or non-interactively:
+`php artisan user:password admin@example.com --password="NewStrongPass123!"`. This is
+unrelated to `BACKUP_PASSWORD` (which only encrypts backup files).
 
 ---
 
