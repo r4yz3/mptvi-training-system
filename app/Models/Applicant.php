@@ -33,6 +33,7 @@ class Applicant extends Model
             'date_accomplished' => 'date:Y-m-d',
             'date_received' => 'date:Y-m-d',
             'certified_at' => 'date:Y-m-d',
+            'id_issued_at' => 'date:Y-m-d',
             'age' => 'integer',
         ];
     }

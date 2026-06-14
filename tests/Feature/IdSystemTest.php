@@ -50,6 +50,16 @@ class IdSystemTest extends TestCase
         $this->assertNotNull($a->fresh()->id_issued_at);
     }
 
+    public function test_card_loads_after_an_id_is_issued(): void
+    {
+        $a = $this->withUli();
+        $this->actingAs($this->as('registrar'))->put("/idsystem/{$a->id}/issue");
+
+        // Regression: id_issued_at must be a date cast, not a raw string, or the
+        // card 500s on $applicant->id_issued_at?->toDateString().
+        $this->actingAs($this->as('registrar'))->get("/idsystem/{$a->id}")->assertOk();
+    }
+
     public function test_index_only_lists_learners_with_uli(): void
     {
         $this->withUli();
