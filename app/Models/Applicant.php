@@ -110,13 +110,19 @@ class Applicant extends Model
         return $paid >= $this->fee() ? 'Paid' : 'Partial';
     }
 
-    /** Are all (non-physical) document requirements Verified? Used by the eligibility checklist. */
+    /**
+     * Have all document requirements been addressed? Note-only: a requirement
+     * counts as settled once staff mark it Submitted or Not applicable (the
+     * latter covers applicants who can't provide that exact document).
+     */
     public function documentsComplete(): bool
     {
-        $verified = $this->documents()->where('status', 'Verified')->pluck('requirement_key')->all();
+        $settled = $this->documents()
+            ->whereIn('status', ['Submitted', 'Not applicable'])
+            ->pluck('requirement_key')->all();
 
         foreach (config('requirements') as $req) {
-            if (! in_array($req['key'], $verified, true)) {
+            if (! in_array($req['key'], $settled, true)) {
                 return false;
             }
         }
@@ -182,7 +188,7 @@ class Applicant extends Model
                 'note' => $this->privacy_consent ? 'Consented' : 'Not given',
             ],
             [
-                'label' => 'All documentary requirements verified',
+                'label' => 'All documentary requirements noted',
                 'ok' => $this->documentsComplete(),
                 'note' => $this->documentsComplete() ? 'Complete' : 'Pending documents',
             ],

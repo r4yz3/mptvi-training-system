@@ -10,16 +10,12 @@ class OptimizeImages extends Command
 {
     protected $signature = 'images:optimize {--dry : Report potential savings without writing}';
 
-    protected $description = 'Resize & re-compress all previously uploaded images (photos, signatures, attachments, documents, logos).';
+    protected $description = 'Resize & re-compress all previously uploaded images (photos, signatures, attachments, logos).';
 
     /** disk => [directories], with per-group max dimension. */
     private array $targets = [
         ['disk' => 'public', 'dir' => 'applicant-photos', 'max' => 800],
-        ['disk' => 'public', 'dir' => 'applicant-thumbmarks', 'max' => 800],
-        ['disk' => 'public', 'dir' => 'applicant-signatures', 'max' => 800],
-        ['disk' => 'local', 'dir' => 'or-photos', 'max' => 1600],
         ['disk' => 'local', 'dir' => 'message-attachments', 'max' => 1600],
-        ['disk' => 'local', 'dir' => 'documents', 'max' => 2000],
     ];
 
     public function handle(): int

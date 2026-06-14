@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Head } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { Download, FileSpreadsheet, Users, BadgeCheck, UserCheck, Banknote, Filter } from 'lucide-react';
 import AppShell from '@/Layouts/AppShell';
+import { PageProps } from '@/types';
 
 interface Props {
     byStatus: Record<string, number>;
@@ -28,9 +29,15 @@ export default function ReportsIndex({ byStatus, byProgram, totals, programs, st
     // Payments export filters
     const [pf, setPf] = useState<Record<string, string>>({});
 
+    const canApprove = usePage<PageProps>().props.auth.can['download.approve'] ?? false;
     const url = (base: string, f: Record<string, string>) => {
         const q = new URLSearchParams(Object.entries(f).filter(([, v]) => v));
         return `${base}${q.toString() ? '?' + q.toString() : ''}`;
+    };
+    const go = (type: string, base: string, f: Record<string, string>) => {
+        const params = Object.fromEntries(Object.entries(f).filter(([, v]) => v));
+        if (canApprove) window.location.href = url(base, f);
+        else router.post('/downloads', { type, params }, { preserveScroll: true });
     };
     const maxProg = Math.max(1, ...byProgram.map((p) => p.applicants));
     const totalStatus = Math.max(1, ...statuses.map((s) => byStatus[s] ?? 0));
@@ -76,7 +83,8 @@ export default function ReportsIndex({ byStatus, byProgram, totals, programs, st
             <ExportPanel
                 icon={<FileSpreadsheet className="h-4 w-4" />}
                 title="Applicants export (CSV)"
-                onDownload={() => (window.location.href = url('/reports/applicants.csv', af))}
+                actionLabel={canApprove ? 'Download CSV' : 'Request CSV'}
+                onDownload={() => go('reports_applicants_csv', '/reports/applicants.csv', af)}
             >
                 <Sel label="Status" value={af.status} onChange={(v) => setAf({ ...af, status: v })} options={statuses} />
                 <Sel label="Program" value={af.program} onChange={(v) => setAf({ ...af, program: v })} options={programs.map((p) => ({ value: String(p.id), label: p.title }))} />
@@ -94,7 +102,8 @@ export default function ReportsIndex({ byStatus, byProgram, totals, programs, st
                 <ExportPanel
                     icon={<Banknote className="h-4 w-4" />}
                     title="Payments export (CSV)"
-                    onDownload={() => (window.location.href = url('/reports/payments.csv', pf))}
+                    actionLabel={canApprove ? 'Download CSV' : 'Request CSV'}
+                    onDownload={() => go('reports_payments_csv', '/reports/payments.csv', pf)}
                 >
                     <Sel label="Program" value={pf.program} onChange={(v) => setPf({ ...pf, program: v })} options={programs.map((p) => ({ value: String(p.id), label: p.title }))} />
                     <Sel label="Method" value={pf.method} onChange={(v) => setPf({ ...pf, method: v })} options={methods} />
@@ -108,7 +117,7 @@ export default function ReportsIndex({ byStatus, byProgram, totals, programs, st
     );
 }
 
-function ExportPanel({ icon, title, children, onDownload }: { icon: React.ReactNode; title: string; children: React.ReactNode; onDownload: () => void }) {
+function ExportPanel({ icon, title, children, onDownload, actionLabel = 'Download CSV' }: { icon: React.ReactNode; title: string; children: React.ReactNode; onDownload: () => void; actionLabel?: string }) {
     return (
         <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-slate-500">{icon} {title}</h3>
@@ -116,7 +125,7 @@ function ExportPanel({ icon, title, children, onDownload }: { icon: React.ReactN
             <div className="mt-4 flex items-center gap-2 border-t border-slate-100 pt-4">
                 <Filter className="h-3.5 w-3.5 text-slate-300" />
                 <span className="text-xs text-slate-400">Leave a filter on “All” to include everything.</span>
-                <button onClick={onDownload} className="btn-primary ml-auto"><Download className="h-4 w-4" /> Download CSV</button>
+                <button onClick={onDownload} className="btn-primary ml-auto"><Download className="h-4 w-4" /> {actionLabel}</button>
             </div>
         </div>
     );

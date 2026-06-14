@@ -38,8 +38,10 @@ return [
         'program.manage',
         'event.manage',
         'pii.view',
-        'finance.view',     // admin only — ₱ aggregates
+        'finance.view',     // ₱ aggregates (admin + cashier)
         'export',
+        'download.request', // request a report/CSV export (queued for admin approval)
+        'download.approve', // approve/reject export requests + download directly (admin)
         'settings',         // admin only
     ],
 
@@ -48,13 +50,17 @@ return [
         'manager' => [
             'applicant.create', 'applicant.edit', 'active', 'screen', 'docs.verify',
             'attendance', 'assess', 'cert.assessor', 'id.issue', 'program.manage', 'event.manage', 'pii.view',
+            'download.request',
         ],
         'registrar' => [
             'applicant.create', 'applicant.edit', 'active', 'screen', 'docs.verify',
-            'cert.assessor', 'id.issue', 'export', 'pii.view',
+            'cert.assessor', 'id.issue', 'export', 'pii.view', 'download.request',
         ],
         'cashier' => [
             'payment.record', 'payment.void',
+            // Cashier now sees the finance aggregates + collections chart, but every
+            // report/CSV export must be approved by an admin (see the Downloads module).
+            'finance.view', 'download.request',
         ],
         'coordinator' => [
             'attendance', 'assess', 'cert.assessor', 'program.manage',
@@ -74,6 +80,7 @@ return [
         ['id' => 'messages',   'label' => 'Messages',              'icon' => 'message-square',   'group' => 'Communication',  'roles' => ['admin', 'manager', 'registrar', 'cashier', 'coordinator']],
         ['id' => 'events',     'label' => 'Calendar & events',     'icon' => 'megaphone',        'group' => 'Communication',  'roles' => ['admin', 'manager', 'registrar', 'cashier', 'coordinator']],
         ['id' => 'reports',    'label' => 'Reports',               'icon' => 'bar-chart-3',      'group' => 'Administration', 'roles' => ['admin', 'manager']],
+        ['id' => 'downloads',  'label' => 'Downloads',             'icon' => 'download',         'group' => 'Administration', 'roles' => ['admin', 'manager', 'registrar', 'cashier']],
         ['id' => 'activity',   'label' => 'Activity log',          'icon' => 'history',          'group' => 'Administration', 'roles' => ['admin', 'manager']],
         ['id' => 'users',      'label' => 'Users',                 'icon' => 'user-cog',         'group' => 'Administration', 'roles' => ['admin']],
         ['id' => 'settings',   'label' => 'Settings',              'icon' => 'settings',         'group' => 'Administration', 'roles' => ['admin']],

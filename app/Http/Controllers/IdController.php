@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Applicant;
 use App\Models\Setting;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -65,8 +64,6 @@ class IdController extends Controller
                 'emergency_contact' => $applicant->emergency_contact,
                 'school_year' => $applicant->school_year,
                 'issued' => $applicant->id_issued_at?->toDateString(),
-                // Trainee's own signature, captured in the registration form (Verification section).
-                'signature_url' => $applicant->signature_path ? Storage::disk('public')->url($applicant->signature_path) : null,
             ],
             'canIssue' => $request->user()->can('id.issue'),
             'signatory' => Setting::signatories()['approved_by'],

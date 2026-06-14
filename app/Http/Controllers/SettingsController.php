@@ -5,8 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Applicant;
 use App\Models\CustomField;
 use App\Models\FormSection;
+use App\Models\SecurityEvent;
 use App\Models\Setting;
 use App\Models\User;
+use App\Support\SecurityPosture;
+use App\Support\SystemHealth;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -38,6 +42,35 @@ class SettingsController extends Controller
                 'php' => PHP_VERSION,
                 'laravel' => app()->version(),
             ],
+        ]);
+    }
+
+    /** Live system health + hardware advice (fetched async by the Settings panel). */
+    public function health(Request $request, SystemHealth $health): JsonResponse
+    {
+        abort_unless($request->user()->can('settings'), 403);
+
+        return response()->json($health->report());
+    }
+
+    /** Security posture + recent authentication activity. */
+    public function security(Request $request, SecurityPosture $posture): Response
+    {
+        abort_unless($request->user()->can('settings'), 403);
+
+        $events = SecurityEvent::with('user:id,name')->latest('id')->limit(60)->get()->map(fn (SecurityEvent $e) => [
+            'id' => $e->id,
+            'type' => $e->type,
+            'email' => $e->email,
+            'user' => $e->user?->name,
+            'ip' => $e->ip,
+            'at' => $e->created_at?->diffForHumans(),
+            'at_full' => $e->created_at?->toDayDateTimeString(),
+        ]);
+
+        return Inertia::render('Settings/Security', [
+            'posture' => $posture->report(),
+            'events' => $events,
         ]);
     }
 
@@ -118,7 +151,6 @@ class SettingsController extends Controller
             'requirements' => collect(config('requirements'))->map(fn ($r) => [
                 'key' => $r['key'],
                 'label' => $r['label'],
-                'physical' => (bool) ($r['physical'] ?? false),
                 'copies' => (int) ($r['copies'] ?? 1),
                 'enabled' => (bool) ($r['enabled'] ?? true),
             ])->values(),
@@ -133,7 +165,6 @@ class SettingsController extends Controller
             'requirements' => ['present', 'array'],
             'requirements.*.key' => ['required', 'integer'],
             'requirements.*.label' => ['required', 'string', 'max:200'],
-            'requirements.*.physical' => ['boolean'],
             'requirements.*.copies' => ['integer', 'min:1', 'max:20'],
             'requirements.*.enabled' => ['boolean'],
         ]);
@@ -146,7 +177,6 @@ class SettingsController extends Controller
             return [
                 'key' => $key,
                 'label' => $r['label'],
-                'physical' => (bool) ($r['physical'] ?? false),
                 'copies' => max(1, (int) ($r['copies'] ?? 1)),
                 'enabled' => (bool) ($r['enabled'] ?? true),
             ];

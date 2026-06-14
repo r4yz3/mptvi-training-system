@@ -142,24 +142,17 @@ class ApplicantTest extends TestCase
         $this->assertDatabaseMissing('applicants', ['id' => $a->id]);
     }
 
-    public function test_verification_signature_and_dates_are_saved(): void
+    public function test_verification_dates_and_names_are_saved(): void
     {
-        \Illuminate\Support\Facades\Storage::fake('public');
-
-        // 1x1 transparent PNG as a data URL (what the signature pad produces)
-        $png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
-
+        // Note-only: no signature files — just the typed names + dates on the LPF.
         $this->actingAs($this->as('registrar'))->post('/applicants', [
             'last_name' => 'Signer', 'first_name' => 'Sam', 'barangay' => 'Pob',
             'contact' => '0917', 'sex' => 'Male', 'program_id' => Program::first()->id,
             'date_accomplished' => '2026-06-12', 'date_received' => '2026-06-12',
             'interviewed_by' => 'Juan Interviewer',
-            'signature' => $png,
         ])->assertRedirect();
 
         $a = Applicant::where('last_name', 'Signer')->first();
-        $this->assertNotNull($a->signature_path);
-        \Illuminate\Support\Facades\Storage::disk('public')->assertExists($a->signature_path);
         $this->assertSame('Juan Interviewer', $a->interviewed_by);
         $this->assertSame('2026-06-12', $a->date_accomplished->toDateString());
     }
@@ -169,26 +162,28 @@ class ApplicantTest extends TestCase
         $this->makeApplicant(['status' => 'Certified', 'uli' => 'MPT-26-0100']);
         $this->makeApplicant(['status' => 'Registered', 'first_name' => 'Ana', 'last_name' => 'Lim', 'uli' => null]);
 
-        // registrar has 'export'
-        $res = $this->actingAs($this->as('registrar'))->get('/applicants/export.csv?status=Certified');
+        // Direct download is admin-only now; other staff route through the Downloads queue.
+        $res = $this->actingAs($this->as('admin'))->get('/applicants/export.csv?status=Certified');
         $res->assertOk();
         $res->assertHeader('content-type', 'text/csv; charset=UTF-8');
         $content = $res->streamedContent();
         $this->assertStringContainsString('Dela Cruz', $content); // the Certified one
         $this->assertStringNotContainsString('Lim', $content);    // filtered out
 
-        // cashier lacks 'export'
+        // Non-admins can't hit the direct route — they must request via the queue.
+        $this->actingAs($this->as('registrar'))->get('/applicants/export.csv')->assertForbidden();
         $this->actingAs($this->as('cashier'))->get('/applicants/export.csv')->assertForbidden();
     }
 
-    public function test_pdf_report_renders_and_is_export_gated(): void
+    public function test_pdf_report_renders_for_admin_and_is_locked_for_others(): void
     {
         $this->makeApplicant();
-        $res = $this->actingAs($this->as('registrar'))->get('/applicants/report');
+        $res = $this->actingAs($this->as('admin'))->get('/applicants/report');
         $res->assertOk();
         $res->assertSee('APPLICANTS / LEARNERS REPORT', false);
 
-        $this->actingAs($this->as('cashier'))->get('/applicants/report')->assertForbidden();
+        // Direct access is admin-only; registrar requests through the Downloads queue.
+        $this->actingAs($this->as('registrar'))->get('/applicants/report')->assertForbidden();
     }
 
     public function test_print_form_is_pii_gated(): void

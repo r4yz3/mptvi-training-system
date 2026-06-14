@@ -225,7 +225,7 @@ class ApplicantController extends Controller
 
     public function show(Request $request, Applicant $applicant): Response
     {
-        $applicant->load('program', 'documents.files');
+        $applicant->load('program', 'documents');
         $canPii = $request->user()->can('pii.view');
 
         return Inertia::render('Applicants/Show', [
@@ -237,7 +237,7 @@ class ApplicantController extends Controller
         ]);
     }
 
-    /** Build the per-requirement document checklist for the profile (pii roles only). */
+    /** Build the per-requirement note checklist for the profile (pii roles only). */
     private function documentsPayload(Applicant $applicant): array
     {
         $byKey = $applicant->documents->keyBy('requirement_key');
@@ -248,16 +248,9 @@ class ApplicantController extends Controller
             return [
                 'key' => $req['key'],
                 'label' => $req['label'],
-                'physical' => $req['physical'],
                 'copies' => (int) ($req['copies'] ?? 1),
                 'status' => $doc?->status ?? 'Pending',
-                'reject_reason' => $doc?->reject_reason,
-                'document_id' => $doc?->id,
-                'files' => $doc ? $doc->files->map(fn ($f) => [
-                    'id' => $f->id,
-                    'name' => $f->original_name,
-                    'size' => $f->size,
-                ])->all() : [],
+                'note' => $doc?->note ?? '',
             ];
         })->all();
     }
@@ -402,37 +395,9 @@ class ApplicantController extends Controller
             'interviewed_by' => ['nullable', 'string', 'max:160'],
             'checked_by' => ['nullable', 'string', 'max:160'],
             'approved_by' => ['nullable', 'string', 'max:160'],
-            'thumbmark' => ['nullable', 'image', 'max:4096'],
-            // signature pads arrive as PNG data URLs (or blank to keep existing)
-            'signature' => ['nullable', 'string', 'max:2000000'],
-            'interviewer_signature' => ['nullable', 'string', 'max:2000000'],
-            'checked_signature' => ['nullable', 'string', 'max:2000000'],
-            'approved_signature' => ['nullable', 'string', 'max:2000000'],
         ];
 
         return $request->validate($this->applyFieldSettings($rules));
-    }
-
-    /** Persist a base64 PNG data URL to the public disk; keep existing if blank. */
-    private function saveSignature(?string $dataUrl, string $dir, ?string $existing): ?string
-    {
-        if (! $dataUrl || ! str_starts_with($dataUrl, 'data:image')) {
-            return $existing; // unchanged
-        }
-        $parts = explode(',', $dataUrl, 2);
-        $binary = base64_decode($parts[1] ?? '', true);
-        if ($binary === false) {
-            return $existing;
-        }
-        if ($existing) {
-            Storage::disk('public')->delete($existing);
-        }
-        // Signatures are transparent line-art PNGs — cap the canvas size, keep PNG.
-        $binary = ImageOptimizer::bytes($binary, 800);
-        $path = "{$dir}/" . \Illuminate\Support\Str::uuid() . '.png';
-        Storage::disk('public')->put($path, $binary);
-
-        return $path;
     }
 
     /** Compute derived fields (age from birthdate) + handle photo upload. */
@@ -450,31 +415,6 @@ class ApplicantController extends Controller
             $data['photo_path'] = $request->file('photo')->store('applicant-photos', 'public');
         }
         unset($data['photo']);
-
-        // Right thumbmark (file upload)
-        if ($request->hasFile('thumbmark')) {
-            if ($applicant?->thumbmark_path) {
-                Storage::disk('public')->delete($applicant->thumbmark_path);
-            }
-            ImageOptimizer::uploaded($request->file('thumbmark'), 800);
-            $data['thumbmark_path'] = $request->file('thumbmark')->store('applicant-thumbmarks', 'public');
-        }
-        unset($data['thumbmark']);
-
-        // Signature pads (base64 data URLs) → image files
-        $sigs = [
-            'signature' => 'signature_path',
-            'interviewer_signature' => 'interviewer_signature_path',
-            'checked_signature' => 'checked_signature_path',
-            'approved_signature' => 'approved_signature_path',
-        ];
-        foreach ($sigs as $field => $column) {
-            $saved = $this->saveSignature($data[$field] ?? null, 'applicant-signatures', $applicant?->{$column});
-            if ($saved !== null) {
-                $data[$column] = $saved;
-            }
-            unset($data[$field]);
-        }
 
         return $data;
     }
@@ -589,11 +529,6 @@ class ApplicantController extends Controller
         return $out;
     }
 
-    private function signatureUrl(?string $path): ?string
-    {
-        return $path ? Storage::disk('public')->url($path) : null;
-    }
-
     /** Full record (pii.view roles + edit). */
     private function fullPayload(Applicant $a): array
     {
@@ -601,11 +536,6 @@ class ApplicantController extends Controller
             'display_name' => $a->display_name,
             'full_name' => $a->full_name,
             'photo_url' => $a->photo_url,
-            'signature_url' => $this->signatureUrl($a->signature_path),
-            'thumbmark_url' => $this->signatureUrl($a->thumbmark_path),
-            'interviewer_signature_url' => $this->signatureUrl($a->interviewer_signature_path),
-            'checked_signature_url' => $this->signatureUrl($a->checked_signature_path),
-            'approved_signature_url' => $this->signatureUrl($a->approved_signature_path),
             'program' => $a->program ? [
                 'id' => $a->program->id,
                 'title' => $a->program->title,

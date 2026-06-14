@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
-import { ArrowLeft, ListChecks, Plus, Trash2, GripVertical, CheckCircle2, FileText, Package } from 'lucide-react';
+import { ArrowLeft, ListChecks, Plus, Trash2, GripVertical, CheckCircle2 } from 'lucide-react';
 import AppShell from '@/Layouts/AppShell';
 
-interface Req { key: number; label: string; physical: boolean; copies: number; enabled: boolean }
+interface Req { key: number; label: string; copies: number; enabled: boolean }
 
 export default function Requirements({ requirements }: { requirements: Req[] }) {
     const [rows, setRows] = useState<Req[]>(requirements);
@@ -12,7 +12,7 @@ export default function Requirements({ requirements }: { requirements: Req[] }) 
 
     const update = (i: number, patch: Partial<Req>) => setRows(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
     const remove = (i: number) => setRows(rows.filter((_, idx) => idx !== i));
-    const add = () => setRows([...rows, { key: -1, label: '', physical: false, copies: 1, enabled: true }]);
+    const add = () => setRows([...rows, { key: -1, label: '', copies: 1, enabled: true }]);
 
     const save = () => {
         setProcessing(true);
@@ -34,7 +34,7 @@ export default function Requirements({ requirements }: { requirements: Req[] }) 
             <div className="max-w-2xl">
                 <div className="mb-3 flex items-start gap-2.5 rounded-xl border border-brand-100 bg-brand-50/50 px-4 py-3 text-sm text-brand-800">
                     <ListChecks className="mt-0.5 h-4 w-4 shrink-0" />
-                    <p>These are the documents applicants must submit. <b>File</b> items are uploaded &amp; verified; <b>Supply</b> items are physical (checked off as received). Changes apply to screening and the applicant document checklist.</p>
+                    <p>These are the documents applicants are asked to present. Staff record a <b>note</b> and a status (Submitted / Pending / Not applicable) per requirement on each applicant — no files are uploaded. Changes apply to screening and the applicant document checklist.</p>
                 </div>
 
                 <div className="space-y-2">
@@ -58,15 +58,6 @@ export default function Requirements({ requirements }: { requirements: Req[] }) 
                                 />
                                 pcs
                             </label>
-                            <button
-                                type="button"
-                                onClick={() => update(i, { physical: !r.physical })}
-                                className={`inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-xs font-medium ${r.physical ? 'bg-amber-50 text-amber-700' : 'bg-sky-50 text-sky-700'}`}
-                                title="Toggle file vs supply"
-                            >
-                                {r.physical ? <Package className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
-                                {r.physical ? 'Supply' : 'File'}
-                            </button>
                             <label className="inline-flex shrink-0 cursor-pointer items-center gap-1 text-xs text-slate-500">
                                 <input type="checkbox" className="rounded border-slate-300 text-brand-600 focus:ring-brand-500" checked={r.enabled} onChange={(e) => update(i, { enabled: e.target.checked })} />
                                 On

@@ -6,7 +6,6 @@ import {
     type LucideIcon,
 } from 'lucide-react';
 import AppShell from '@/Layouts/AppShell';
-import SignaturePad from '@/Components/SignaturePad';
 import PhotoCapture from '@/Components/PhotoCapture';
 
 interface Signatory { name: string; title: string }
@@ -27,7 +26,7 @@ const SECTIONS: SectionMeta[] = [
     { title: '5–6 · Disability (PWD only) & Emergency contact', id: 'sec-disability', nav: 'Emergency', icon: LifeBuoy },
     { title: 'Additional Information', id: 'sec-additional', nav: 'Additional', icon: Sparkles },
     { title: '9 · Privacy Consent', id: 'sec-consent', nav: 'Consent', icon: ShieldCheck },
-    { title: '10 · Verification & Signatures', id: 'sec-verify', nav: 'Signatures', icon: FileSignature },
+    { title: '10 · Verification', id: 'sec-verify', nav: 'Verification', icon: FileSignature },
 ];
 const META = Object.fromEntries(SECTIONS.map((s, i) => [s.title, { ...s, num: i + 1 }]));
 
@@ -151,11 +150,6 @@ export default function ApplicantForm({
         interviewed_by: s('interviewed_by'),
         checked_by: s('checked_by') || options.signatories.checked_by.name,
         approved_by: s('approved_by') || options.signatories.approved_by.name,
-        thumbmark: null as File | null,
-        signature: '',
-        interviewer_signature: '',
-        checked_signature: '',
-        approved_signature: '',
         // Admin-defined custom fields (submitted as custom[key], stored in custom_data)
         custom: ((applicant?.custom_data as Record<string, string | number | boolean | null>) ?? {}),
     });
@@ -394,51 +388,28 @@ export default function ApplicantForm({
                     </div>
                 </Section>
 
-                {/* Verification & Signatures */}
-                <Section title="10 · Verification & Signatures">
+                {/* Verification */}
+                <Section title="10 · Verification">
                     <p className="col-span-full text-center text-sm italic text-slate-500">
                         This is to certify that the information stated above is true and correct.
+                        The applicant signs the printed form on release.
                     </p>
 
-                    <div className="col-span-full grid grid-cols-1 gap-6 lg:grid-cols-[1fr_300px]">
-                        <div>
-                            <SignaturePad
-                                label="Applicant's signature — sign in the box"
-                                existing={s('signature_url')}
-                                onChange={(d) => setData('signature', d ?? '')}
-                            />
-                            <div className="mt-1 text-xs text-slate-500">
-                                Signature over printed name:{' '}
-                                <span className="font-semibold text-slate-700">
-                                    {[data.first_name, data.middle_name, data.last_name, data.ext_name].filter(Boolean).join(' ') || '—'}
-                                </span>
-                            </div>
-                        </div>
-                        <div className="space-y-3">
-                            <F name="date_accomplished" label="Date accomplished"><input type="date" className="input" value={data.date_accomplished} onChange={(e) => setData('date_accomplished', e.target.value)} /></F>
-                            <F name="date_received" label="Date received"><input type="date" className="input" value={data.date_received} onChange={(e) => setData('date_received', e.target.value)} /></F>
-                            <div>
-                                <div className="mb-1 text-xs font-medium text-slate-600">Right thumbmark</div>
-                                {s('thumbmark_url') && !data.thumbmark && (
-                                    <img src={s('thumbmark_url')} alt="thumbmark" className="mb-1 h-16 w-16 rounded border border-slate-200 object-cover" />
-                                )}
-                                <input type="file" accept="image/*" className="input" onChange={(e) => setData('thumbmark', e.target.files?.[0] ?? null)} />
-                            </div>
-                        </div>
-                    </div>
+                    <F name="date_accomplished" label="Date accomplished"><input type="date" className="input" value={data.date_accomplished} onChange={(e) => setData('date_accomplished', e.target.value)} /></F>
+                    <F name="date_received" label="Date received"><input type="date" className="input" value={data.date_received} onChange={(e) => setData('date_received', e.target.value)} /></F>
 
                     <div className="col-span-full grid grid-cols-1 gap-5 md:grid-cols-3">
-                        <SignBox label="Interviewed by" sigExisting={s('interviewer_signature_url')} onSig={(d) => setData('interviewer_signature', d ?? '')}>
+                        <NameBox label="Interviewed by">
                             <input className="input text-center" placeholder="Interviewer's name" value={data.interviewed_by} onChange={(e) => setData('interviewed_by', e.target.value)} />
-                        </SignBox>
-                        <SignBox label="Checked by" sigExisting={s('checked_signature_url')} onSig={(d) => setData('checked_signature', d ?? '')}>
+                        </NameBox>
+                        <NameBox label="Checked by">
                             <input className="input text-center font-semibold uppercase" value={data.checked_by} onChange={(e) => setData('checked_by', e.target.value)} />
                             <div className="mt-1 text-center text-xs italic text-slate-500">{options.signatories.checked_by.title}</div>
-                        </SignBox>
-                        <SignBox label="Approved by" sigExisting={s('approved_signature_url')} onSig={(d) => setData('approved_signature', d ?? '')}>
+                        </NameBox>
+                        <NameBox label="Approved by">
                             <input className="input text-center font-semibold uppercase" value={data.approved_by} onChange={(e) => setData('approved_by', e.target.value)} />
                             <div className="mt-1 text-center text-xs italic text-slate-500">{options.signatories.approved_by.title}</div>
-                        </SignBox>
+                        </NameBox>
                     </div>
                 </Section>
 
@@ -464,16 +435,14 @@ export default function ApplicantForm({
     );
 }
 
-function SignBox({
-    label, sigExisting, onSig, children,
-}: {
-    label: string; sigExisting?: string | null; onSig: (d: string | null) => void; children: ReactNode;
-}) {
+function NameBox({ label, children }: { label: string; children: ReactNode }) {
     return (
         <div>
             <div className="mb-1 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>
-            <SignaturePad existing={sigExisting} onChange={onSig} height={110} />
-            <div className="mt-2 border-t border-slate-200 pt-2">{children}</div>
+            <div className="flex h-16 items-end justify-center border-b border-slate-300 pb-1 text-[10px] text-slate-300">
+                signature on printed form
+            </div>
+            <div className="mt-2 pt-2">{children}</div>
         </div>
     );
 }

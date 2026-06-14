@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\DownloadRequest;
 use App\Models\Message;
 use App\Support\Rbac;
 use Illuminate\Http\Request;
@@ -50,6 +51,10 @@ class HandleInertiaRequests extends Middleware
             'nav' => $user ? Rbac::modulesFor($roleKey) : [],
             'badges' => $user ? [
                 'messages' => Message::where('recipient_id', $user->id)->whereNull('read_at')->count(),
+                // Admins see pending approvals; requesters see their ready-to-download files.
+                'downloads' => $user->can('download.approve')
+                    ? DownloadRequest::where('status', 'pending')->count()
+                    : DownloadRequest::where('user_id', $user->id)->where('status', 'approved')->count(),
             ] : [],
             'flash' => [
                 'success' => $request->session()->get('success'),

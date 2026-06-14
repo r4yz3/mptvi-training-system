@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { Banknote, Receipt, Wallet, TrendingUp, X, Ban, FileSpreadsheet, Printer } from 'lucide-react';
 import AppShell from '@/Layouts/AppShell';
-import CameraCapture from '@/Components/CameraCapture';
+import { PageProps } from '@/types';
 
 const peso = (n: number) => '₱' + n.toLocaleString();
 function initials(name: string | null) {
@@ -27,7 +27,7 @@ interface WorkItem {
 interface LedgerItem {
     id: number; applicant: string | null; amount: number; type: string; method: string;
     or_number: string | null; paid_at: string | null; cashier: string | null;
-    voided: boolean; void_reason: string | null; has_photo: boolean;
+    voided: boolean; void_reason: string | null;
 }
 interface Aggregates {
     collected: number; outstanding: number;
@@ -213,14 +213,17 @@ function PaymentReportModal({ programs, methods, onClose }: { programs: { id: nu
     };
     const clearDates = () => setF((p) => ({ ...p, paid_from: '', paid_to: '' }));
 
+    const canApprove = usePage<PageProps>().props.auth.can['download.approve'] ?? false;
+    const params = () => Object.fromEntries(Object.entries(f).filter(([, v]) => v));
     const url = (path: string) => {
         const p = new URLSearchParams();
         Object.entries(f).forEach(([k, v]) => { if (v) p.set(k, v); });
         const q = p.toString();
         return path + (q ? `?${q}` : '');
     };
-    const csv = () => { window.location.href = url('/cashier/export.csv'); onClose(); };
-    const pdf = () => { window.open(url('/cashier/report'), '_blank', 'noopener'); onClose(); };
+    const request = (type: string) => router.post('/downloads', { type, params: params() }, { preserveScroll: true, onSuccess: onClose });
+    const csv = () => { if (canApprove) { window.location.href = url('/cashier/export.csv'); onClose(); } else request('cashier_csv'); };
+    const pdf = () => { if (canApprove) { window.open(url('/cashier/report'), '_blank', 'noopener'); onClose(); } else request('cashier_pdf'); };
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -261,8 +264,8 @@ function PaymentReportModal({ programs, methods, onClose }: { programs: { id: nu
 
                 <div className="flex items-center justify-end gap-2 border-t border-slate-200 bg-slate-50 px-6 py-4">
                     <button onClick={onClose} className="btn-ghost">Cancel</button>
-                    <button onClick={csv} className="btn-ghost"><FileSpreadsheet className="h-4 w-4" /> Export CSV</button>
-                    <button onClick={pdf} className="btn-primary"><Printer className="h-4 w-4" /> Generate PDF</button>
+                    <button onClick={csv} className="btn-ghost"><FileSpreadsheet className="h-4 w-4" /> {canApprove ? 'Export CSV' : 'Request CSV'}</button>
+                    <button onClick={pdf} className="btn-primary"><Printer className="h-4 w-4" /> {canApprove ? 'Generate PDF' : 'Request PDF'}</button>
                 </div>
             </div>
         </div>
@@ -299,11 +302,11 @@ function Stat({ icon, label, value, tone }: { icon: React.ReactNode; label: stri
 function RecordModal({ item, methods, types, onClose }: { item: WorkItem; methods: string[]; types: string[]; onClose: () => void }) {
     const { data, setData, post, processing, errors } = useForm({
         amount: item.balance, type: 'Partial', method: 'Cash', or_number: '',
-        paid_at: new Date().toISOString().slice(0, 10), or_photo: null as File | null,
+        paid_at: new Date().toISOString().slice(0, 10),
     });
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
-        post(`/cashier/${item.id}/payments`, { forceFormData: true, preserveScroll: true, onSuccess: onClose });
+        post(`/cashier/${item.id}/payments`, { preserveScroll: true, onSuccess: onClose });
     };
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -336,10 +339,6 @@ function RecordModal({ item, methods, types, onClose }: { item: WorkItem; method
                         <label className="col-span-2 block"><span className="mb-1 block text-xs font-medium text-slate-600">Payment date</span>
                             <input type="date" className="input" value={data.paid_at} onChange={(e) => setData('paid_at', e.target.value)} />
                         </label>
-                        <div className="col-span-2">
-                            <span className="mb-1.5 block text-xs font-medium text-slate-600">OR photo <span className="text-slate-400">(optional)</span></span>
-                            <CameraCapture value={data.or_photo} onChange={(f) => setData('or_photo', f)} placeholder="OR receipt" />
-                        </div>
                     </div>
                     <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
                         <button type="button" onClick={onClose} className="btn-ghost">Cancel</button>

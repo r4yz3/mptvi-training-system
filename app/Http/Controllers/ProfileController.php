@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Support\Totp;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,9 +19,21 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): Response
     {
+        $user = $request->user();
+        $confirming = $user->two_factor_secret !== null && ! $user->hasTwoFactorEnabled();
+
         return Inertia::render('Profile/Edit', [
-            'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
+            'mustVerifyEmail' => $user instanceof MustVerifyEmail,
             'status' => session('status'),
+            'twoFactor' => [
+                'enabled' => $user->hasTwoFactorEnabled(),
+                'confirming' => $confirming,
+                'secret' => $confirming ? $user->two_factor_secret : null,
+                'qr' => $confirming
+                    ? Totp::provisioningUri((string) $user->two_factor_secret, $user->email, (string) config('app.name'))
+                    : null,
+            ],
+            'recoveryCodes' => session('recoveryCodes'),
         ]);
     }
 

@@ -16,6 +16,7 @@ import {
     Settings,
     SlidersHorizontal,
     UserCog,
+    Download,
     Menu,
     X,
     LogOut,
@@ -40,6 +41,7 @@ const ICONS: Record<string, LucideIcon> = {
     settings: Settings,
     sliders: SlidersHorizontal,
     'user-cog': UserCog,
+    download: Download,
 };
 
 /** Build a `:root` override of the --brand-* channels from a single primary hex. */
@@ -113,34 +115,44 @@ export default function AppShell({
                     </div>
                 </div>
 
-                <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4">
-                    {groups.map((g) => (
-                        <div key={g.name}>
+                <nav className="nav-scroll flex-1 space-y-5 overflow-y-auto px-3 py-4">
+                    {groups.map((g, gi) => (
+                        <div key={g.name} className={clsx(gi > 0 && 'border-t border-white/[0.07] pt-4')}>
                             {g.name && (
-                                <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-white/40">{g.name}</div>
+                                <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45">{g.name}</div>
                             )}
                             <div className="space-y-0.5">
                                 {g.items.map((m) => {
                                     const Icon = ICONS[m.icon] ?? LayoutDashboard;
                                     const active = isActive(m.id);
+                                    const badge = badges?.[m.id] ?? 0;
                                     return (
                                         <Link
                                             key={m.id}
                                             href={`/${m.id}`}
                                             onClick={() => setOpen(false)}
+                                            aria-current={active ? 'page' : undefined}
                                             className={clsx(
-                                                'group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition',
+                                                'group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors duration-150',
                                                 active
-                                                    ? 'bg-white text-brand-700 shadow-sm'
-                                                    : 'text-white/80 hover:bg-white/10 hover:text-white',
+                                                    ? 'bg-white font-semibold text-brand-700 shadow-sm ring-1 ring-black/[0.04]'
+                                                    : 'font-medium text-white/75 hover:bg-white/10 hover:text-white',
                                             )}
                                         >
-                                            {active && <span className="absolute inset-y-1.5 left-0 w-1 rounded-r bg-brand-700" />}
-                                            <Icon className="h-[18px] w-[18px]" />
-                                            <span className="flex-1">{m.label}</span>
-                                            {badges?.[m.id] > 0 && (
-                                                <span className="rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                                                    {badges[m.id]}
+                                            {active && <span className="absolute inset-y-2 left-0 w-[3px] rounded-r-full bg-brand-600" />}
+                                            <Icon
+                                                className={clsx(
+                                                    'h-[18px] w-[18px] shrink-0 transition-colors',
+                                                    active ? 'text-brand-600' : 'text-white/55 group-hover:text-white',
+                                                )}
+                                            />
+                                            <span className="flex-1 truncate">{m.label}</span>
+                                            {badge > 0 && (
+                                                <span className={clsx(
+                                                    'min-w-[18px] rounded-full px-1.5 py-0.5 text-center text-[10px] font-semibold leading-none',
+                                                    active ? 'bg-brand-600 text-white' : 'bg-rose-500 text-white',
+                                                )}>
+                                                    {badge}
                                                 </span>
                                             )}
                                         </Link>
@@ -151,11 +163,16 @@ export default function AppShell({
                     ))}
                 </nav>
 
-                <div className="flex items-center gap-2.5 border-t border-white/10 px-4 py-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 text-xs font-semibold">{auth.user.initials}</div>
-                    <div className="min-w-0 leading-tight">
-                        <div className="truncate text-xs font-medium text-white">{auth.user.name}</div>
-                        <div className="truncate text-[10px] text-white/60">{auth.user.roleLabel}</div>
+                <div className="border-t border-white/10 p-3">
+                    <div className="flex items-center gap-2.5 rounded-lg bg-white/[0.06] px-3 py-2.5">
+                        <div className="relative shrink-0">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-xs font-semibold ring-1 ring-white/20">{auth.user.initials}</div>
+                            <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-brand-600" />
+                        </div>
+                        <div className="min-w-0 leading-tight">
+                            <div className="truncate text-xs font-semibold text-white">{auth.user.name}</div>
+                            <div className="truncate text-[10px] text-white/60">{auth.user.roleLabel}</div>
+                        </div>
                     </div>
                 </div>
             </aside>
@@ -182,13 +199,15 @@ export default function AppShell({
                     <h1 className="text-lg font-semibold text-slate-800">{title}</h1>
 
                     <div className="ml-auto flex items-center gap-3">
-                        <div className="hidden text-right sm:block">
-                            <div className="text-sm font-medium text-slate-800">{auth.user.name}</div>
-                            <div className="text-xs text-slate-500">{auth.user.roleLabel}</div>
-                        </div>
-                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-600 text-sm font-semibold text-white">
-                            {auth.user.initials}
-                        </div>
+                        <Link href="/profile" className="group flex items-center gap-3 rounded-lg px-1.5 py-1 transition hover:bg-slate-100" title="Your profile & security">
+                            <div className="hidden text-right sm:block">
+                                <div className="text-sm font-medium text-slate-800">{auth.user.name}</div>
+                                <div className="text-xs text-slate-500">{auth.user.roleLabel}</div>
+                            </div>
+                            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-600 text-sm font-semibold text-white">
+                                {auth.user.initials}
+                            </div>
+                        </Link>
                         <Link
                             href="/logout"
                             method="post"

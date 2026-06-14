@@ -111,7 +111,7 @@ class CashierTest extends TestCase
             ->assertOk()->assertSee('PAYMENTS / COLLECTIONS REPORT', false);
     }
 
-    public function test_cashier_ledger_is_own_only_admin_sees_all(): void
+    public function test_cashier_has_the_full_finance_view(): void
     {
         $a = $this->qualified();
         $cashier = $this->as('cashier');
@@ -123,11 +123,10 @@ class CashierTest extends TestCase
         Payment::create(['applicant_id' => $a->id, 'amount' => 100, 'type' => 'Partial', 'method' => 'Cash',
             'paid_at' => '2026-06-02', 'cashier_id' => $this->as('admin')->id]);
 
-        // cashier sees only their 1 entry, no aggregates
+        // Cashier now has finance.view: sees aggregates + the full ledger, like admin.
         $this->actingAs($cashier)->get('/cashier')
-            ->assertInertia(fn (Assert $p) => $p->where('canFinance', false)->has('ledger', 1)->missing('aggregates'));
+            ->assertInertia(fn (Assert $p) => $p->where('canFinance', true)->has('ledger', 2)->has('aggregates'));
 
-        // admin sees both + aggregates
         $this->actingAs($this->as('admin'))->get('/cashier')
             ->assertInertia(fn (Assert $p) => $p->where('canFinance', true)->has('ledger', 2)->has('aggregates'));
     }

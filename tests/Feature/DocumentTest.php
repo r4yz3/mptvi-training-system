@@ -4,14 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\Applicant;
 use App\Models\Document;
-use App\Models\DocumentAudit;
 use App\Models\Program;
 use App\Models\User;
 use Database\Seeders\ProgramSeeder;
 use Database\Seeders\RbacSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class DocumentTest extends TestCase
@@ -23,7 +20,6 @@ class DocumentTest extends TestCase
         parent::setUp();
         $this->seed(RbacSeeder::class);
         $this->seed(ProgramSeeder::class);
-        Storage::fake('local');
     }
 
     private function as(string $role): User
@@ -39,107 +35,88 @@ class DocumentTest extends TestCase
         ]);
     }
 
-    public function test_upload_stores_on_private_disk_and_audits(): void
+    public function test_saving_a_note_creates_the_document_record(): void
     {
         $a = $this->applicant();
 
         $this->actingAs($this->as('registrar'))
             ->post("/applicants/{$a->id}/documents", [
                 'requirement_key' => 1,
-                'files' => [UploadedFile::fake()->create('barangay.pdf', 100, 'application/pdf')],
+                'status' => 'Submitted',
+                'note' => 'Photocopy only, original to follow',
             ])
             ->assertRedirect();
 
         $doc = Document::where('applicant_id', $a->id)->where('requirement_key', 1)->first();
         $this->assertNotNull($doc);
         $this->assertSame('Submitted', $doc->status);
-        $this->assertCount(1, $doc->files);
-        Storage::disk('local')->assertExists($doc->files->first()->path);
-        $this->assertTrue($doc->files->first()->path !== null
-            && str_starts_with($doc->files->first()->path, "documents/{$a->id}/"));
-        $this->assertSame(1, DocumentAudit::where('action', 'upload')->count());
+        $this->assertSame('Photocopy only, original to follow', $doc->note);
+        $this->assertSame($this->as('registrar')->id, $doc->noted_by);
     }
 
-    public function test_uploads_multiple_files_in_one_request(): void
-    {
-        $a = $this->applicant();
-        $this->actingAs($this->as('registrar'))
-            ->post("/applicants/{$a->id}/documents", [
-                'requirement_key' => 0, // 2x2 Picture (2 pcs)
-                'files' => [
-                    UploadedFile::fake()->image('pic1.jpg'),
-                    UploadedFile::fake()->image('pic2.jpg'),
-                ],
-            ])
-            ->assertRedirect();
-
-        $doc = Document::where('applicant_id', $a->id)->where('requirement_key', 0)->first();
-        $this->assertNotNull($doc);
-        $this->assertCount(2, $doc->files);
-        $this->assertSame(2, DocumentAudit::where('action', 'upload')->count());
-    }
-
-    public function test_cashier_cannot_upload_or_download(): void
-    {
-        $a = $this->applicant();
-        $this->actingAs($this->as('cashier'))
-            ->post("/applicants/{$a->id}/documents", [
-                'requirement_key' => 1,
-                'files' => [UploadedFile::fake()->create('x.pdf', 10, 'application/pdf')],
-            ])
-            ->assertForbidden();
-    }
-
-    public function test_verify_and_reject_flow(): void
+    public function test_saving_again_updates_the_same_record(): void
     {
         $a = $this->applicant();
         $registrar = $this->as('registrar');
 
         $this->actingAs($registrar)->post("/applicants/{$a->id}/documents", [
-            'requirement_key' => 0,
-            'files' => [UploadedFile::fake()->image('photo.jpg')],
+            'requirement_key' => 2, 'status' => 'Pending', 'note' => '',
         ]);
-        $doc = Document::first();
+        $this->actingAs($registrar)->post("/applicants/{$a->id}/documents", [
+            'requirement_key' => 2, 'status' => 'Not applicable', 'note' => 'No PSA — gave barangay cert',
+        ]);
 
-        $this->actingAs($registrar)->put("/documents/{$doc->id}/verify")->assertRedirect();
-        $this->assertSame('Verified', $doc->fresh()->status);
-
-        $this->actingAs($registrar)->put("/documents/{$doc->id}/reject", ['reason' => 'Blurry'])->assertRedirect();
-        $this->assertSame('Rejected', $doc->fresh()->status);
-        $this->assertSame('Blurry', $doc->fresh()->reject_reason);
+        $this->assertSame(1, Document::where('applicant_id', $a->id)->where('requirement_key', 2)->count());
+        $doc = Document::where('applicant_id', $a->id)->where('requirement_key', 2)->first();
+        $this->assertSame('Not applicable', $doc->status);
     }
 
-    public function test_physical_item_toggles_received(): void
+    public function test_invalid_status_is_rejected(): void
     {
         $a = $this->applicant();
-        // key 4 = Brown Envelope (physical)
         $this->actingAs($this->as('registrar'))
-            ->post("/applicants/{$a->id}/documents/physical", ['requirement_key' => 4])
-            ->assertRedirect();
-
-        $doc = Document::where('requirement_key', 4)->first();
-        $this->assertSame('Verified', $doc->status);
+            ->post("/applicants/{$a->id}/documents", ['requirement_key' => 0, 'status' => 'Verified'])
+            ->assertSessionHasErrors('status');
     }
 
-    public function test_download_requires_pii_and_is_audited(): void
+    public function test_cashier_cannot_edit_document_notes(): void
     {
         $a = $this->applicant();
-        $this->actingAs($this->as('registrar'))->post("/applicants/{$a->id}/documents", [
-            'requirement_key' => 1,
-            'files' => [UploadedFile::fake()->create('doc.pdf', 50, 'application/pdf')],
-        ]);
-        $file = \App\Models\DocumentFile::first();
-
-        // cashier (no pii.view) blocked
         $this->actingAs($this->as('cashier'))
-            ->get("/document-files/{$file->id}/download")
+            ->post("/applicants/{$a->id}/documents", [
+                'requirement_key' => 1, 'status' => 'Submitted', 'note' => 'x',
+            ])
             ->assertForbidden();
+    }
 
-        // registrar (pii.view) allowed + audited
-        $this->actingAs($this->as('registrar'))
-            ->get("/document-files/{$file->id}/download")
-            ->assertOk();
-        $this->assertSame(1, DocumentAudit::where('action', 'download')->count());
+    public function test_documents_complete_counts_submitted_and_not_applicable(): void
+    {
+        $a = $this->applicant();
+        $this->assertFalse($a->documentsComplete());
+
+        foreach (config('requirements') as $i => $req) {
+            Document::create([
+                'applicant_id' => $a->id,
+                'requirement_key' => $req['key'],
+                // Mix of both settled statuses — both should count.
+                'status' => $i % 2 === 0 ? 'Submitted' : 'Not applicable',
+            ]);
+        }
+
+        $this->assertTrue($a->fresh()->documentsComplete());
+    }
+
+    public function test_pending_requirement_keeps_documents_incomplete(): void
+    {
+        $a = $this->applicant();
+        foreach (config('requirements') as $req) {
+            Document::create([
+                'applicant_id' => $a->id,
+                'requirement_key' => $req['key'],
+                'status' => 'Pending',
+            ]);
+        }
+        $this->assertFalse($a->fresh()->documentsComplete());
     }
 
     public function test_show_hides_documents_from_non_pii_role(): void

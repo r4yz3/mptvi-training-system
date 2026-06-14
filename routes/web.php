@@ -7,6 +7,7 @@ use App\Http\Controllers\BackupController;
 use App\Http\Controllers\BatchController;
 use App\Http\Controllers\CashierController;
 use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\DownloadController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\FormBuilderController;
 use App\Http\Controllers\IdController;
@@ -43,8 +44,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware('module:applicants')->group(function () {
         Route::get('/applicants', [ApplicantController::class, 'index'])->name('applicants.index');
         Route::get('/applicants/create', [ApplicantController::class, 'create'])->name('applicants.create');
-        Route::get('/applicants/export.csv', [ApplicantController::class, 'exportCsv'])->name('applicants.export');
-        Route::get('/applicants/report', [ApplicantController::class, 'report'])->name('applicants.report');
+        Route::get('/applicants/export.csv', [ApplicantController::class, 'exportCsv'])->middleware('can:download.approve')->name('applicants.export');
+        Route::get('/applicants/report', [ApplicantController::class, 'report'])->middleware('can:download.approve')->name('applicants.report');
         Route::post('/applicants', [ApplicantController::class, 'store'])->name('applicants.store');
         Route::get('/applicants/{applicant}/print', [ApplicantController::class, 'print'])->name('applicants.print');
         Route::get('/applicants/{applicant}', [ApplicantController::class, 'show'])->name('applicants.show');
@@ -53,15 +54,10 @@ Route::middleware('auth')->group(function () {
         Route::delete('/applicants/{applicant}', [ApplicantController::class, 'destroy'])->name('applicants.destroy');
         Route::put('/applicants/{applicant}/active', [ApplicantController::class, 'toggleActive'])->name('applicants.toggleActive');
 
-        // Documents (P4 / DPA) — caps (docs.verify, pii.view) enforced in controller.
-        Route::post('/applicants/{applicant}/documents', [DocumentController::class, 'upload'])->name('documents.upload');
-        Route::post('/applicants/{applicant}/documents/physical', [DocumentController::class, 'togglePhysical'])->name('documents.physical');
+        // Documents — note-only: a typed note + status per requirement (no uploads).
+        // docs.verify gates writing; the checklist is pii.view-gated in the controller.
+        Route::post('/applicants/{applicant}/documents', [DocumentController::class, 'save'])->name('documents.save');
     });
-
-    Route::put('/documents/{document}/verify', [DocumentController::class, 'verify'])->name('documents.verify');
-    Route::put('/documents/{document}/reject', [DocumentController::class, 'reject'])->name('documents.reject');
-    Route::get('/document-files/{file}/download', [DocumentController::class, 'download'])->name('documents.download');
-    Route::delete('/document-files/{file}', [DocumentController::class, 'destroyFile'])->name('documents.destroyFile');
 
     // Screening (P3) — registrar/secretary/admin; screen cap gates the actions.
     Route::middleware('module:screening')->group(function () {
@@ -84,8 +80,9 @@ Route::middleware('auth')->group(function () {
     // Cashier (P6) — admin/cashier; payment.record / payment.void gate the actions.
     Route::middleware('module:cashier')->group(function () {
         Route::get('/cashier', [CashierController::class, 'index'])->name('cashier.index');
-        Route::get('/cashier/report', [CashierController::class, 'report'])->name('cashier.report');
-        Route::get('/cashier/export.csv', [CashierController::class, 'exportCsv'])->name('cashier.export');
+        // Direct download is admin-only; other staff route through the Downloads approval queue.
+        Route::get('/cashier/report', [CashierController::class, 'report'])->middleware('can:download.approve')->name('cashier.report');
+        Route::get('/cashier/export.csv', [CashierController::class, 'exportCsv'])->middleware('can:download.approve')->name('cashier.export');
         Route::post('/cashier/{applicant}/payments', [CashierController::class, 'record'])->name('cashier.record');
         Route::put('/cashier/payments/{payment}/void', [CashierController::class, 'void'])->name('cashier.void');
     });
@@ -116,8 +113,17 @@ Route::middleware('auth')->group(function () {
     // Reports (P10) — admin/secretary. Payments CSV additionally gated finance.view.
     Route::middleware('module:reports')->group(function () {
         Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
-        Route::get('/reports/applicants.csv', [ReportController::class, 'applicantsCsv'])->name('reports.applicants');
-        Route::get('/reports/payments.csv', [ReportController::class, 'paymentsCsv'])->name('reports.payments');
+        Route::get('/reports/applicants.csv', [ReportController::class, 'applicantsCsv'])->middleware('can:download.approve')->name('reports.applicants');
+        Route::get('/reports/payments.csv', [ReportController::class, 'paymentsCsv'])->middleware('can:download.approve')->name('reports.payments');
+    });
+
+    // Downloads — admin-approved report/CSV exports (request → approve → download).
+    Route::middleware('module:downloads')->group(function () {
+        Route::get('/downloads', [DownloadController::class, 'index'])->name('downloads.index');
+        Route::post('/downloads', [DownloadController::class, 'store'])->name('downloads.store');
+        Route::get('/downloads/{download}/file', [DownloadController::class, 'file'])->name('downloads.file');
+        Route::put('/downloads/{download}/approve', [DownloadController::class, 'approve'])->name('downloads.approve');
+        Route::put('/downloads/{download}/reject', [DownloadController::class, 'reject'])->name('downloads.reject');
     });
 
     // Calendar & events (P11) — all roles view; event.manage gates writes.
@@ -136,6 +142,8 @@ Route::middleware('auth')->group(function () {
     // Settings (admin) — configuration hub. Form Builder lives here.
     Route::middleware('module:settings')->group(function () {
         Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
+        Route::get('/settings/health', [SettingsController::class, 'health'])->name('settings.health');
+        Route::get('/settings/security', [SettingsController::class, 'security'])->name('settings.security');
         Route::get('/settings/signatories', [SettingsController::class, 'signatories'])->name('settings.signatories');
         Route::put('/settings/signatories', [SettingsController::class, 'updateSignatories'])->name('settings.signatories.update');
         Route::get('/settings/institution', [SettingsController::class, 'institution'])->name('settings.institution');

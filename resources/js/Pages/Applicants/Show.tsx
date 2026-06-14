@@ -42,9 +42,7 @@ interface Applicant {
 }
 
 interface DocItem {
-    key: number; label: string; physical: boolean; copies: number; status: string;
-    reject_reason: string | null; document_id: number | null;
-    files: { id: number; name: string; size: number }[];
+    key: number; label: string; copies: number; status: string; note: string;
 }
 interface CustomFieldDef { key: string; label: string; type: string; section: string }
 
@@ -304,38 +302,27 @@ function FullProfile({ a, customFields }: { a: Applicant; customFields: CustomFi
             )}
 
             <Section title="10 · Verification">
-                <div className="col-span-full grid grid-cols-1 gap-6 md:grid-cols-2">
-                    <SigView label="Applicant's signature" url={a.signature_url as string | null} caption={a.display_name} />
-                    <div className="grid grid-cols-2 gap-4">
-                        <Field label="Date accomplished">{v('date_accomplished').slice(0, 10)}</Field>
-                        <Field label="Date received">{v('date_received').slice(0, 10)}</Field>
-                        <div className="col-span-2">
-                            <div className="text-xs font-medium text-slate-400">Right thumbmark</div>
-                            {a.thumbmark_url
-                                ? <img src={a.thumbmark_url as string} alt="thumbmark" className="mt-1 h-20 w-20 rounded border border-slate-200 object-cover" />
-                                : <div className="mt-1 text-sm text-slate-400">—</div>}
-                        </div>
-                    </div>
-                </div>
+                <Field label="Date accomplished">{v('date_accomplished').slice(0, 10)}</Field>
+                <Field label="Date received">{v('date_received').slice(0, 10)}</Field>
                 <div className="col-span-full grid grid-cols-1 gap-5 md:grid-cols-3">
-                    <SigView label="Interviewed by" url={a.interviewer_signature_url as string | null} caption={v('interviewed_by')} />
-                    <SigView label="Checked by" url={a.checked_signature_url as string | null} caption={v('checked_by')} />
-                    <SigView label="Approved by" url={a.approved_signature_url as string | null} caption={v('approved_by')} />
+                    <NameView label="Interviewed by" name={v('interviewed_by')} />
+                    <NameView label="Checked by" name={v('checked_by')} />
+                    <NameView label="Approved by" name={v('approved_by')} />
                 </div>
             </Section>
         </div>
     );
 }
 
-function SigView({ label, url, caption }: { label: string; url: string | null; caption?: string }) {
+function NameView({ label, name }: { label: string; name: string }) {
     return (
         <div>
             <div className="mb-1 text-center text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</div>
-            <div className="flex h-24 items-center justify-center rounded-lg border border-slate-200 bg-slate-50">
-                {url ? <img src={url} alt={label} className="max-h-full max-w-full object-contain p-1" /> : <span className="text-xs text-slate-300">No signature</span>}
+            <div className="flex h-16 items-end justify-center border-b border-slate-200 pb-1 text-[10px] text-slate-300">
+                signature on printed form
             </div>
-            {caption && caption !== '—' && (
-                <div className="mt-1 border-t border-slate-200 pt-1 text-center text-xs font-medium text-slate-600">{caption}</div>
+            {name && name !== '—' && (
+                <div className="mt-1 pt-1 text-center text-xs font-medium text-slate-600">{name}</div>
             )}
         </div>
     );

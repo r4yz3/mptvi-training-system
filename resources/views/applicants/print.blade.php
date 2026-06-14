@@ -1,12 +1,10 @@
 @php
-    use Illuminate\Support\Facades\Storage;
     $cb  = fn ($on) => '<span class="cb'.($on ? ' on' : '').'"></span>';
     $ci  = fn ($on, $t) => '<label class="ci">'.$cb($on).'<span>'.e($t).'</span></label>';
     $cks = fn ($arr, $sel, $cols = 3) => '<div class="cks" style="grid-template-columns:repeat('.$cols.',1fr)">'
         .collect($arr)->map(fn ($x) => $ci(is_array($sel) ? in_array($x, $sel ?? []) : $sel === $x, $x))->implode('').'</div>';
     $cell = fn ($lab, $val, $flex = 1) => '<div class="cell" style="flex:'.$flex.'"><div class="lab">'.e($lab).'</div>'
         .'<div class="val">'.($val === null || $val === '' ? '&nbsp;' : e($val)).'</div></div>';
-    $sig = fn ($path) => $path ? Storage::disk('public')->url($path) : null;
     $birth = $a->birthdate;
     $custom = $a->custom_data ?? [];
 @endphp
@@ -137,15 +135,15 @@
     <div class="sec top">10 · Verification</div>
     <div class="note">This is to certify that the information stated above is true and correct.</div>
     <div class="sign">
-        <div class="b">@if($sig($a->signature_path))<img src="{{ $sig($a->signature_path) }}">@endif<div class="ln">Applicant's signature over printed name<br><b>{{ $a->display_name }}</b></div></div>
+        <div class="b"><div class="ln">Applicant's signature over printed name<br><b>{{ $a->display_name }}</b></div></div>
         <div class="b"><div class="ln">Date accomplished<br><b>{{ optional($a->date_accomplished)->format('Y-m-d') }}</b></div></div>
         <div class="b"><div class="ln">Date received<br><b>{{ optional($a->date_received)->format('Y-m-d') }}</b></div></div>
-        <div class="b" style="flex:0 0 76px"><div style="height:48px;border:1px solid #000;{{ $sig($a->thumbmark_path) ? "background:url('".$sig($a->thumbmark_path)."') center/cover" : '' }}"></div><div class="ln" style="border:none;margin-top:2px;padding-top:0">Right Thumbmark</div></div>
+        <div class="b" style="flex:0 0 76px"><div style="height:48px;border:1px solid #000"></div><div class="ln" style="border:none;margin-top:2px;padding-top:0">Right Thumbmark</div></div>
     </div>
     <div class="sign" style="border-top:none">
-        <div class="b"><div style="text-align:left;font-size:9px">Interviewed by:</div>@if($sig($a->interviewer_signature_path))<img src="{{ $sig($a->interviewer_signature_path) }}">@endif<div class="ln"><b>{{ $a->interviewed_by ?: ' ' }}</b><br>&nbsp;</div></div>
-        <div class="b"><div style="text-align:left;font-size:9px">Checked by:</div>@if($sig($a->checked_signature_path))<img src="{{ $sig($a->checked_signature_path) }}">@endif<div class="ln"><b>{{ $a->checked_by ?: $signatories['checked_by']['name'] }}</b><br>{{ $signatories['checked_by']['title'] }}</div></div>
-        <div class="b"><div style="text-align:left;font-size:9px">Approved by:</div>@if($sig($a->approved_signature_path))<img src="{{ $sig($a->approved_signature_path) }}">@endif<div class="ln"><b>{{ $a->approved_by ?: $signatories['approved_by']['name'] }}</b><br>{{ $signatories['approved_by']['title'] }}</div></div>
+        <div class="b"><div style="text-align:left;font-size:9px">Interviewed by:</div><div class="ln"><b>{{ $a->interviewed_by ?: ' ' }}</b><br>&nbsp;</div></div>
+        <div class="b"><div style="text-align:left;font-size:9px">Checked by:</div><div class="ln"><b>{{ $a->checked_by ?: $signatories['checked_by']['name'] }}</b><br>{{ $signatories['checked_by']['title'] }}</div></div>
+        <div class="b"><div style="text-align:left;font-size:9px">Approved by:</div><div class="ln"><b>{{ $a->approved_by ?: $signatories['approved_by']['name'] }}</b><br>{{ $signatories['approved_by']['title'] }}</div></div>
     </div>
 </body>
 </html>

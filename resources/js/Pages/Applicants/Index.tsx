@@ -283,16 +283,21 @@ function ReportModal({
     };
     const clearDates = () => setF((p) => ({ ...p, registered_from: '', registered_to: '' }));
 
+    const canApprove = usePage<PageProps>().props.auth.can['download.approve'] ?? false;
+    const params = () => {
+        const p: Record<string, string> = {};
+        if (current.search) p.search = current.search; // carried from on-screen search
+        Object.entries(customForm).forEach(([k, v]) => { if (v) p[`cf_${k}`] = v as string; });
+        Object.entries(f).forEach(([k, v]) => { if (v) p[k] = v as string; });
+        return p;
+    };
     const buildUrl = (path: string) => {
-        const p = new URLSearchParams();
-        if (current.search) p.set('search', current.search); // carried from on-screen search
-        Object.entries(customForm).forEach(([k, v]) => { if (v) p.set(`cf_${k}`, v); });
-        Object.entries(f).forEach(([k, v]) => { if (v) p.set(k, v); });
-        const q = p.toString();
+        const q = new URLSearchParams(params()).toString();
         return path + (q ? `?${q}` : '');
     };
-    const csv = () => { window.location.href = buildUrl('/applicants/export.csv'); onClose(); };
-    const pdf = () => { window.open(buildUrl('/applicants/report'), '_blank', 'noopener'); onClose(); };
+    const request = (type: string) => router.post('/downloads', { type, params: params() }, { preserveScroll: true, onSuccess: onClose });
+    const csv = () => { if (canApprove) { window.location.href = buildUrl('/applicants/export.csv'); onClose(); } else request('applicants_csv'); };
+    const pdf = () => { if (canApprove) { window.open(buildUrl('/applicants/report'), '_blank', 'noopener'); onClose(); } else request('applicants_pdf'); };
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -336,8 +341,8 @@ function ReportModal({
 
                 <div className="flex items-center justify-end gap-2 border-t border-slate-200 bg-slate-50 px-6 py-4">
                     <button onClick={onClose} className="btn-ghost">Cancel</button>
-                    <button onClick={csv} className="btn-ghost"><FileSpreadsheet className="h-4 w-4" /> Export CSV</button>
-                    <button onClick={pdf} className="btn-primary"><Printer className="h-4 w-4" /> Generate PDF</button>
+                    <button onClick={csv} className="btn-ghost"><FileSpreadsheet className="h-4 w-4" /> {canApprove ? 'Export CSV' : 'Request CSV'}</button>
+                    <button onClick={pdf} className="btn-primary"><Printer className="h-4 w-4" /> {canApprove ? 'Generate PDF' : 'Request PDF'}</button>
                 </div>
             </div>
         </div>

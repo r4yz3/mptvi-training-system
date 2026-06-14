@@ -5,10 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Applicant;
 use App\Models\Payment;
 use App\Models\Program;
-use App\Support\ImageOptimizer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -57,7 +55,6 @@ class CashierController extends Controller
                 'cashier' => $p->cashier?->name,
                 'voided' => $p->isVoided(),
                 'void_reason' => $p->void_reason,
-                'has_photo' => (bool) $p->or_photo_path,
             ]);
 
         $payload = [
@@ -180,16 +177,11 @@ class CashierController extends Controller
             'method' => ['required', Rule::in(['Cash', 'Check', 'GCash', 'Bank'])],
             'or_number' => ['nullable', 'string', 'max:60'],
             'paid_at' => ['required', 'date'],
-            'or_photo' => ['nullable', 'image', 'max:8192'],
         ]);
 
         $payment = new Payment($data);
         $payment->applicant_id = $applicant->id;
         $payment->cashier_id = $request->user()->id;
-        if ($request->hasFile('or_photo')) {
-            ImageOptimizer::uploaded($request->file('or_photo'), 1600, 80);
-            $payment->or_photo_path = $request->file('or_photo')->store("or-photos/{$applicant->id}", 'local');
-        }
         $payment->save();
 
         // Pipeline advances Qualified → Paid only when fully paid.

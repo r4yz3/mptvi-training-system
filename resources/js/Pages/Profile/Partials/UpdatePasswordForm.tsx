@@ -50,18 +50,11 @@ export default function UpdatePasswordForm({
 
     return (
         <section className={className}>
-            <header>
-                <h2 className="text-lg font-medium text-gray-900">
-                    Update Password
-                </h2>
+            <p className="text-sm text-slate-500">
+                Use a long, unique password to keep your account secure.
+            </p>
 
-                <p className="mt-1 text-sm text-gray-600">
-                    Ensure your account is using a long, random password to stay
-                    secure.
-                </p>
-            </header>
-
-            <form onSubmit={updatePassword} className="mt-6 space-y-6">
+            <form onSubmit={updatePassword} className="mt-5 space-y-5">
                 <div>
                     <InputLabel
                         htmlFor="current_password"
@@ -135,7 +128,7 @@ export default function UpdatePasswordForm({
                         leave="transition ease-in-out"
                         leaveTo="opacity-0"
                     >
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm font-medium text-emerald-600">
                             Saved.
                         </p>
                     </Transition>

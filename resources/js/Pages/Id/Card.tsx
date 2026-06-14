@@ -8,7 +8,7 @@ interface Card {
     program: string | null; level: string | null; batch: string | null;
     barangay: string | null; province: string | null; contact: string | null;
     emergency_name: string | null; emergency_contact: string | null;
-    school_year: string | null; issued: string | null; signature_url: string | null;
+    school_year: string | null; issued: string | null;
 }
 interface Signatory { name: string; title: string }
 
@@ -126,9 +126,7 @@ export default function IdCard({ applicant, canIssue, signatory }: { applicant: 
                             </div>
 
                             <div className="mt-auto text-center">
-                                {applicant.signature_url && (
-                                    <img src={applicant.signature_url} alt="" className="mx-auto h-6 object-contain" />
-                                )}
+                                <div className="h-6" />
                                 <div className="border-t border-dashed border-slate-300 pt-0.5 text-[6px] text-slate-900">
                                     Signature of Holder
                                 </div>
