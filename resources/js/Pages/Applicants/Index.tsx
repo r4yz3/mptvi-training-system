@@ -1,6 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Plus, Search, UserCircle2, X, FileSpreadsheet, Printer } from 'lucide-react';
+import { Plus, Search, UserCircle2, X, FileSpreadsheet, Printer, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import AppShell from '@/Layouts/AppShell';
 import Pagination from '@/Components/Pagination';
 import StatusBadge from '@/Components/StatusBadge';
@@ -47,6 +47,8 @@ interface Filters {
     barangay?: string;
     active?: string;
     school_year?: string;
+    sort?: string;
+    dir?: string;
     custom?: Record<string, string>;
 }
 
@@ -93,6 +95,14 @@ export default function ApplicantsIndex({
         setForm({});
         setCustomForm({});
         router.get('/applicants', {}, { preserveScroll: true, replace: true });
+    };
+
+    // Click a column header to sort by it; click again to flip direction.
+    const sortBy = (key: string) => {
+        const dir = filters.sort === key && filters.dir !== 'desc' ? 'desc' : 'asc';
+        const next = { ...form, sort: key, dir };
+        setForm(next);
+        apply(next);
     };
 
     const hasFilters = Object.entries(filters).some(([k, v]) => (k === 'custom' ? Object.keys(v ?? {}).length : v));
@@ -174,12 +184,13 @@ export default function ApplicantsIndex({
                     <table className="min-w-full divide-y divide-slate-200 text-sm">
                         <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                             <tr>
-                                <th className="px-4 py-3">Applicant</th>
-                                <th className="px-4 py-3">ULI</th>
-                                <th className="px-4 py-3">Program</th>
-                                <th className="px-4 py-3">Barangay</th>
+                                <Th label="Applicant" sortKey="name" sort={filters.sort} dir={filters.dir} onSort={sortBy} />
+                                <Th label="ULI" sortKey="uli" sort={filters.sort} dir={filters.dir} onSort={sortBy} />
+                                <Th label="Program" sortKey="program" sort={filters.sort} dir={filters.dir} onSort={sortBy} />
+                                <Th label="Barangay" sortKey="barangay" sort={filters.sort} dir={filters.dir} onSort={sortBy} />
                                 {listCustom.map((cf) => <th key={cf.key} className="px-4 py-3">{cf.label}</th>)}
-                                <th className="px-4 py-3">Status</th>
+                                <Th label="Status" sortKey="status" sort={filters.sort} dir={filters.dir} onSort={sortBy} />
+                                <Th label="Active" sortKey="active" sort={filters.sort} dir={filters.dir} onSort={sortBy} />
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -197,14 +208,7 @@ export default function ApplicantsIndex({
                                                 <UserCircle2 className="h-9 w-9 text-slate-300" />
                                             )}
                                             <div>
-                                                <div className="font-medium text-slate-800">
-                                                    {a.name}
-                                                    {!a.active && (
-                                                        <span className="ml-2 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
-                                                            Inactive
-                                                        </span>
-                                                    )}
-                                                </div>
+                                                <div className="font-medium text-slate-800">{a.name}</div>
                                                 <div className="text-xs text-slate-400">
                                                     {[a.sex, a.age ? `${a.age} yrs` : null].filter(Boolean).join(' · ')}
                                                 </div>
@@ -223,11 +227,22 @@ export default function ApplicantsIndex({
                                         return <td key={cf.key} className="px-4 py-3 text-slate-600">{typeof v === 'boolean' ? (v ? 'Yes' : 'No') : (v == null || v === '' ? '—' : String(v))}</td>;
                                     })}
                                     <td className="px-4 py-3"><StatusBadge status={a.status} /></td>
+                                    <td className="px-4 py-3">
+                                        {a.active ? (
+                                            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Active
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
+                                                <span className="h-1.5 w-1.5 rounded-full bg-slate-400" /> Inactive
+                                            </span>
+                                        )}
+                                    </td>
                                 </tr>
                             ))}
                             {applicants.data.length === 0 && (
                                 <tr>
-                                    <td colSpan={5 + listCustom.length} className="px-4 py-12 text-center text-sm text-slate-400">
+                                    <td colSpan={6 + listCustom.length} className="px-4 py-12 text-center text-sm text-slate-400">
                                         No applicants match your filters.
                                     </td>
                                 </tr>
@@ -248,6 +263,26 @@ export default function ApplicantsIndex({
                 />
             )}
         </AppShell>
+    );
+}
+
+function Th({ label, sortKey, sort, dir, onSort }: {
+    label: string; sortKey: string; sort?: string; dir?: string; onSort: (k: string) => void;
+}) {
+    const active = sort === sortKey;
+    return (
+        <th className="px-4 py-3">
+            <button
+                type="button"
+                onClick={() => onSort(sortKey)}
+                className={`group inline-flex items-center gap-1 uppercase tracking-wide transition hover:text-slate-700 ${active ? 'text-slate-700' : ''}`}
+            >
+                {label}
+                {active
+                    ? (dir === 'desc' ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />)
+                    : <ChevronsUpDown className="h-3.5 w-3.5 text-slate-300 group-hover:text-slate-400" />}
+            </button>
+        </th>
     );
 }
 

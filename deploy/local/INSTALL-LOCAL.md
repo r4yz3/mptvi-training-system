@@ -4,8 +4,8 @@ Run the app on **one office PC** (the "server"); every other PC opens it in a
 browser over the office network. No internet required.
 
 - **Stack on the server:** Windows + Laragon (Apache + PHP 8.3) + SQLite
-- **Other PCs need:** just a web browser — nothing installed
-- **Address staff use:** `http://<server-ip>/` (e.g. `http://192.168.1.50/`)
+- **Other PCs need:** just a web browser + a one-time `client-hostname.bat` run
+- **Address staff use:** `http://peso.com/` (a local name pointed at the server PC)
 
 ---
 
@@ -60,12 +60,14 @@ npm ci && npm run build
 ### One-click (recommended)
 
 In the app folder, run **`deploy\local\setup.bat`** (double-click, or from the Laragon
-Terminal). On the **first** run it creates `.env` from the template and opens it — set
-`APP_URL` + `BACKUP_PASSWORD`, save, then **run `setup.bat` again** to finish. It does
+Terminal — run it **as administrator** to get the extras). On the **first** run it
+creates `.env` from the template and opens it — `APP_URL` is already `http://peso.com`,
+so just set `BACKUP_PASSWORD`, save, then **run `setup.bat` again** to finish. It does
 composer install, npm build, key generate, database create + migrate + seed (RBAC +
-Programs), storage link, optimize, installs the Apache vhost, and adds the firewall rule.
-Then skip to **step 4**. (Steps 2 and 5 are handled by the script; static IP and the
-backup task are still manual — steps 6 and 8.)
+Programs), storage link, optimize, installs the Apache vhost, maps `peso.com` on this PC,
+sets **Laragon to auto-start on boot**, and adds the firewall rule. Then skip to
+**step 4**. (Steps 2 and 5 are handled by the script; static IP and the backup task are
+still manual — steps 6 and 8.)
 
 ### Or do it manually
 
@@ -76,7 +78,7 @@ copy deploy\local\env.local.example .env
 ```
 
 Edit `.env`:
-- Set **`APP_URL`** to the server PC's LAN address (you'll set a static IP in step 6) — e.g. `http://192.168.1.50`
+- Leave **`APP_URL`** as `http://peso.com` (the local name pointed at this PC — see steps 5–7)
 - Set **`BACKUP_PASSWORD`** to a long random secret (and store it somewhere off this PC)
 
 Then:
@@ -95,14 +97,19 @@ php artisan optimize
 > (the real qualifications). Do **not** run the full `DatabaseSeeder` — it adds
 > demo applicants/payments.
 
-Confirm it works on the server itself: open `http://localhost/` → you should see the login page.
+Confirm it works on the server itself: open `http://peso.com/` (or `http://localhost/`) → you should see the login page.
+
+> **About the `peso.com` name:** it isn't real DNS — each PC resolves it locally via its
+> Windows `hosts` file. `setup.bat` adds `127.0.0.1  peso.com` on the server; each other
+> PC gets `<server-ip>  peso.com` from `client-hostname.bat` (step 7). The hosts file
+> wins over the public internet, so the real peso.com on the web is never reached.
 
 ## 4. First login & lock-down (do this immediately)
 
-Log in with `admin@mptvi.test` / `password`, then:
+Log in with `admin@peso.com` / `password`, then:
 1. **Users** → create the real staff accounts with strong passwords.
 2. Change the admin account's email + password (or make a new admin and delete the seeded one).
-3. Delete the other seeded demo accounts (`secretary@/registrar@/cashier@/coordinator@mptvi.test`).
+3. Delete the other seeded demo accounts (`secretary@/registrar@/cashier@/coordinator@peso.com`).
 4. **Settings → Institution Profile / Branding / Signatories** → set the real names, logos and assessor.
 
 ## 5. Make it reachable from other PCs (firewall)
@@ -124,17 +131,21 @@ So the URL never changes:
 
 Find the current IP with: `ipconfig` (look at *IPv4 Address*).
 
-Make sure `.env` `APP_URL` matches this IP, then re-run `php artisan optimize`.
+`APP_URL` stays `http://peso.com` regardless of the IP — the static IP just keeps the
+name pointing at the same machine.
 
 ## 7. Tell the office the URL
 
-From any other PC on the same network, open:
+On **every other PC** on the network, run `deploy\local\client-hostname.bat` **as
+administrator** once and enter the server's static IP when prompted. That maps
+`peso.com → <server-ip>` on that PC. Then open:
 
 ```
-http://192.168.1.50/
+http://peso.com/
 ```
 
-(substitute the server's static IP). Bookmark it on every staff PC.
+and bookmark it on every staff PC. (If the server's IP ever changes, re-run
+`client-hostname.bat` on each PC.)
 
 ## 8. Automatic daily backups
 
@@ -161,8 +172,12 @@ visible/downloadable in **Settings → Backups**. Old ones auto-prune (14 daily 
 ## 9. Keep it running
 
 - The **server PC must be on** whenever staff need the system.
-- Laragon's Apache should **auto-start** — Laragon → Menu → Preferences → "Run Laragon when Windows starts" and "Start all services automatically".
-- After a Windows restart, confirm `http://localhost/` loads.
+- **Auto-start is already set** by `setup.bat`: a `Laragon.lnk` shortcut in the user's
+  Startup folder runs `laragon start` at sign-in, bringing up Apache + the app. For a
+  fully unattended reboot, also enable **Windows auto-login** for the server account
+  (the Startup item runs after sign-in). As a belt-and-braces check, Laragon → Menu →
+  Preferences → "Run Laragon when Windows starts" + "Start all services automatically".
+- After a Windows restart, confirm `http://peso.com/` loads.
 
 ---
 
@@ -176,7 +191,7 @@ visible/downloadable in **Settings → Backups**. Old ones auto-prune (14 daily 
 
 ## Quick troubleshooting
 
-- **Other PCs can't connect:** firewall rule (step 5), server static IP (step 6), and all PCs on the same network/router. Test `http://localhost/` on the server first.
+- **Other PCs can't connect:** firewall rule (step 5), server static IP (step 6), `client-hostname.bat` run on that PC (step 7), and all PCs on the same network/router. Test `http://localhost/` on the server first; if `peso.com` fails but the raw `http://<server-ip>/` works, the hosts entry is missing — re-run `client-hostname.bat`.
 - **"419 Page Expired" on login:** make sure `APP_URL` matches the address staff actually type, then `php artisan optimize`.
 - **Redirects to https and fails:** `APP_ENV` must be `local` (not `production`) in `.env`.
 - **Blank page / 500:** check `storage\logs\laravel.log`; ensure `storage\` and `bootstrap\cache\` are writable.

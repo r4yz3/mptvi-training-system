@@ -14,14 +14,18 @@ function initials(name: string) {
 }
 
 interface EligItem { label: string; ok: boolean; note: string }
+interface Batch { id: number; program_id: number; code: string; session: string; days: string; capacity: number; used: number; status: string }
 interface Row {
     id: number;
     uli: string | null;
     name: string;
     age: number | null;
     program: string | null;
+    program_id: number | null;
     level: string | null;
     education: string | null;
+    class_session: string | null;
+    batch_id: number | null;
     status: string;
     eligibility: EligItem[];
     eligible: boolean;
@@ -34,9 +38,10 @@ interface Paginated {
 }
 
 export default function ScreeningIndex({
-    applicants, tab, counts,
+    applicants, batches, tab, counts,
 }: {
     applicants: Paginated;
+    batches: Batch[];
     tab: string;
     counts: { pending: number; qualified: number; disqualified: number };
 }) {
@@ -44,12 +49,13 @@ export default function ScreeningIndex({
     const canScreen = auth.can['screen'];
     const [expanded, setExpanded] = useState<number | null>(null);
     const [dq, setDq] = useState<Row | null>(null);
+    const [qa, setQa] = useState<Row | null>(null);
 
     const go = (t: string) =>
         router.get('/screening', { tab: t }, { preserveScroll: true, preserveState: true, replace: true });
 
-    const qualify = (a: Row) =>
-        router.put(`/screening/${a.id}/qualify`, {}, { preserveScroll: true });
+    // Open the qualify dialog so staff can also place the learner into a batch.
+    const qualify = (a: Row) => setQa(a);
 
     const tabs: { key: string; label: string; count: number; icon: LucideIcon; tone: string }[] = [
         { key: 'pending', label: 'Awaiting screening', count: counts.pending, icon: Clock, tone: 'amber' },
@@ -211,7 +217,61 @@ export default function ScreeningIndex({
             <Pagination links={applicants.links} from={applicants.from} to={applicants.to} total={applicants.total} />
 
             {dq && <DisqualifyModal applicant={dq} onClose={() => setDq(null)} />}
+            {qa && <QualifyModal applicant={qa} batches={batches} onClose={() => setQa(null)} />}
         </AppShell>
+    );
+}
+
+function QualifyModal({ applicant, batches, onClose }: { applicant: Row; batches: Batch[]; onClose: () => void }) {
+    const programBatches = batches.filter((b) => b.program_id === applicant.program_id);
+    const { data, setData, put, processing } = useForm({ batch_id: '' });
+
+    const submit = (e: React.FormEvent) => {
+        e.preventDefault();
+        put(`/screening/${applicant.id}/qualify`, { preserveScroll: true, onSuccess: onClose });
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div className="w-full max-w-md rounded-xl bg-white shadow-xl">
+                <div className="border-b border-slate-200 px-5 py-4">
+                    <h3 className="text-base font-semibold text-slate-800">Qualify applicant</h3>
+                    <p className="mt-0.5 text-xs text-slate-500">{applicant.name} · {applicant.program ?? 'No program'}</p>
+                </div>
+                <form onSubmit={submit} className="space-y-4 px-5 py-4">
+                    {programBatches.length === 0 ? (
+                        <div className="rounded-lg bg-slate-50 px-3 py-2.5 text-sm text-slate-500">
+                            No open batches for this program yet. Qualify now and assign a batch later, or create one under <span className="font-medium">Programs &amp; batches</span>.
+                        </div>
+                    ) : (
+                        <label className="block">
+                            <span className="mb-1 block text-sm font-medium text-slate-700">Assign to batch <span className="text-slate-400">(optional)</span></span>
+                            <select className="input" value={data.batch_id} onChange={(e) => setData('batch_id', e.target.value)}>
+                                <option value="">— Assign later —</option>
+                                {programBatches.map((b) => {
+                                    const full = b.used >= b.capacity;
+                                    const mismatch = applicant.class_session && b.session !== applicant.class_session;
+                                    return (
+                                        <option key={b.id} value={b.id} disabled={full}>
+                                            {b.code} · {b.session} · {b.used}/{b.capacity}{full ? ' (FULL)' : ''}{mismatch ? ' · ≠ session' : ''}
+                                        </option>
+                                    );
+                                })}
+                            </select>
+                            {applicant.class_session && (
+                                <span className="mt-1 block text-xs text-slate-400">Learner's session: {applicant.class_session}</span>
+                            )}
+                        </label>
+                    )}
+                    <div className="flex justify-end gap-2">
+                        <button type="button" onClick={onClose} className="btn-ghost">Cancel</button>
+                        <button type="submit" disabled={processing} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50">
+                            <CheckCircle2 className="h-4 w-4" /> {data.batch_id ? 'Qualify + Assign' : 'Qualify'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     );
 }
 

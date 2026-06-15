@@ -46,11 +46,11 @@ chmod -R ug+rw storage bootstrap/cache
 
 ## 3. First login & lock-down
 
-`RbacSeeder` creates five bootstrap accounts (`admin@mptvi.test` … password `password`).
+`RbacSeeder` creates five bootstrap accounts (`admin@peso.com` … password `password`).
 **Immediately after first login as admin:**
 1. Go to **Users** → create the real staff accounts with strong passwords.
 2. Change the admin account's email/password (or create a new admin and delete the seeded one).
-3. Delete the remaining seeded demo accounts (`secretary@/registrar@/cashier@/coordinator@mptvi.test`).
+3. Delete the remaining seeded demo accounts (`secretary@/registrar@/cashier@/coordinator@peso.com`).
 
 ## 4. Cloudflare
 

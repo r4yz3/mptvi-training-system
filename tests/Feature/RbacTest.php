@@ -110,14 +110,14 @@ class RbacTest extends TestCase
         $this->actingAs($this->userWithRole('admin'))
             ->post('/users', [
                 'name' => 'New Cashier',
-                'email' => 'new.cashier@mptvi.test',
+                'email' => 'new.cashier@peso.com',
                 'role' => 'cashier',
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
             ])
             ->assertSessionHas('success');
 
-        $created = User::where('email', 'new.cashier@mptvi.test')->first();
+        $created = User::where('email', 'new.cashier@peso.com')->first();
         $this->assertNotNull($created);
         $this->assertSame('cashier', $created->roleKey());
     }

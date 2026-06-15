@@ -25,24 +25,26 @@ cd /d D:\mptvi
 
 ## Step 3 — Run the setup
 Run `deploy\local\setup.bat` (double-click, or type it in the terminal).
-It creates `.env` and opens it in Notepad — set these two values:
+It creates `.env` and opens it in Notepad — `APP_URL` is already set to
+`http://peso.com`, so you only set **one** value:
 ```
-APP_URL=http://192.168.1.50      (your static IP)
 BACKUP_PASSWORD=your-long-secret
 ```
 Save and close Notepad, then **run `setup.bat` again** to finish.
 
+> Running `setup.bat` as **administrator** also lets it add the `peso.com`
+> hosts entry, the firewall rule, and **Laragon auto-start on boot** for you.
+> If you didn't, do those by hand (see "Keep in mind" below).
+
 ## Step 4 — Reload Apache and test
-Laragon → Menu → **Apache → Reload**. On this PC, open **http://localhost/** —
-you should see the login page.
+Laragon → Menu → **Apache → Reload**. On this PC, open **http://peso.com/**
+(or `http://localhost/`) — you should see the login page.
 
 ## Step 5 — Give the PC a static IP
 Windows Settings → Network → (Ethernet/Wi-Fi) → IP assignment → **Manual** → set the
-IPv4 you chose (or add a DHCP reservation in the router). Make sure `.env` `APP_URL`
-matches it, then run:
-```
-php artisan optimize
-```
+IPv4 you chose (or add a DHCP reservation in the router). The app URL is the name
+`peso.com`, so it never changes — but the IP that `peso.com` points to must stay put,
+which is what the static IP guarantees.
 
 ## Step 6 — Allow other PCs through the firewall
 `setup.bat` already added this **if** you ran it as administrator. If not, open an
@@ -58,14 +60,17 @@ Right-click `deploy\local\install-backup-task.bat` → **Run as administrator**.
 Run `deploy\local\check.bat` (or `php artisan app:check`). Everything should read **OK**.
 
 ## Step 9 — First login and lock-down (in the browser)
-Open **http://localhost/** and log in: **admin@mptvi.test** / **password**. Then:
+Open **http://peso.com/** and log in: **admin@peso.com** / **password**. Then:
 - Settings → **Users**: create the real staff accounts (strong passwords).
 - **Change the admin password** (or make a new admin and delete the seeded one).
-- **Delete** the demo accounts: secretary@, registrar@, cashier@, coordinator@mptvi.test.
+- **Delete** the demo accounts: secretary@, registrar@, cashier@, coordinator@peso.com.
 - Settings → **Institution Profile / Branding / Signatories**: set the real names, logos, assessor.
 
 ## Step 10 — Connect the office
-On every other PC, open **http://192.168.1.50/** (your static IP) and bookmark it.
+On **every other PC**, right-click `deploy\local\client-hostname.bat` → **Run as
+administrator** and type the server's IP (e.g. `192.168.1.50`) when asked. That makes
+**http://peso.com/** open the app on that PC. Then open **http://peso.com/** and
+bookmark it. (No need to remember the IP — staff just use `peso.com`.)
 
 ---
 
@@ -87,7 +92,12 @@ On every other PC, open **http://192.168.1.50/** (your static IP) and bookmark i
 ---
 
 ## Keep in mind
-- The **server PC must be ON** whenever staff use the system. Enable Laragon auto-start (Laragon → Preferences).
+- The **server PC must be ON** whenever staff use the system. `setup.bat` already set
+  Laragon to **auto-start when the PC boots** (a shortcut in the Startup folder that
+  runs `laragon start`). For a truly hands-off restart, also turn on **auto-login** for
+  the server PC's Windows account, since the Startup item runs after sign-in. You can
+  double-check Laragon → **Preferences** → "Run Laragon when Windows starts" + "Start
+  all services automatically" are ticked.
 - **Copy backups off this PC** regularly: `storage\backups\*.enc` → a USB drive or another computer.
 - **Forgot a login password?** On the server: `php artisan user:password`
 - **BACKUP_PASSWORD** only decrypts backup files — keep it safe and off this PC. It is **not** the login password.

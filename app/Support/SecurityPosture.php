@@ -14,8 +14,8 @@ class SecurityPosture
 {
     /** Seeded demo logins that must be removed before go-live. */
     private const DEMO_EMAILS = [
-        'admin@mptvi.test', 'secretary@mptvi.test', 'registrar@mptvi.test',
-        'cashier@mptvi.test', 'coordinator@mptvi.test',
+        'admin@peso.com', 'secretary@peso.com', 'registrar@peso.com',
+        'cashier@peso.com', 'coordinator@peso.com',
     ];
 
     public function report(): array

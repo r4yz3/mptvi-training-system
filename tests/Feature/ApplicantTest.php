@@ -157,6 +157,21 @@ class ApplicantTest extends TestCase
         $this->assertSame('2026-06-12', $a->date_accomplished->toDateString());
     }
 
+    public function test_list_can_be_sorted_by_a_column(): void
+    {
+        $this->makeApplicant(['last_name' => 'Zamora', 'uli' => 'MPT-26-0010']);
+        $this->makeApplicant(['last_name' => 'Abad', 'first_name' => 'Ana', 'uli' => 'MPT-26-0011']);
+
+        // Ascending by name → Abad first.
+        $this->actingAs($this->as('registrar'))->get('/applicants?sort=name&dir=asc')
+            ->assertInertia(fn (Assert $p) => $p->where('applicants.data.0.name', fn ($n) => str_contains($n, 'Abad'))
+                ->where('filters.sort', 'name')->where('filters.dir', 'asc'));
+
+        // Descending by name → Zamora first.
+        $this->actingAs($this->as('registrar'))->get('/applicants?sort=name&dir=desc')
+            ->assertInertia(fn (Assert $p) => $p->where('applicants.data.0.name', fn ($n) => str_contains($n, 'Zamora')));
+    }
+
     public function test_filtered_csv_export_respects_filters_and_export_cap(): void
     {
         $this->makeApplicant(['status' => 'Certified', 'uli' => 'MPT-26-0100']);

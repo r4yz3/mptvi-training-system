@@ -39,8 +39,8 @@ echo [4/8] Environment file...
 if not exist ".env" (
     copy "deploy\local\env.local.example" ".env" >nul
     echo.
-    echo   ^>^>^> Created .env. EDIT it now: set APP_URL to this PC's IP and
-    echo       set a BACKUP_PASSWORD. Then run setup.bat again. ^<^<^<
+    echo   ^>^>^> Created .env. APP_URL is already set to http://peso.com -
+    echo       just set a BACKUP_PASSWORD. Then run setup.bat again. ^<^<^<
     echo.
     start "" notepad ".env"
     pause
@@ -87,6 +87,28 @@ if exist "%VHOST%\" (
 
 set "ADMIN=0"
 net session >nul 2>&1 && set "ADMIN=1"
+
+REM --- Make http://peso.com resolve on THIS (server) PC ---
+set "HOSTS=%SystemRoot%\System32\drivers\etc\hosts"
+findstr /i /c:"peso.com" "%HOSTS%" >nul 2>&1
+if "%errorlevel%"=="0" (
+    echo   - Hosts: peso.com already mapped.
+) else if "%ADMIN%"=="1" (
+    >>"%HOSTS%" echo 127.0.0.1    peso.com
+    ipconfig /flushdns >nul 2>&1
+    echo   - Hosts: mapped peso.com -^> 127.0.0.1 on this PC.
+) else (
+    echo   - Hosts NOT set ^(needs admin^). To use http://peso.com here, run once in an
+    echo     ADMIN terminal:  echo 127.0.0.1    peso.com ^>^> "%HOSTS%"
+)
+
+REM --- Start Laragon (Apache + the app) automatically when the PC boots ---
+if exist "C:\laragon\laragon.exe" (
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "$ws=New-Object -ComObject WScript.Shell; $lnk=$ws.CreateShortcut((Join-Path ([Environment]::GetFolderPath('Startup')) 'Laragon.lnk')); $lnk.TargetPath='C:\laragon\laragon.exe'; $lnk.Arguments='start'; $lnk.WorkingDirectory='C:\laragon'; $lnk.Save()" >nul 2>&1 && echo   - Auto-start: Laragon will launch and start Apache when this PC boots. || echo   - Auto-start NOT set; enable it in Laragon - Preferences ^(Run Laragon + start services on startup^).
+) else (
+    echo   - Laragon not found at C:\laragon; enable auto-start in Laragon - Preferences.
+)
+
 if "%ADMIN%"=="1" (
     netsh advfirewall firewall add rule name="MPTVI" dir=in action=allow protocol=TCP localport=80 >nul 2>&1 && echo   - Firewall: allowed inbound TCP 80.
 ) else (
@@ -98,14 +120,15 @@ echo.
 echo ============================================================
 echo   SETUP COMPLETE
 echo.
-echo   Test on this PC:   http://localhost/
+echo   Test on this PC:   http://peso.com/   ^(or http://localhost/^)
 echo.
 echo   Still to do by hand ^(see deploy\local\INSTALL-LOCAL.md^):
 echo     1. Reload Apache in Laragon (if the vhost was just installed)
-echo     2. Give this PC a STATIC IP, then set APP_URL in .env to it
-echo        and run:  php artisan optimize
-echo     3. Right-click deploy\local\install-backup-task.bat - Run as administrator
-echo     4. Open the site, log in (admin@mptvi.test / password),
+echo     2. Give this PC a STATIC IP (so peso.com always points the same place)
+echo     3. On every OTHER office PC, run deploy\local\client-hostname.bat
+echo        (as administrator) so http://peso.com/ reaches this server
+echo     4. Right-click deploy\local\install-backup-task.bat - Run as administrator
+echo     5. Open the site, log in (admin@peso.com / password),
 echo        create real staff and DELETE the demo accounts
 echo ============================================================
 echo.

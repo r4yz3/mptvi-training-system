@@ -21,7 +21,7 @@ class SecurityTest extends TestCase
 
     private function admin(): User
     {
-        return User::where('email', 'admin@mptvi.test')->firstOrFail();
+        return User::where('email', 'admin@peso.com')->firstOrFail();
     }
 
     /** Compute the current valid TOTP for a secret (mirrors an authenticator app). */
@@ -43,15 +43,15 @@ class SecurityTest extends TestCase
 
     public function test_failed_login_is_logged(): void
     {
-        $this->post('/login', ['email' => 'admin@mptvi.test', 'password' => 'wrong-password'])
+        $this->post('/login', ['email' => 'admin@peso.com', 'password' => 'wrong-password'])
             ->assertSessionHasErrors('email');
 
-        $this->assertDatabaseHas('security_events', ['type' => 'login_failed', 'email' => 'admin@mptvi.test']);
+        $this->assertDatabaseHas('security_events', ['type' => 'login_failed', 'email' => 'admin@peso.com']);
     }
 
     public function test_successful_login_is_logged(): void
     {
-        $this->post('/login', ['email' => 'admin@mptvi.test', 'password' => 'password'])
+        $this->post('/login', ['email' => 'admin@peso.com', 'password' => 'password'])
             ->assertRedirect(route('dashboard', absolute: false));
 
         $this->assertSame(1, SecurityEvent::where('type', 'login_success')->count());
@@ -97,7 +97,7 @@ class SecurityTest extends TestCase
             'two_factor_recovery_codes' => Totp::recoveryCodes(),
         ])->save();
 
-        $this->post('/login', ['email' => 'admin@mptvi.test', 'password' => 'password'])
+        $this->post('/login', ['email' => 'admin@peso.com', 'password' => 'password'])
             ->assertRedirect(route('two-factor.login'));
 
         $this->assertGuest();
@@ -114,7 +114,7 @@ class SecurityTest extends TestCase
         ])->save();
 
         // Password step → stashes pending 2FA login.
-        $this->post('/login', ['email' => 'admin@mptvi.test', 'password' => 'password']);
+        $this->post('/login', ['email' => 'admin@peso.com', 'password' => 'password']);
 
         // Wrong code is rejected.
         $this->post('/two-factor-challenge', ['code' => '000000'])->assertSessionHasErrors('code');
@@ -137,7 +137,7 @@ class SecurityTest extends TestCase
             'two_factor_recovery_codes' => $codes,
         ])->save();
 
-        $this->post('/login', ['email' => 'admin@mptvi.test', 'password' => 'password']);
+        $this->post('/login', ['email' => 'admin@peso.com', 'password' => 'password']);
         $this->post('/two-factor-challenge', ['recovery_code' => $codes[0]])
             ->assertRedirect(route('dashboard', absolute: false));
 
@@ -150,7 +150,7 @@ class SecurityTest extends TestCase
     {
         $this->actingAs($this->admin())->get('/settings/security')->assertOk();
 
-        $cashier = User::where('email', 'cashier@mptvi.test')->firstOrFail();
+        $cashier = User::where('email', 'cashier@peso.com')->firstOrFail();
         $this->actingAs($cashier)->get('/settings/security')->assertForbidden();
     }
 }

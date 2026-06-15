@@ -65,7 +65,7 @@ class ApplicantController extends Controller
     /** Shared filter pipeline for the list, CSV export, and PDF report. */
     private function filterApplicants(Request $request): array
     {
-        $filters = $request->only(['search', 'status', 'program', 'barangay', 'active', 'school_year', 'class_session', 'registered_from', 'registered_to']);
+        $filters = $request->only(['search', 'status', 'program', 'barangay', 'active', 'school_year', 'class_session', 'registered_from', 'registered_to', 'sort', 'dir']);
         $filterCustom = $this->enabledCustomFields()->where('filterable', true)->values();
 
         $customFilters = [];
@@ -103,8 +103,25 @@ class ApplicantController extends Controller
                 foreach ($customFilters as $key => $val) {
                     $q->where("custom_data->{$key}", $val);
                 }
-            })
-            ->orderByDesc('id');
+            });
+
+        // Click-to-sort columns (server-side, so it sorts the whole result set,
+        // not just the current page). Defaults to newest registered first.
+        $sortable = [
+            'name' => 'last_name', 'uli' => 'uli', 'program' => 'program_id',
+            'barangay' => 'barangay', 'status' => 'status', 'active' => 'active',
+        ];
+        $sort = $request->input('sort');
+        $dir = $request->input('dir') === 'desc' ? 'desc' : 'asc';
+        if ($sort && isset($sortable[$sort])) {
+            $query->orderBy($sortable[$sort], $dir);
+            if ($sort === 'name') {
+                $query->orderBy('first_name', $dir);
+            }
+            $query->orderByDesc('id'); // stable tiebreaker
+        } else {
+            $query->orderByDesc('id');
+        }
 
         return [$query, $filters, $customFilters, $filterCustom];
     }
