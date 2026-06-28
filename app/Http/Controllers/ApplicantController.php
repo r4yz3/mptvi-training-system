@@ -4,10 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Applicant;
 use App\Models\CustomField;
-use App\Models\FormSection;
 use App\Models\Program;
 use App\Models\Setting;
 use App\Support\BuiltinFields;
+use App\Support\FormLayout;
 use App\Support\ImageOptimizer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -467,13 +467,14 @@ class ApplicantController extends Controller
             'disability_causes' => config('lpf.disability_causes'),
             'classifications' => config('lpf.classifications'),
             'signatories' => Setting::signatories(),
-            'customFields' => $this->enabledCustomFields(),
-            'disabledSections' => FormSection::where('enabled', false)->pluck('key'),
-            'fieldSettings' => collect(BuiltinFields::all())->keyBy('key')->map(fn ($f) => [
-                'label' => $f['label'],
-                'enabled' => $f['enabled'],
-                'required' => $f['required'],
-            ]),
+            // Data-driven layout: ordered categories + interleaved built-in/custom fields.
+            'layout' => [
+                'sections' => FormLayout::sections()
+                    ->where('enabled', true)
+                    ->map(fn ($s) => ['key' => $s->key, 'label' => $s->label, 'note' => $s->note])
+                    ->values(),
+                'fields' => FormLayout::formFields(),
+            ],
         ];
     }
 
@@ -487,8 +488,9 @@ class ApplicantController extends Controller
             }
             $f = $settings[$key];
             // Strip existing required/nullable, then set per the effective setting.
+            // A hidden or deleted field is never required (it isn't on the form).
             $rule = array_values(array_filter($rule, fn ($r) => ! in_array($r, ['required', 'nullable'], true)));
-            array_unshift($rule, ($f['enabled'] && $f['required']) ? 'required' : 'nullable');
+            array_unshift($rule, ($f['enabled'] && $f['required'] && ! $f['deleted']) ? 'required' : 'nullable');
             $rules[$key] = $rule;
         }
 

@@ -12,7 +12,7 @@ class FormSectionSeeder extends Seeder
         foreach (config('form.sections') as $i => $s) {
             FormSection::firstOrCreate(
                 ['key' => $s['key']],
-                ['label' => $s['label'], 'enabled' => true, 'sort_order' => $i],
+                ['label' => $s['label'], 'note' => $s['note'] ?? null, 'enabled' => true, 'sort_order' => $i],
             );
         }
     }

@@ -185,6 +185,109 @@ class FormBuilderTest extends TestCase
         $this->assertTrue($map['last_name']['required']);          // and required
     }
 
+    public function test_admin_can_create_rename_and_delete_a_category(): void
+    {
+        $admin = $this->as('admin');
+
+        $this->actingAs($admin)->post('/settings/form-builder/sections', ['label' => 'Sports Profile'])->assertRedirect();
+        $section = FormSection::where('label', 'Sports Profile')->firstOrFail();
+        $this->assertSame('sec-sports-profile', $section->key);
+
+        $this->actingAs($admin)->put("/settings/form-builder/sections/{$section->id}", [
+            'label' => 'Athletics', 'note' => 'For varsity learners', 'enabled' => true,
+        ])->assertRedirect();
+        $this->assertSame('Athletics', $section->fresh()->label);
+        $this->assertSame('For varsity learners', $section->fresh()->note);
+
+        $this->actingAs($admin)->delete("/settings/form-builder/sections/{$section->id}")->assertRedirect();
+        $this->assertNull(FormSection::find($section->id));
+    }
+
+    public function test_deleting_a_category_moves_its_fields_to_the_fallback(): void
+    {
+        $admin = $this->as('admin');
+        $this->actingAs($admin)->post('/settings/form-builder/sections', ['label' => 'Temp'])->assertRedirect();
+        $temp = FormSection::where('label', 'Temp')->firstOrFail();
+
+        $field = CustomField::create(['label' => 'Jersey No.', 'key' => 'jersey_no', 'type' => 'text',
+            'section' => $temp->key, 'enabled' => true]);
+
+        $this->actingAs($admin)->delete("/settings/form-builder/sections/{$temp->id}")->assertRedirect();
+
+        $fallback = FormSection::orderBy('sort_order')->first();
+        $this->assertSame($fallback->key, $field->fresh()->section);
+    }
+
+    public function test_admin_can_move_a_builtin_field_to_another_category(): void
+    {
+        $this->actingAs($this->as('admin'))
+            ->put('/settings/form-builder/builtin/religion', ['section' => 'sec-additional', 'enabled' => true, 'required' => false])
+            ->assertRedirect();
+
+        $this->assertSame('sec-additional', \App\Support\BuiltinFields::map()['religion']['section']);
+    }
+
+    public function test_admin_can_delete_and_restore_a_builtin_field(): void
+    {
+        $admin = $this->as('admin');
+
+        $this->actingAs($admin)->delete('/settings/form-builder/builtin/religion')->assertRedirect();
+        $this->assertTrue(\App\Support\BuiltinFields::map()['religion']['deleted']);
+        // and it drops off the registration form layout
+        $keys = collect(\App\Support\FormLayout::formFields())->pluck('key');
+        $this->assertFalse($keys->contains('religion'));
+
+        $this->actingAs($admin)->put('/settings/form-builder/builtin/religion/restore')->assertRedirect();
+        $this->assertFalse(\App\Support\BuiltinFields::map()['religion']['deleted']);
+    }
+
+    public function test_deleted_builtin_field_is_not_required(): void
+    {
+        $admin = $this->as('admin');
+        // make it required, then delete it — deletion must win
+        $this->actingAs($admin)->put('/settings/form-builder/builtin/religion', ['enabled' => true, 'required' => true]);
+        $this->actingAs($admin)->delete('/settings/form-builder/builtin/religion');
+
+        $this->actingAs($this->as('registrar'))->post('/applicants', [
+            'last_name' => 'Ok', 'first_name' => 'Fine', 'barangay' => 'Z',
+            'contact' => '09', 'sex' => 'Male', 'program_id' => Program::first()->id,
+        ])->assertRedirect();
+    }
+
+    public function test_locked_builtin_field_cannot_be_deleted(): void
+    {
+        $this->actingAs($this->as('admin'))
+            ->delete('/settings/form-builder/builtin/last_name')
+            ->assertStatus(422);
+        $this->assertFalse(\App\Support\BuiltinFields::map()['last_name']['deleted']);
+    }
+
+    public function test_layout_reorder_persists_section_and_position(): void
+    {
+        $custom = CustomField::create(['label' => 'Hobby', 'key' => 'hobby', 'type' => 'text',
+            'section' => 'sec-additional', 'enabled' => true]);
+
+        $this->actingAs($this->as('admin'))->put('/settings/form-builder/layout', [
+            'items' => [
+                ['kind' => 'builtin', 'key' => 'religion', 'section' => 'sec-profile', 'position' => 0],
+                ['kind' => 'custom', 'key' => 'hobby', 'section' => 'sec-profile', 'position' => 1],
+            ],
+        ])->assertRedirect();
+
+        $this->assertSame('sec-profile', \App\Support\BuiltinFields::map()['religion']['section']);
+        $this->assertSame(0, \App\Support\BuiltinFields::map()['religion']['position']);
+        $this->assertSame('sec-profile', $custom->fresh()->section);
+        $this->assertSame(1, $custom->fresh()->position);
+    }
+
+    public function test_registration_form_receives_the_layout(): void
+    {
+        $this->actingAs($this->as('registrar'))->get('/applicants/create')
+            ->assertInertia(fn ($p) => $p
+                ->has('options.layout.sections')
+                ->has('options.layout.fields'));
+    }
+
     public function test_dashboard_breakdown_counts_select_options(): void
     {
         CustomField::create(['label' => 'Sched', 'key' => 'sched', 'type' => 'select',

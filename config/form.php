@@ -23,7 +23,7 @@ return [
         ['key' => 'sec-disability',     'label' => 'Disability & Emergency Contact'],
         ['key' => 'sec-additional',     'label' => 'Additional Information'],
         ['key' => 'sec-consent',        'label' => 'Privacy Consent'],
-        ['key' => 'sec-verify',         'label' => 'Verification & Signatures'],
+        ['key' => 'sec-verify',         'label' => 'Verification & Signatures', 'note' => 'This is to certify that the information stated above is true and correct. The applicant signs the printed form on release.'],
     ],
 
     'field_types' => ['text', 'textarea', 'number', 'date', 'select', 'checkbox'],

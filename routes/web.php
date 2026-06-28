@@ -164,11 +164,22 @@ Route::middleware('auth')->group(function () {
         Route::get('/settings/backups/{name}/download', [BackupController::class, 'download'])->name('settings.backups.download');
         Route::delete('/settings/backups/{name}', [BackupController::class, 'destroy'])->name('settings.backups.destroy');
         Route::get('/settings/form-builder', [FormBuilderController::class, 'index'])->name('formbuilder.index');
-        Route::put('/settings/form-builder/builtin/{key}', [FormBuilderController::class, 'updateBuiltin'])->name('formbuilder.updateBuiltin');
+        // Categories
+        Route::post('/settings/form-builder/sections', [FormBuilderController::class, 'storeSection'])->name('formbuilder.storeSection');
+        Route::put('/settings/form-builder/sections-reorder', [FormBuilderController::class, 'reorderSections'])->name('formbuilder.reorderSections');
+        Route::put('/settings/form-builder/sections/{section}', [FormBuilderController::class, 'updateSection'])->name('formbuilder.updateSection');
         Route::put('/settings/form-builder/sections/{section}/toggle', [FormBuilderController::class, 'toggleSection'])->name('formbuilder.toggleSection');
+        Route::delete('/settings/form-builder/sections/{section}', [FormBuilderController::class, 'destroySection'])->name('formbuilder.destroySection');
+        // Built-in fields
+        Route::put('/settings/form-builder/builtin/{key}/restore', [FormBuilderController::class, 'restoreBuiltin'])->name('formbuilder.restoreBuiltin');
+        Route::put('/settings/form-builder/builtin/{key}', [FormBuilderController::class, 'updateBuiltin'])->name('formbuilder.updateBuiltin');
+        Route::delete('/settings/form-builder/builtin/{key}', [FormBuilderController::class, 'destroyBuiltin'])->name('formbuilder.destroyBuiltin');
+        // Custom fields
         Route::post('/settings/form-builder/fields', [FormBuilderController::class, 'storeField'])->name('formbuilder.storeField');
         Route::put('/settings/form-builder/fields/{field}', [FormBuilderController::class, 'updateField'])->name('formbuilder.updateField');
         Route::delete('/settings/form-builder/fields/{field}', [FormBuilderController::class, 'destroyField'])->name('formbuilder.destroyField');
+        // Layout (drag-and-drop reorder / move across categories)
+        Route::put('/settings/form-builder/layout', [FormBuilderController::class, 'reorderLayout'])->name('formbuilder.reorderLayout');
     });
 
     // Messages (P13) — all roles; staff 1:1 DMs.
