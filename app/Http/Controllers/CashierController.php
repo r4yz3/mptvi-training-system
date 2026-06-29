@@ -216,6 +216,8 @@ class CashierController extends Controller
         ]);
         // Default to the training fee when no category is supplied (legacy behavior).
         $data['category'] = $data['category'] ?? config('lpf.training_fee_category');
+        // Auto-generate a sequential OR number (OR-0001, OR-0002, …) unless one was given.
+        $data['or_number'] = filled($data['or_number'] ?? null) ? $data['or_number'] : $this->nextOrNumber();
 
         $payment = new Payment($data);
         $payment->applicant_id = $applicant->id;
@@ -231,6 +233,18 @@ class CashierController extends Controller
         return back()
             ->with('success', "Payment of ₱{$payment->amount} ({$payment->category}) recorded for {$applicant->display_name}.")
             ->with('receipt_id', $payment->id);
+    }
+
+    /** Next sequential OR number: OR-0001, OR-0002, … (continues from the highest existing). */
+    private function nextOrNumber(): string
+    {
+        $max = Payment::query()
+            ->where('or_number', 'like', 'OR-%')
+            ->pluck('or_number')
+            ->map(fn ($or) => (int) substr($or, 3))
+            ->max() ?? 0;
+
+        return 'OR-' . str_pad($max + 1, 4, '0', STR_PAD_LEFT);
     }
 
     /** Printable acknowledgement receipt for a single payment. */

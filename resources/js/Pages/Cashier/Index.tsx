@@ -368,7 +368,6 @@ function PaymentModal({
         amount: fixedLearner && fixedLearner.balance > 0 ? fixedLearner.balance : ('' as number | ''),
         type: 'Partial',
         method: 'Cash',
-        or_number: '',
         paid_at: new Date().toISOString().slice(0, 10),
     });
 
@@ -435,14 +434,11 @@ function PaymentModal({
                         <label className="block"><span className="mb-1 block text-xs font-medium text-slate-600">Method</span>
                             <select className="input" value={data.method} onChange={(e) => setData('method', e.target.value)}>{methods.map((m) => <option key={m}>{m}</option>)}</select>
                         </label>
-                        <label className="block"><span className="mb-1 block text-xs font-medium text-slate-600">OR number</span>
-                            <input className="input" value={data.or_number} onChange={(e) => setData('or_number', e.target.value)} placeholder="OR-…" />
-                        </label>
                         <label className="block"><span className="mb-1 block text-xs font-medium text-slate-600">Payment date</span>
                             <input type="date" className="input" value={data.paid_at} onChange={(e) => setData('paid_at', e.target.value)} />
                         </label>
                     </div>
-                    <p className="rounded-lg bg-slate-50 px-3 py-2 text-[11px] text-slate-400">A receipt opens automatically after recording — it’s also reprintable from the ledger.</p>
+                    <p className="rounded-lg bg-slate-50 px-3 py-2 text-[11px] text-slate-400">An OR number is assigned automatically. A receipt opens after recording — also reprintable from the ledger.</p>
                     <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
                         <button type="button" onClick={onClose} className="btn-ghost">Cancel</button>
                         <button type="submit" disabled={processing || !data.learner_id} className="btn-primary">Record payment</button>

@@ -121,6 +121,35 @@ class CashierPaymentTypesTest extends TestCase
                 ->has('learners', 1));
     }
 
+    public function test_or_number_is_auto_generated_sequentially(): void
+    {
+        $a = $this->qualified();
+        $cashier = $this->as('cashier');
+
+        $this->actingAs($cashier)->post("/cashier/{$a->id}/payments", [
+            'amount' => 100, 'category' => 'Uniform', 'type' => 'Full', 'method' => 'Cash', 'paid_at' => '2026-06-10',
+        ]);
+        $this->actingAs($cashier)->post("/cashier/{$a->id}/payments", [
+            'amount' => 200, 'category' => 'ID card', 'type' => 'Full', 'method' => 'Cash', 'paid_at' => '2026-06-10',
+        ]);
+
+        $ors = Payment::orderBy('id')->pluck('or_number')->all();
+        $this->assertSame(['OR-0001', 'OR-0002'], $ors);
+    }
+
+    public function test_or_number_continues_from_existing_max(): void
+    {
+        $a = $this->qualified();
+        Payment::create(['applicant_id' => $a->id, 'amount' => 50, 'category' => 'Uniform',
+            'type' => 'Full', 'method' => 'Cash', 'or_number' => 'OR-0042', 'paid_at' => '2026-06-01']);
+
+        $this->actingAs($this->as('cashier'))->post("/cashier/{$a->id}/payments", [
+            'amount' => 100, 'category' => 'Uniform', 'type' => 'Full', 'method' => 'Cash', 'paid_at' => '2026-06-10',
+        ]);
+
+        $this->assertSame('OR-0043', Payment::latest('id')->first()->or_number);
+    }
+
     public function test_money_in_words(): void
     {
         $this->assertSame('One Thousand Pesos', Money::inWords(1000));
