@@ -14,6 +14,24 @@ return [
         'Registered', 'Qualified', 'Paid', 'In training', 'For assessment', 'Certified', 'Disqualified',
     ],
 
+    // Trainee training status — independent of the pipeline + the app-wide active flag.
+    'trainee_statuses' => ['Active', 'Inactive', 'Completed', 'Incomplete'],
+
+    // Educational background grid — one row per level.
+    'education_levels' => [
+        ['key' => 'elementary',  'label' => 'Elementary'],
+        ['key' => 'junior_high', 'label' => 'Junior High School'],
+        ['key' => 'senior_high', 'label' => 'Senior High School'],
+        ['key' => 'college',     'label' => 'College / Vocational'],
+        ['key' => 'postgrad',    'label' => 'Post-Graduate'],
+    ],
+    'education_statuses' => ['Graduate', 'Undergraduate', 'Ongoing'],
+
+    // Cashier payment categories. Only the training fee counts toward the
+    // program-fee balance + pipeline; the rest are extra collections.
+    'payment_categories' => ['Training fee', 'Uniform', 'ID card', 'Assessment fee', 'Learning materials', 'Insurance', 'Other'],
+    'training_fee_category' => 'Training fee',
+
     'sex' => ['Male', 'Female'],
 
     'civil_status' => ['Single', 'Married', 'Separated/Divorced/Annulled', 'Widow/er', 'Common Law/Live-In'],

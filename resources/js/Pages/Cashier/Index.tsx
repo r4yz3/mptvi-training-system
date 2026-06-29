@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
-import { Banknote, Receipt, Wallet, TrendingUp, X, Ban, FileSpreadsheet, Printer } from 'lucide-react';
+import { Banknote, Receipt, Wallet, TrendingUp, X, Ban, FileSpreadsheet, Printer, Plus, Tags } from 'lucide-react';
 import AppShell from '@/Layouts/AppShell';
 import { PageProps } from '@/types';
 
@@ -25,44 +25,75 @@ interface WorkItem {
     fee: number; paid: number; balance: number; pay_status: string; status: string;
 }
 interface LedgerItem {
-    id: number; applicant: string | null; amount: number; type: string; method: string;
+    id: number; applicant: string | null; amount: number; category: string; description: string | null;
+    type: string; method: string;
     or_number: string | null; paid_at: string | null; cashier: string | null;
     voided: boolean; void_reason: string | null;
 }
+interface Learner { id: number; name: string; program: string | null; balance: number }
 interface Aggregates {
-    collected: number; outstanding: number;
+    collected: number; fee_collected: number; other_collected: number; outstanding: number;
     by_program: { program: string; expected: number; collected: number; pct: number }[];
+    by_category: { category: string; total: number; count: number }[];
 }
 interface Props {
-    worklist: WorkItem[]; ledger: LedgerItem[];
+    worklist: WorkItem[]; ledger: LedgerItem[]; learners: Learner[];
     canFinance: boolean; canRecord: boolean; canVoid: boolean;
-    methods: string[]; types: string[]; aggregates?: Aggregates;
+    methods: string[]; types: string[]; categories: string[]; trainingFeeCategory: string;
+    aggregates?: Aggregates;
     programs?: { id: number; title: string }[];
 }
 
 export default function CashierIndex(props: Props) {
-    const { worklist, ledger, canFinance, canRecord, canVoid, aggregates } = props;
-    const [pay, setPay] = useState<WorkItem | null>(null);
+    const { worklist, ledger, learners, canFinance, canRecord, canVoid, aggregates } = props;
+    const [pay, setPay] = useState<{ learner?: Learner } | null>(null);
     const [voiding, setVoiding] = useState<LedgerItem | null>(null);
     const [reportOpen, setReportOpen] = useState(false);
+
+    // After a payment is recorded, pop its receipt in a new tab.
+    const flash = usePage<PageProps>().props.flash as { receipt_id?: number | null };
+    useEffect(() => {
+        if (flash?.receipt_id) window.open(`/cashier/payments/${flash.receipt_id}/receipt`, '_blank', 'noopener');
+    }, [flash?.receipt_id]);
 
     return (
         <AppShell title="Cashier">
             <Head title="Cashier" />
 
-            {canFinance && (
-                <div className="mb-5 flex justify-end">
+            <div className="mb-5 flex flex-wrap justify-end gap-2">
+                {canRecord && (
+                    <button onClick={() => setPay({})} className="btn-primary">
+                        <Plus className="h-4 w-4" /> Receive payment
+                    </button>
+                )}
+                {canFinance && (
                     <button onClick={() => setReportOpen(true)} className="btn-ghost">
                         <FileSpreadsheet className="h-4 w-4" /> Report / Export
                     </button>
+                )}
+            </div>
+
+            {canFinance && aggregates && (
+                <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <Stat icon={<Wallet className="h-5 w-5" />} label="Total collected" value={peso(aggregates.collected)} tone="emerald" />
+                    <Stat icon={<Banknote className="h-5 w-5" />} label="Training fees" value={peso(aggregates.fee_collected)} tone="brand" />
+                    <Stat icon={<Tags className="h-5 w-5" />} label="Other collections" value={peso(aggregates.other_collected)} tone="violet" />
+                    <Stat icon={<TrendingUp className="h-5 w-5" />} label="Fee outstanding" value={peso(aggregates.outstanding)} tone="amber" />
                 </div>
             )}
 
-            {canFinance && aggregates && (
-                <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-                    <Stat icon={<Wallet className="h-5 w-5" />} label="Total collected" value={peso(aggregates.collected)} tone="emerald" />
-                    <Stat icon={<TrendingUp className="h-5 w-5" />} label="Outstanding" value={peso(aggregates.outstanding)} tone="amber" />
-                    <Stat icon={<Receipt className="h-5 w-5" />} label="Payments on file" value={`${ledger.length}`} tone="brand" />
+            {canFinance && aggregates && aggregates.by_category.length > 0 && (
+                <div className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500">Collections by category</h3>
+                    <div className="flex flex-wrap gap-2.5">
+                        {aggregates.by_category.map((c) => (
+                            <div key={c.category} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                                <span className="text-sm font-medium text-slate-700">{c.category}</span>
+                                <span className="text-sm font-semibold text-brand-700">{peso(c.total)}</span>
+                                <span className="rounded-full bg-white px-1.5 py-0.5 text-[10px] text-slate-400">{c.count}</span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             )}
 
@@ -121,8 +152,8 @@ export default function CashierIndex(props: Props) {
                                         </td>
                                         <td className="px-4 py-3 text-right">
                                             {canRecord && (
-                                                <button onClick={() => setPay(w)} className="inline-flex items-center gap-1 rounded-md bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700">
-                                                    <Banknote className="h-3.5 w-3.5" /> Record
+                                                <button onClick={() => setPay({ learner: { id: w.id, name: w.name, program: w.program, balance: w.balance } })} className="inline-flex items-center gap-1 rounded-md bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700">
+                                                    <Banknote className="h-3.5 w-3.5" /> Collect
                                                 </button>
                                             )}
                                         </td>
@@ -150,7 +181,7 @@ export default function CashierIndex(props: Props) {
                         <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                             <tr>
                                 <th className="px-4 py-3">Date</th><th className="px-4 py-3">OR No.</th>
-                                <th className="px-4 py-3">Learner</th><th className="px-4 py-3">Method</th>
+                                <th className="px-4 py-3">Learner</th><th className="px-4 py-3">Item</th><th className="px-4 py-3">Method</th>
                                 <th className="px-4 py-3 text-right">Amount</th>
                                 {canFinance && <th className="px-4 py-3">Cashier</th>}
                                 <th className="px-4 py-3" />
@@ -167,22 +198,31 @@ export default function CashierIndex(props: Props) {
                                             <span className="text-slate-700">{p.applicant}</span>
                                         </div>
                                     </td>
+                                    <td className="px-4 py-3">
+                                        <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{p.category}</span>
+                                        {p.description && <span className="ml-1 text-xs text-slate-400">{p.description}</span>}
+                                    </td>
                                     <td className="px-4 py-3"><MethodBadge method={p.method} /> <span className="ml-1 text-xs text-slate-400">{p.type}</span></td>
                                     <td className={`px-4 py-3 text-right font-semibold ${p.voided ? 'text-slate-400 line-through' : 'text-slate-800'}`}>{peso(p.amount)}</td>
                                     {canFinance && <td className="px-4 py-3 text-xs text-slate-500">{p.cashier}</td>}
-                                    <td className="px-4 py-3 text-right">
-                                        {p.voided ? (
-                                            <span className="text-xs text-rose-400" title={p.void_reason ?? ''}>VOID</span>
-                                        ) : canVoid ? (
-                                            <button onClick={() => setVoiding(p)} className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-rose-600">
-                                                <Ban className="h-3.5 w-3.5" /> Void
-                                            </button>
-                                        ) : null}
+                                    <td className="px-4 py-3">
+                                        <div className="flex items-center justify-end gap-3">
+                                            <a href={`/cashier/payments/${p.id}/receipt`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-brand-600" title="Print receipt">
+                                                <Printer className="h-3.5 w-3.5" /> Receipt
+                                            </a>
+                                            {p.voided ? (
+                                                <span className="text-xs text-rose-400" title={p.void_reason ?? ''}>VOID</span>
+                                            ) : canVoid ? (
+                                                <button onClick={() => setVoiding(p)} className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-rose-600">
+                                                    <Ban className="h-3.5 w-3.5" /> Void
+                                                </button>
+                                            ) : null}
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
                             {ledger.length === 0 && (
-                                <tr><td colSpan={canFinance ? 7 : 6} className="px-4 py-12 text-center">
+                                <tr><td colSpan={canFinance ? 8 : 7} className="px-4 py-12 text-center">
                                     <Receipt className="mx-auto h-8 w-8 text-slate-300" />
                                     <p className="mt-2 text-sm text-slate-400">No payments recorded yet.</p>
                                 </td></tr>
@@ -192,7 +232,17 @@ export default function CashierIndex(props: Props) {
                 </div>
             </div>
 
-            {pay && <RecordModal item={pay} methods={props.methods} types={props.types} onClose={() => setPay(null)} />}
+            {pay && (
+                <PaymentModal
+                    fixedLearner={pay.learner}
+                    learners={learners}
+                    methods={props.methods}
+                    types={props.types}
+                    categories={props.categories}
+                    trainingFeeCategory={props.trainingFeeCategory}
+                    onClose={() => setPay(null)}
+                />
+            )}
             {voiding && <VoidModal item={voiding} onClose={() => setVoiding(null)} />}
             {reportOpen && <PaymentReportModal programs={props.programs ?? []} methods={props.methods} onClose={() => setReportOpen(false)} />}
         </AppShell>
@@ -286,7 +336,8 @@ function CSel({ label, value, onChange, opts, blank }: { label: string; value: s
 
 function Stat({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: string; tone: string }) {
     const tones: Record<string, string> = {
-        emerald: 'bg-emerald-50 text-emerald-600', amber: 'bg-amber-50 text-amber-600', brand: 'bg-brand-50 text-brand-600',
+        emerald: 'bg-emerald-50 text-emerald-600', amber: 'bg-amber-50 text-amber-600',
+        brand: 'bg-brand-50 text-brand-600', violet: 'bg-violet-50 text-violet-600',
     };
     return (
         <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow">
@@ -299,33 +350,84 @@ function Stat({ icon, label, value, tone }: { icon: React.ReactNode; label: stri
     );
 }
 
-function RecordModal({ item, methods, types, onClose }: { item: WorkItem; methods: string[]; types: string[]; onClose: () => void }) {
+function PaymentModal({
+    fixedLearner, learners, methods, types, categories, trainingFeeCategory, onClose,
+}: {
+    fixedLearner?: Learner;
+    learners: Learner[];
+    methods: string[];
+    types: string[];
+    categories: string[];
+    trainingFeeCategory: string;
+    onClose: () => void;
+}) {
     const { data, setData, post, processing, errors } = useForm({
-        amount: item.balance, type: 'Partial', method: 'Cash', or_number: '',
+        learner_id: fixedLearner ? String(fixedLearner.id) : '',
+        category: trainingFeeCategory,
+        description: '',
+        amount: fixedLearner && fixedLearner.balance > 0 ? fixedLearner.balance : ('' as number | ''),
+        type: 'Partial',
+        method: 'Cash',
+        or_number: '',
         paid_at: new Date().toISOString().slice(0, 10),
     });
+
+    const learner = fixedLearner ?? learners.find((l) => String(l.id) === data.learner_id);
+    const isFee = data.category === trainingFeeCategory;
+
+    // Picking a learner for a training-fee payment pre-fills the outstanding balance.
+    const pickLearner = (id: string) => {
+        const l = learners.find((x) => String(x.id) === id);
+        setData((d) => ({ ...d, learner_id: id, amount: isFee && l && l.balance > 0 ? l.balance : d.amount }));
+    };
+    const pickCategory = (cat: string) => {
+        setData((d) => ({ ...d, category: cat, amount: cat === trainingFeeCategory && learner && learner.balance > 0 ? learner.balance : d.amount }));
+    };
+
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
-        post(`/cashier/${item.id}/payments`, { preserveScroll: true, onSuccess: onClose });
+        if (!data.learner_id) return;
+        post(`/cashier/${data.learner_id}/payments`, { preserveScroll: true, onSuccess: onClose });
     };
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div className="w-full max-w-md overflow-hidden rounded-xl bg-white shadow-xl">
+            <div className="max-h-[calc(100vh-3rem)] w-full max-w-md overflow-y-auto rounded-xl bg-white shadow-xl">
                 <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
                     <div className="flex items-center gap-3">
                         <span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-50 text-brand-600"><Banknote className="h-5 w-5" /></span>
                         <div>
-                            <h3 className="text-base font-semibold text-slate-800">Record payment</h3>
-                            <p className="text-xs text-slate-500">{item.name} · balance <span className="font-medium text-amber-600">{peso(item.balance)}</span></p>
+                            <h3 className="text-base font-semibold text-slate-800">{fixedLearner ? 'Record payment' : 'Receive payment'}</h3>
+                            <p className="text-xs text-slate-500">
+                                {learner
+                                    ? <>{learner.name}{isFee && learner.balance > 0 && <> · fee balance <span className="font-medium text-amber-600">{peso(learner.balance)}</span></>}</>
+                                    : 'Select a learner and what they are paying for'}
+                            </p>
                         </div>
                     </div>
                     <button type="button" onClick={onClose} className="rounded-md p-1 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>
                 </div>
                 <form onSubmit={submit} className="space-y-3 px-5 py-4">
+                    {!fixedLearner && (
+                        <label className="block"><span className="mb-1 block text-xs font-medium text-slate-600">Learner</span>
+                            <select className="input" value={data.learner_id} onChange={(e) => pickLearner(e.target.value)} autoFocus>
+                                <option value="">— Select learner —</option>
+                                {learners.map((l) => <option key={l.id} value={l.id}>{l.name}{l.program ? ` · ${l.program}` : ''}</option>)}
+                            </select>
+                            {errors.learner_id && <span className="text-xs text-rose-600">{errors.learner_id}</span>}
+                        </label>
+                    )}
                     <div className="grid grid-cols-2 gap-3">
+                        <label className="block"><span className="mb-1 block text-xs font-medium text-slate-600">Paying for</span>
+                            <select className="input" value={data.category} onChange={(e) => pickCategory(e.target.value)}>{categories.map((c) => <option key={c}>{c}</option>)}</select>
+                            {errors.category && <span className="text-xs text-rose-600">{errors.category}</span>}
+                        </label>
                         <label className="block"><span className="mb-1 block text-xs font-medium text-slate-600">Amount (₱)</span>
-                            <input type="number" className="input" value={data.amount} onChange={(e) => setData('amount', Number(e.target.value))} autoFocus />
+                            <input type="number" className="input" value={data.amount} onChange={(e) => setData('amount', e.target.value === '' ? '' : Number(e.target.value))} />
                             {errors.amount && <span className="text-xs text-rose-600">{errors.amount}</span>}
+                        </label>
+                        <label className="col-span-2 block"><span className="mb-1 block text-xs font-medium text-slate-600">Description <span className="text-slate-400">(optional)</span></span>
+                            <input className="input" value={data.description} onChange={(e) => setData('description', e.target.value)} placeholder={isFee ? 'e.g. 2nd installment' : 'e.g. 1 set uniform, size M'} />
                         </label>
                         <label className="block"><span className="mb-1 block text-xs font-medium text-slate-600">Type</span>
                             <select className="input" value={data.type} onChange={(e) => setData('type', e.target.value)}>{types.map((t) => <option key={t}>{t}</option>)}</select>
@@ -336,13 +438,14 @@ function RecordModal({ item, methods, types, onClose }: { item: WorkItem; method
                         <label className="block"><span className="mb-1 block text-xs font-medium text-slate-600">OR number</span>
                             <input className="input" value={data.or_number} onChange={(e) => setData('or_number', e.target.value)} placeholder="OR-…" />
                         </label>
-                        <label className="col-span-2 block"><span className="mb-1 block text-xs font-medium text-slate-600">Payment date</span>
+                        <label className="block"><span className="mb-1 block text-xs font-medium text-slate-600">Payment date</span>
                             <input type="date" className="input" value={data.paid_at} onChange={(e) => setData('paid_at', e.target.value)} />
                         </label>
                     </div>
+                    <p className="rounded-lg bg-slate-50 px-3 py-2 text-[11px] text-slate-400">A receipt opens automatically after recording — it’s also reprintable from the ledger.</p>
                     <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
                         <button type="button" onClick={onClose} className="btn-ghost">Cancel</button>
-                        <button type="submit" disabled={processing} className="btn-primary">Record payment</button>
+                        <button type="submit" disabled={processing || !data.learner_id} className="btn-primary">Record payment</button>
                     </div>
                 </form>
             </div>

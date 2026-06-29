@@ -60,6 +60,8 @@ interface Options {
     disability_types: string[];
     disability_causes: string[];
     classifications: string[];
+    education_levels: { key: string; label: string }[];
+    education_statuses: string[];
     signatories: { checked_by: Signatory; approved_by: Signatory };
     layout: { sections: SectionDef[]; fields: FieldDef[] };
 }
@@ -105,6 +107,7 @@ export default function ApplicantForm({
         education: s('education', 'High School Graduate'),
         school_last_attended: s('school_last_attended'),
         year_graduated: s('year_graduated'),
+        education_history: (applicant?.education_history as Record<string, Record<string, string>>) ?? {},
         guardian_name: s('guardian_name'),
         guardian_address: s('guardian_address'),
         height: s('height'),
@@ -410,6 +413,56 @@ function FieldRenderer({
                         />
                         {title && <div className="mt-1 text-center text-xs italic text-slate-500">{title}</div>}
                     </div>
+                </div>
+            );
+        }
+
+        case 'education_history': {
+            const hist = (val as Record<string, Record<string, string>>) ?? {};
+            const setCell = (lvl: string, col: string, v: string) =>
+                set({ ...hist, [lvl]: { ...(hist[lvl] ?? {}), [col]: v } });
+            return (
+                <div className="col-span-2 md:col-span-4">
+                    {labelEl}
+                    <div className="overflow-x-auto rounded-xl border border-slate-200">
+                        <table className="min-w-full text-sm">
+                            <thead>
+                                <tr className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                    <th className="px-3 py-2">Level</th>
+                                    <th className="px-3 py-2">School / Institution</th>
+                                    <th className="w-24 px-3 py-2">Year started</th>
+                                    <th className="w-24 px-3 py-2">Year graduated</th>
+                                    <th className="w-36 px-3 py-2">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {options.education_levels.map((lvl) => {
+                                    const row = hist[lvl.key] ?? {};
+                                    return (
+                                        <tr key={lvl.key} className="align-middle">
+                                            <td className="whitespace-nowrap px-3 py-2 font-medium text-slate-600">{lvl.label}</td>
+                                            <td className="px-3 py-2">
+                                                <input className="input" value={row.school ?? ''} onChange={(e) => setCell(lvl.key, 'school', e.target.value)} placeholder="Name of school" />
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                <input className="input" value={row.started ?? ''} onChange={(e) => setCell(lvl.key, 'started', e.target.value)} placeholder="e.g. 2010" inputMode="numeric" />
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                <input className="input" value={row.graduated ?? ''} onChange={(e) => setCell(lvl.key, 'graduated', e.target.value)} placeholder="e.g. 2016" inputMode="numeric" />
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                <select className="input" value={row.status ?? ''} onChange={(e) => setCell(lvl.key, 'status', e.target.value)}>
+                                                    <option value="">—</option>
+                                                    {options.education_statuses.map((st) => <option key={st} value={st}>{st}</option>)}
+                                                </select>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                    <p className="mt-1.5 text-xs text-slate-400">Leave a row blank if it doesn’t apply. “Undergraduate” = attended but did not finish; “Ongoing” = currently enrolled.</p>
                 </div>
             );
         }

@@ -251,6 +251,7 @@ class ApplicantController extends Controller
             'documents' => $canPii ? $this->documentsPayload($applicant) : null,
             'canVerifyDocs' => $request->user()->can('docs.verify'),
             'customFields' => $canPii ? $this->enabledCustomFields() : null,
+            'traineeStatuses' => config('lpf.trainee_statuses'),
         ]);
     }
 
@@ -319,6 +320,21 @@ class ApplicantController extends Controller
         return back()->with('success', $applicant->active
             ? "“{$applicant->display_name}” marked active."
             : "“{$applicant->display_name}” marked inactive.");
+    }
+
+    /** Set the trainee's training status (registrar / coordinator / manager / admin). */
+    public function updateTraineeStatus(Request $request, Applicant $applicant): RedirectResponse
+    {
+        abort_unless($request->user()->can('trainee.status'), 403);
+
+        $data = $request->validate([
+            'trainee_status' => ['nullable', Rule::in(config('lpf.trainee_statuses'))],
+        ]);
+        $applicant->update(['trainee_status' => $data['trainee_status'] ?? null]);
+
+        return back()->with('success', $applicant->trainee_status
+            ? "Training status set to {$applicant->trainee_status}."
+            : 'Training status cleared.');
     }
 
     // ---------------------------------------------------------------- helpers
@@ -401,6 +417,12 @@ class ApplicantController extends Controller
             'emergency_contact' => ['nullable', 'string', 'max:40'],
             'emergency_address' => ['nullable', 'string', 'max:200'],
 
+            'education_history' => ['nullable', 'array'],
+            'education_history.*.school' => ['nullable', 'string', 'max:160'],
+            'education_history.*.started' => ['nullable', 'string', 'max:10'],
+            'education_history.*.graduated' => ['nullable', 'string', 'max:10'],
+            'education_history.*.status' => ['nullable', Rule::in(config('lpf.education_statuses'))],
+
             'privacy_consent' => ['boolean'],
             'remarks' => ['nullable', 'string', 'max:1000'],
 
@@ -414,7 +436,36 @@ class ApplicantController extends Controller
             'approved_by' => ['nullable', 'string', 'max:160'],
         ];
 
-        return $request->validate($this->applyFieldSettings($rules));
+        $validated = $request->validate($this->applyFieldSettings($rules));
+
+        if (array_key_exists('education_history', $validated)) {
+            $validated['education_history'] = $this->cleanEducationHistory($validated['education_history']);
+        }
+
+        return $validated;
+    }
+
+    /** Keep only known levels with at least one value; normalize the row shape. */
+    private function cleanEducationHistory(?array $history): ?array
+    {
+        $levels = collect(config('lpf.education_levels'))->pluck('key');
+        $out = [];
+        foreach ((array) $history as $key => $row) {
+            if (! $levels->contains($key) || ! is_array($row)) {
+                continue;
+            }
+            $clean = [
+                'school' => trim((string) ($row['school'] ?? '')),
+                'started' => trim((string) ($row['started'] ?? '')),
+                'graduated' => trim((string) ($row['graduated'] ?? '')),
+                'status' => $row['status'] ?? '',
+            ];
+            if ($clean['school'] !== '' || $clean['started'] !== '' || $clean['graduated'] !== '' || $clean['status'] !== '') {
+                $out[$key] = $clean;
+            }
+        }
+
+        return $out ?: null;
     }
 
     /** Compute derived fields (age from birthdate) + handle photo upload. */
@@ -466,6 +517,8 @@ class ApplicantController extends Controller
             'disability_types' => config('lpf.disability_types'),
             'disability_causes' => config('lpf.disability_causes'),
             'classifications' => config('lpf.classifications'),
+            'education_levels' => config('lpf.education_levels'),
+            'education_statuses' => config('lpf.education_statuses'),
             'signatories' => Setting::signatories(),
             // Data-driven layout: ordered categories + interleaved built-in/custom fields.
             'layout' => [
@@ -573,6 +626,7 @@ class ApplicantController extends Controller
             'photo_url' => $a->photo_url,
             'active' => $a->active,
             'status' => $a->status,
+            'trainee_status' => $a->trainee_status,
             'class_session' => $a->class_session,
             'school_year' => $a->school_year,
             'program' => $a->program ? [

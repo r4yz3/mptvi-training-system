@@ -28,6 +28,7 @@ class Applicant extends Model
             'privacy_consent' => 'boolean',
             'classifications' => 'array',
             'custom_data' => 'array',
+            'education_history' => 'array',
             'birthdate' => 'date:Y-m-d',
             'registered_at' => 'date:Y-m-d',
             'date_accomplished' => 'date:Y-m-d',
@@ -86,10 +87,20 @@ class Applicant extends Model
         return (int) ($this->program?->fee ?? 0);
     }
 
-    /** Sum of non-voided payments. */
+    /** Sum of non-voided TRAINING-FEE payments (drives the program-fee balance). */
     public function paidTotal(): int
     {
-        return (int) $this->payments()->valid()->sum('amount');
+        return (int) $this->payments()->valid()
+            ->where('category', config('lpf.training_fee_category'))
+            ->sum('amount');
+    }
+
+    /** Sum of non-voided payments for everything other than the training fee. */
+    public function otherCollected(): int
+    {
+        return (int) $this->payments()->valid()
+            ->where('category', '!=', config('lpf.training_fee_category'))
+            ->sum('amount');
     }
 
     public function balance(): int

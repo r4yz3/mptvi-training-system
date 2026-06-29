@@ -59,6 +59,7 @@ class HandleInertiaRequests extends Middleware
             'flash' => [
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),
+                'receipt_id' => $request->session()->get('receipt_id'),
             ],
             'branding' => [
                 'color' => rescue(fn () => \App\Models\Setting::brandColor(), '', false),

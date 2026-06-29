@@ -53,6 +53,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/applicants/{applicant}', [ApplicantController::class, 'update'])->name('applicants.update');
         Route::delete('/applicants/{applicant}', [ApplicantController::class, 'destroy'])->name('applicants.destroy');
         Route::put('/applicants/{applicant}/active', [ApplicantController::class, 'toggleActive'])->name('applicants.toggleActive');
+        Route::put('/applicants/{applicant}/trainee-status', [ApplicantController::class, 'updateTraineeStatus'])->name('applicants.traineeStatus');
 
         // Documents — note-only: a typed note + status per requirement (no uploads).
         // docs.verify gates writing; the checklist is pii.view-gated in the controller.
@@ -84,6 +85,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/cashier/report', [CashierController::class, 'report'])->middleware('can:download.approve')->name('cashier.report');
         Route::get('/cashier/export.csv', [CashierController::class, 'exportCsv'])->middleware('can:download.approve')->name('cashier.export');
         Route::post('/cashier/{applicant}/payments', [CashierController::class, 'record'])->name('cashier.record');
+        Route::get('/cashier/payments/{payment}/receipt', [CashierController::class, 'receipt'])->name('cashier.receipt');
         Route::put('/cashier/payments/{payment}/void', [CashierController::class, 'void'])->name('cashier.void');
     });
 

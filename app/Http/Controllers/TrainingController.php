@@ -49,6 +49,7 @@ class TrainingController extends Controller
                     'name' => $a->display_name,
                     'uli' => $a->uli,
                     'status' => $a->status,
+                    'trainee_status' => $a->trainee_status,
                     'rate' => $a->attendanceRate(),
                     'today' => $today?->status,
                 ];
@@ -66,6 +67,8 @@ class TrainingController extends Controller
             'date' => $date,
             'canMark' => $request->user()->can('attendance'),
             'statuses' => ['Present', 'Absent', 'Late', 'Excused'],
+            'canSetStatus' => $request->user()->can('trainee.status'),
+            'traineeStatuses' => config('lpf.trainee_statuses'),
         ]);
     }
 

@@ -87,6 +87,32 @@
     <div class="sec">Educational attainment before the training</div>
     {!! $cks($lpf['education'], $a->education, 3) !!}
     <div class="grid">{!! $cell('School last attended', $a->school_last_attended, 2).$cell('Year graduated', $a->year_graduated) !!}</div>
+    @php $eduHist = (array) ($a->education_history ?? []); @endphp
+    @if(collect($eduHist)->contains(fn ($r) => array_filter((array) $r)))
+        <table style="width:100%;border-collapse:collapse;margin:4px 0 6px;font-size:9px;">
+            <thead>
+                <tr style="background:#eef2f7;">
+                    <th style="border:1px solid #cbd5e1;padding:3px 5px;text-align:left;">Level</th>
+                    <th style="border:1px solid #cbd5e1;padding:3px 5px;text-align:left;">School / Institution</th>
+                    <th style="border:1px solid #cbd5e1;padding:3px 5px;text-align:left;">Started</th>
+                    <th style="border:1px solid #cbd5e1;padding:3px 5px;text-align:left;">Graduated</th>
+                    <th style="border:1px solid #cbd5e1;padding:3px 5px;text-align:left;">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach(($lpf['education_levels'] ?? []) as $lvl)
+                    @php $r = (array) ($eduHist[$lvl['key']] ?? []); @endphp
+                    <tr>
+                        <td style="border:1px solid #cbd5e1;padding:3px 5px;">{{ $lvl['label'] }}</td>
+                        <td style="border:1px solid #cbd5e1;padding:3px 5px;">{{ $r['school'] ?? '' }}</td>
+                        <td style="border:1px solid #cbd5e1;padding:3px 5px;">{{ $r['started'] ?? '' }}</td>
+                        <td style="border:1px solid #cbd5e1;padding:3px 5px;">{{ $r['graduated'] ?? '' }}</td>
+                        <td style="border:1px solid #cbd5e1;padding:3px 5px;">{{ $r['status'] ?? '' }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    @endif
     <div class="grid">{!! $cell('Parent / Guardian name', $a->guardian_name).$cell('Guardian complete address', $a->guardian_address, 2) !!}</div>
 
     <div class="sec">Health Information</div>

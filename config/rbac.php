@@ -32,6 +32,7 @@ return [
         'payment.record',
         'payment.void',
         'attendance',
+        'trainee.status',   // set a trainee's training status (Active/Inactive/Completed/Incomplete)
         'assess',
         'cert.assessor',    // edit the assessor printed on a trainee's certificate
         'id.issue',
@@ -49,12 +50,12 @@ return [
     'matrix' => [
         'manager' => [
             'applicant.create', 'applicant.edit', 'active', 'screen', 'docs.verify',
-            'attendance', 'assess', 'cert.assessor', 'id.issue', 'program.manage', 'event.manage', 'pii.view',
+            'attendance', 'trainee.status', 'assess', 'cert.assessor', 'id.issue', 'program.manage', 'event.manage', 'pii.view',
             'download.request',
         ],
         'registrar' => [
             'applicant.create', 'applicant.edit', 'active', 'screen', 'docs.verify',
-            'cert.assessor', 'id.issue', 'export', 'pii.view', 'download.request',
+            'trainee.status', 'cert.assessor', 'id.issue', 'export', 'pii.view', 'download.request',
         ],
         'cashier' => [
             'payment.record', 'payment.void',
@@ -63,7 +64,7 @@ return [
             'finance.view', 'download.request',
         ],
         'coordinator' => [
-            'attendance', 'assess', 'cert.assessor', 'program.manage',
+            'attendance', 'trainee.status', 'assess', 'cert.assessor', 'program.manage',
         ],
     ],
 

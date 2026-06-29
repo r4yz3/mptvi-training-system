@@ -48,6 +48,8 @@ class CashierController extends Controller
                 'id' => $p->id,
                 'applicant' => $p->applicant?->display_name,
                 'amount' => $p->amount,
+                'category' => $p->category,
+                'description' => $p->description,
                 'type' => $p->type,
                 'method' => $p->method,
                 'or_number' => $p->or_number,
@@ -57,23 +59,45 @@ class CashierController extends Controller
                 'void_reason' => $p->void_reason,
             ]);
 
+        $canRecord = $request->user()->can('payment.record');
+
+        // Learner picker for "Receive payment" — any active, non-disqualified learner.
+        $learners = $canRecord
+            ? Applicant::query()->with('program:id,title,fee')
+                ->where('active', true)->where('status', '!=', 'Disqualified')
+                ->orderBy('last_name')->orderBy('first_name')->get()
+                ->map(fn (Applicant $a) => [
+                    'id' => $a->id,
+                    'name' => $a->display_name,
+                    'program' => $a->program?->title,
+                    'balance' => $a->balance(),
+                ])->values()
+            : [];
+
         $payload = [
             'worklist' => $worklist,
             'ledger' => $ledger,
+            'learners' => $learners,
             'canFinance' => $canFinance,
-            'canRecord' => $request->user()->can('payment.record'),
+            'canRecord' => $canRecord,
             'canVoid' => $request->user()->can('payment.void'),
             'methods' => ['Cash', 'Check', 'GCash', 'Bank'],
             'types' => ['Full', 'Partial', 'Down', 'Reservation'],
+            'categories' => config('lpf.payment_categories'),
+            'trainingFeeCategory' => config('lpf.training_fee_category'),
         ];
 
         // Aggregates — admin / finance.view only.
         if ($canFinance) {
+            $trainingCat = config('lpf.training_fee_category');
             $collected = (int) Payment::valid()->sum('amount');
+            $feeCollected = (int) Payment::valid()->where('category', $trainingCat)->sum('amount');
             $outstanding = $worklist->sum('balance');
-            $byProgram = Program::query()->where('fee', '>', 0)->get()->map(function (Program $prog) {
+
+            // Program fee collection % — training-fee payments only (other items don't count).
+            $byProgram = Program::query()->where('fee', '>', 0)->get()->map(function (Program $prog) use ($trainingCat) {
                 $expected = $prog->applicants()->where('status', '!=', 'Disqualified')->count() * $prog->fee;
-                $collected = (int) Payment::valid()
+                $collected = (int) Payment::valid()->where('category', $trainingCat)
                     ->whereHas('applicant', fn ($q) => $q->where('program_id', $prog->id))
                     ->sum('amount');
 
@@ -85,10 +109,20 @@ class CashierController extends Controller
                 ];
             })->values();
 
+            // Collections grouped by category (training fee + uniform + …).
+            $byCategory = Payment::valid()
+                ->selectRaw('category, SUM(amount) as total, COUNT(*) as cnt')
+                ->groupBy('category')->orderByDesc('total')->get()
+                ->map(fn ($r) => ['category' => $r->category, 'total' => (int) $r->total, 'count' => (int) $r->cnt])
+                ->values();
+
             $payload['aggregates'] = [
                 'collected' => $collected,
+                'fee_collected' => $feeCollected,
+                'other_collected' => $collected - $feeCollected,
                 'outstanding' => $outstanding,
                 'by_program' => $byProgram,
+                'by_category' => $byCategory,
             ];
             $payload['programs'] = Program::orderBy('title')->get(['id', 'title'])->all();
         }
@@ -173,23 +207,43 @@ class CashierController extends Controller
 
         $data = $request->validate([
             'amount' => ['required', 'integer', 'min:1', 'max:1000000'],
+            'category' => ['nullable', Rule::in(config('lpf.payment_categories'))],
+            'description' => ['nullable', 'string', 'max:160'],
             'type' => ['required', Rule::in(['Full', 'Partial', 'Down', 'Reservation'])],
             'method' => ['required', Rule::in(['Cash', 'Check', 'GCash', 'Bank'])],
             'or_number' => ['nullable', 'string', 'max:60'],
             'paid_at' => ['required', 'date'],
         ]);
+        // Default to the training fee when no category is supplied (legacy behavior).
+        $data['category'] = $data['category'] ?? config('lpf.training_fee_category');
 
         $payment = new Payment($data);
         $payment->applicant_id = $applicant->id;
         $payment->cashier_id = $request->user()->id;
         $payment->save();
 
-        // Pipeline advances Qualified → Paid only when fully paid.
-        if ($applicant->status === 'Qualified' && $applicant->balance() === 0) {
+        // Pipeline advances Qualified → Paid only when the TRAINING FEE is fully paid.
+        if ($payment->category === config('lpf.training_fee_category')
+            && $applicant->status === 'Qualified' && $applicant->balance() === 0) {
             $applicant->update(['status' => 'Paid']);
         }
 
-        return back()->with('success', "Payment of ₱{$payment->amount} recorded for {$applicant->display_name}.");
+        return back()
+            ->with('success', "Payment of ₱{$payment->amount} ({$payment->category}) recorded for {$applicant->display_name}.")
+            ->with('receipt_id', $payment->id);
+    }
+
+    /** Printable acknowledgement receipt for a single payment. */
+    public function receipt(Request $request, Payment $payment): \Illuminate\Contracts\View\View
+    {
+        abort_unless($request->user()->can('payment.record') || $request->user()->can('finance.view'), 403);
+        $payment->load(['applicant.program', 'cashier:id,name']);
+
+        return view('cashier.receipt', [
+            'p' => $payment,
+            'a' => $payment->applicant,
+            'amountWords' => \App\Support\Money::inWords((int) $payment->amount),
+        ]);
     }
 
     public function void(Request $request, Payment $payment): RedirectResponse

@@ -56,6 +56,7 @@ return [
         ['key' => 'education',           'label' => 'Educational attainment', 'section' => 'sec-personal', 'widget' => 'select', 'source' => 'education'],
         ['key' => 'school_last_attended', 'label' => 'School last attended', 'section' => 'sec-personal', 'widget' => 'text'],
         ['key' => 'year_graduated',      'label' => 'Year graduated',       'section' => 'sec-personal', 'widget' => 'text', 'placeholder' => 'e.g. 2018'],
+        ['key' => 'education_history',    'label' => 'Educational background', 'section' => 'sec-personal', 'widget' => 'education_history', 'colspan' => 'full'],
 
         // ── Guardian & Health ────────────────────────────────────────────
         ['key' => 'guardian_name',    'label' => 'Parent / Guardian name', 'section' => 'sec-health', 'widget' => 'text'],

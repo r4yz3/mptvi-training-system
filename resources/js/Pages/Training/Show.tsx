@@ -2,9 +2,10 @@ import { Head, Link, router } from '@inertiajs/react';
 import { ArrowLeft, CalendarDays, GraduationCap } from 'lucide-react';
 import AppShell from '@/Layouts/AppShell';
 import StatusBadge from '@/Components/StatusBadge';
+import TraineeStatusBadge from '@/Components/TraineeStatusBadge';
 
 interface RosterRow {
-    id: number; name: string; uli: string | null; status: string; rate: number; today: string | null;
+    id: number; name: string; uli: string | null; status: string; trainee_status: string | null; rate: number; today: string | null;
 }
 interface Props {
     batch: { id: number; code: string; program: string | null; start_date: string | null; end_date: string | null };
@@ -12,6 +13,8 @@ interface Props {
     date: string;
     canMark: boolean;
     statuses: string[];
+    canSetStatus: boolean;
+    traineeStatuses: string[];
 }
 
 const MARK_STYLE: Record<string, string> = {
@@ -27,11 +30,13 @@ function initials(name: string) {
     return ((p[0]?.[0] ?? '') + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase();
 }
 
-export default function TrainingShow({ batch, roster, date, canMark, statuses }: Props) {
+export default function TrainingShow({ batch, roster, date, canMark, statuses, canSetStatus, traineeStatuses }: Props) {
     const setDate = (d: string) =>
         router.get(`/training/${batch.id}`, { date: d }, { preserveState: true, preserveScroll: true, replace: true });
     const mark = (applicantId: number, status: string) =>
         router.post(`/training/${applicantId}/attendance`, { date, status }, { preserveScroll: true });
+    const setTrainee = (applicantId: number, value: string) =>
+        router.put(`/applicants/${applicantId}/trainee-status`, { trainee_status: value }, { preserveScroll: true });
 
     const today = new Date().toISOString().slice(0, 10);
     const counts = statuses.reduce((a, s) => ({ ...a, [s]: roster.filter((r) => r.today === s).length }), {} as Record<string, number>);
@@ -86,6 +91,7 @@ export default function TrainingShow({ batch, roster, date, canMark, statuses }:
                             <tr>
                                 <th className="px-4 py-3">Trainee</th>
                                 <th className="px-4 py-3">Pipeline</th>
+                                <th className="px-4 py-3">Training status</th>
                                 <th className="px-4 py-3">Overall attendance</th>
                                 <th className="px-4 py-3">Mark for {date}</th>
                             </tr>
@@ -103,6 +109,20 @@ export default function TrainingShow({ batch, roster, date, canMark, statuses }:
                                         </div>
                                     </td>
                                     <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
+                                    <td className="px-4 py-3">
+                                        {canSetStatus ? (
+                                            <select
+                                                value={r.trainee_status ?? ''}
+                                                onChange={(e) => setTrainee(r.id, e.target.value)}
+                                                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 focus:border-brand-400 focus:ring-brand-400"
+                                            >
+                                                <option value="">Not set</option>
+                                                {traineeStatuses.map((s) => <option key={s} value={s}>{s}</option>)}
+                                            </select>
+                                        ) : (
+                                            r.trainee_status ? <TraineeStatusBadge status={r.trainee_status} /> : <span className="text-xs text-slate-400">—</span>
+                                        )}
+                                    </td>
                                     <td className="px-4 py-3">
                                         <div className="flex items-center gap-2">
                                             <div className="h-2 w-20 overflow-hidden rounded-full bg-slate-100">
@@ -133,7 +153,7 @@ export default function TrainingShow({ batch, roster, date, canMark, statuses }:
                                 </tr>
                             ))}
                             {roster.length === 0 && (
-                                <tr><td colSpan={4} className="px-4 py-12 text-center text-sm text-slate-400">No trainees enrolled in this batch yet.</td></tr>
+                                <tr><td colSpan={5} className="px-4 py-12 text-center text-sm text-slate-400">No trainees enrolled in this batch yet.</td></tr>
                             )}
                         </tbody>
                     </table>
