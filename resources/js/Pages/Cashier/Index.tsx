@@ -62,7 +62,7 @@ export default function CashierIndex(props: Props) {
 
             <div className="mb-5 flex flex-wrap justify-end gap-2">
                 {canRecord && (
-                    <button onClick={() => setPay({})} className="btn-primary">
+                    <button onClick={() => setPay({})} className="btn-primary hidden md:inline-flex">
                         <Plus className="h-4 w-4" /> Receive payment
                     </button>
                 )}
@@ -73,8 +73,18 @@ export default function CashierIndex(props: Props) {
                 )}
             </div>
 
+            {/* Mobile: thumb-reachable floating action */}
+            {canRecord && (
+                <button
+                    onClick={() => setPay({})}
+                    className="fixed bottom-5 right-5 z-30 inline-flex items-center gap-2 rounded-full bg-brand-600 px-5 py-3.5 text-sm font-semibold text-white shadow-lg shadow-brand-600/30 active:scale-95 md:hidden"
+                >
+                    <Plus className="h-5 w-5" /> Receive payment
+                </button>
+            )}
+
             {canFinance && aggregates && (
-                <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
                     <Stat icon={<Wallet className="h-5 w-5" />} label="Total collected" value={peso(aggregates.collected)} tone="emerald" />
                     <Stat icon={<Banknote className="h-5 w-5" />} label="Training fees" value={peso(aggregates.fee_collected)} tone="brand" />
                     <Stat icon={<Tags className="h-5 w-5" />} label="Other collections" value={peso(aggregates.other_collected)} tone="violet" />
@@ -122,7 +132,44 @@ export default function CashierIndex(props: Props) {
             {/* Worklist */}
             <div className="mb-6">
                 <h3 className="mb-2 text-sm font-semibold text-slate-700">To collect ({worklist.length})</h3>
-                <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+
+                {/* Mobile: card per learner, Collect in easy reach */}
+                <div className="space-y-3 md:hidden">
+                    {worklist.map((w) => (
+                        <div key={w.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                            <div className="flex items-center gap-3">
+                                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-semibold text-brand-700">{initials(w.name)}</span>
+                                <div className="min-w-0 flex-1">
+                                    <p className="truncate font-medium text-slate-800">{w.name}</p>
+                                    <p className="truncate text-xs text-slate-500">{w.program ?? '—'}</p>
+                                </div>
+                                <span className="inline-flex shrink-0 rounded-full bg-amber-50 px-2.5 py-1 text-sm font-semibold text-amber-700">{peso(w.balance)}</span>
+                            </div>
+                            <div className="mt-2.5 flex items-center gap-3 text-xs text-slate-500">
+                                <span>Fee {peso(w.fee)}</span>
+                                <span>·</span>
+                                <span>Paid {peso(w.paid)}</span>
+                                {w.pay_status === 'Partial' && <span className="rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-medium text-sky-600">Partial</span>}
+                            </div>
+                            {canRecord && (
+                                <button
+                                    onClick={() => setPay({ learner: { id: w.id, name: w.name, program: w.program, balance: w.balance } })}
+                                    className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white active:scale-[0.98]"
+                                >
+                                    <Banknote className="h-4 w-4" /> Collect {peso(w.balance)}
+                                </button>
+                            )}
+                        </div>
+                    ))}
+                    {worklist.length === 0 && (
+                        <div className="rounded-xl border border-slate-200 bg-white px-4 py-10 text-center shadow-sm">
+                            <Wallet className="mx-auto h-8 w-8 text-slate-300" />
+                            <p className="mt-2 text-sm text-slate-400">No outstanding balances — everyone's paid up.</p>
+                        </div>
+                    )}
+                </div>
+
+                <div className="hidden overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm md:block">
                     <div className="overflow-x-auto">
                         <table className="min-w-full divide-y divide-slate-200 text-sm">
                             <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -175,7 +222,56 @@ export default function CashierIndex(props: Props) {
             <h3 className="mb-2 text-sm font-semibold text-slate-700">
                 {canFinance ? 'Payments ledger' : 'My payments'}
             </h3>
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+
+            {/* Mobile: card per payment */}
+            <div className="space-y-3 pb-20 md:hidden">
+                {ledger.map((p) => (
+                    <div key={p.id} className={`rounded-xl border border-slate-200 bg-white p-4 shadow-sm ${p.voided ? 'opacity-60' : ''}`}>
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                                <p className="truncate font-medium text-slate-800">{p.applicant}</p>
+                                <p className="mt-0.5 text-xs text-slate-500">
+                                    {p.paid_at} · <span className="font-mono">{p.or_number ?? '—'}</span>
+                                    {canFinance && p.cashier && <> · {p.cashier}</>}
+                                </p>
+                            </div>
+                            <span className={`shrink-0 text-base font-semibold ${p.voided ? 'text-slate-400 line-through' : 'text-slate-800'}`}>{peso(p.amount)}</span>
+                        </div>
+                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                            <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{p.category}</span>
+                            <MethodBadge method={p.method} />
+                            <span className="text-xs text-slate-400">{p.type}</span>
+                            {p.description && <span className="w-full text-xs text-slate-400">{p.description}</span>}
+                        </div>
+                        <div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3">
+                            <a
+                                href={`/cashier/payments/${p.id}/receipt`} target="_blank" rel="noopener noreferrer"
+                                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 active:bg-slate-50"
+                            >
+                                <Printer className="h-3.5 w-3.5" /> Receipt
+                            </a>
+                            {p.voided ? (
+                                <span className="flex-1 text-center text-xs font-medium text-rose-400" title={p.void_reason ?? ''}>VOID</span>
+                            ) : canVoid ? (
+                                <button
+                                    onClick={() => setVoiding(p)}
+                                    className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-rose-100 px-3 py-2 text-xs font-medium text-rose-500 active:bg-rose-50"
+                                >
+                                    <Ban className="h-3.5 w-3.5" /> Void
+                                </button>
+                            ) : null}
+                        </div>
+                    </div>
+                ))}
+                {ledger.length === 0 && (
+                    <div className="rounded-xl border border-slate-200 bg-white px-4 py-10 text-center shadow-sm">
+                        <Receipt className="mx-auto h-8 w-8 text-slate-300" />
+                        <p className="mt-2 text-sm text-slate-400">No payments recorded yet.</p>
+                    </div>
+                )}
+            </div>
+
+            <div className="hidden overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm md:block">
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-slate-200 text-sm">
                         <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -276,8 +372,8 @@ function PaymentReportModal({ programs, methods, onClose }: { programs: { id: nu
     const pdf = () => { if (canApprove) { window.open(url('/cashier/report'), '_blank', 'noopener'); onClose(); } else request('cashier_pdf'); };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div className="max-h-[calc(100vh-3rem)] w-full max-w-2xl overflow-y-auto rounded-xl bg-white shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4">
+            <div className="max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-t-2xl bg-white pb-[env(safe-area-inset-bottom)] shadow-xl sm:max-h-[calc(100vh-3rem)] sm:rounded-xl sm:pb-0">
                 <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
                     <div className="flex items-center gap-3">
                         <span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-50 text-brand-600"><Receipt className="h-5 w-5" /></span>
@@ -312,9 +408,9 @@ function PaymentReportModal({ programs, methods, onClose }: { programs: { id: nu
                     <p className="sm:col-span-2 text-xs text-slate-400">Voided payments appear in the report but are excluded from the total collected.</p>
                 </div>
 
-                <div className="flex items-center justify-end gap-2 border-t border-slate-200 bg-slate-50 px-6 py-4">
-                    <button onClick={onClose} className="btn-ghost">Cancel</button>
-                    <button onClick={csv} className="btn-ghost"><FileSpreadsheet className="h-4 w-4" /> {canApprove ? 'Export CSV' : 'Request CSV'}</button>
+                <div className="flex flex-col-reverse gap-2 border-t border-slate-200 bg-slate-50 px-6 py-4 sm:flex-row sm:items-center sm:justify-end">
+                    <button onClick={onClose} className="btn-ghost justify-center">Cancel</button>
+                    <button onClick={csv} className="btn-ghost justify-center"><FileSpreadsheet className="h-4 w-4" /> {canApprove ? 'Export CSV' : 'Request CSV'}</button>
                     <button onClick={pdf} className="btn-primary"><Printer className="h-4 w-4" /> {canApprove ? 'Generate PDF' : 'Request PDF'}</button>
                 </div>
             </div>
@@ -340,11 +436,11 @@ function Stat({ icon, label, value, tone }: { icon: React.ReactNode; label: stri
         brand: 'bg-brand-50 text-brand-600', violet: 'bg-violet-50 text-violet-600',
     };
     return (
-        <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow">
-            <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${tones[tone]}`}>{icon}</div>
-            <div>
-                <div className="text-sm text-slate-500">{label}</div>
-                <div className="text-2xl font-semibold text-slate-800">{value}</div>
+        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm transition hover:shadow sm:gap-4 sm:p-5">
+            <div className={`hidden h-12 w-12 shrink-0 items-center justify-center rounded-xl sm:flex ${tones[tone]}`}>{icon}</div>
+            <div className="min-w-0">
+                <div className="truncate text-xs text-slate-500 sm:text-sm">{label}</div>
+                <div className="truncate text-lg font-semibold text-slate-800 sm:text-2xl">{value}</div>
             </div>
         </div>
     );
@@ -390,8 +486,8 @@ function PaymentModal({
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div className="max-h-[calc(100vh-3rem)] w-full max-w-md overflow-y-auto rounded-xl bg-white shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4">
+            <div className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white pb-[env(safe-area-inset-bottom)] shadow-xl sm:max-h-[calc(100vh-3rem)] sm:rounded-xl sm:pb-0">
                 <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
                     <div className="flex items-center gap-3">
                         <span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-50 text-brand-600"><Banknote className="h-5 w-5" /></span>
@@ -422,7 +518,7 @@ function PaymentModal({
                             {errors.category && <span className="text-xs text-rose-600">{errors.category}</span>}
                         </label>
                         <label className="block"><span className="mb-1 block text-xs font-medium text-slate-600">Amount (₱)</span>
-                            <input type="number" className="input" value={data.amount} onChange={(e) => setData('amount', e.target.value === '' ? '' : Number(e.target.value))} />
+                            <input type="number" inputMode="decimal" min="0" className="input" value={data.amount} onChange={(e) => setData('amount', e.target.value === '' ? '' : Number(e.target.value))} />
                             {errors.amount && <span className="text-xs text-rose-600">{errors.amount}</span>}
                         </label>
                         <label className="col-span-2 block"><span className="mb-1 block text-xs font-medium text-slate-600">Description <span className="text-slate-400">(optional)</span></span>
@@ -439,9 +535,9 @@ function PaymentModal({
                         </label>
                     </div>
                     <p className="rounded-lg bg-slate-50 px-3 py-2 text-[11px] text-slate-400">An OR number is assigned automatically. A receipt opens after recording — also reprintable from the ledger.</p>
-                    <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
-                        <button type="button" onClick={onClose} className="btn-ghost">Cancel</button>
-                        <button type="submit" disabled={processing || !data.learner_id} className="btn-primary">Record payment</button>
+                    <div className="flex gap-2 border-t border-slate-100 pt-3 sm:justify-end">
+                        <button type="button" onClick={onClose} className="btn-ghost justify-center max-sm:flex-1">Cancel</button>
+                        <button type="submit" disabled={processing || !data.learner_id} className="btn-primary py-2.5 max-sm:flex-[2] sm:py-2">Record payment</button>
                     </div>
                 </form>
             </div>
@@ -456,8 +552,8 @@ function VoidModal({ item, onClose }: { item: LedgerItem; onClose: () => void })
         put(`/cashier/payments/${item.id}/void`, { preserveScroll: true, onSuccess: onClose });
     };
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div className="w-full max-w-md rounded-xl bg-white shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4">
+            <div className="w-full max-w-md rounded-t-2xl bg-white pb-[env(safe-area-inset-bottom)] shadow-xl sm:rounded-xl sm:pb-0">
                 <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
                     <h3 className="text-base font-semibold text-slate-800">Void payment</h3>
                     <button onClick={onClose} className="rounded-md p-1 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>
