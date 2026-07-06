@@ -239,6 +239,61 @@ class SettingsController extends Controller
         return back()->with('success', 'Educational attainment grid saved.');
     }
 
+    /* ----------------------------- Grading system ----------------------------- */
+
+    public function grading(Request $request): Response
+    {
+        abort_unless($request->user()->can('settings'), 403);
+
+        return Inertia::render('Settings/Grading', [
+            'components' => collect(config('grading.components'))->map(fn ($c) => [
+                'key' => $c['key'],
+                'label' => $c['label'],
+                'weight' => (int) $c['weight'],
+            ])->values(),
+            'passing' => (int) config('grading.passing', 75),
+        ]);
+    }
+
+    public function updateGrading(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->can('settings'), 403);
+
+        $data = $request->validate([
+            'components' => ['required', 'array', 'min:1'],
+            'components.*.key' => ['nullable', 'string', 'max:60'],
+            'components.*.label' => ['required', 'string', 'max:80'],
+            'components.*.weight' => ['required', 'integer', 'min:1', 'max:100'],
+            'passing' => ['required', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        if (collect($data['components'])->sum('weight') !== 100) {
+            return back()->withErrors(['components' => 'Component weights must add up to exactly 100%.']);
+        }
+
+        // Keys tie a component to scores already saved on trainees — keep
+        // existing ones untouched and derive a unique slug for new rows.
+        $used = [];
+        $components = collect($data['components'])->map(function ($c) use (&$used) {
+            $key = trim((string) ($c['key'] ?? ''));
+            if ($key === '') {
+                $key = \Illuminate\Support\Str::slug($c['label'], '_') ?: 'component';
+            }
+            $base = $key;
+            for ($i = 2; in_array($key, $used, true); $i++) {
+                $key = "{$base}_{$i}";
+            }
+            $used[] = $key;
+
+            return ['key' => $key, 'label' => trim($c['label']), 'weight' => (int) $c['weight']];
+        })->values()->all();
+
+        Setting::putJson('grading_components', $components);
+        Setting::put('grading_passing', (string) $data['passing']);
+
+        return back()->with('success', 'Grading system saved.');
+    }
+
     /* ----------------------------- Reference lists ----------------------------- */
 
     public function lists(Request $request): Response

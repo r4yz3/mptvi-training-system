@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Applicant;
 use App\Models\Attendance;
 use App\Models\Batch;
+use App\Models\Grade;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -39,6 +40,7 @@ class TrainingController extends Controller
 
         $roster = $batch->applicants()
             ->whereIn('status', ['Paid', 'In training', 'For assessment', 'Certified'])
+            ->with('grade')
             ->orderBy('last_name')
             ->get()
             ->map(function (Applicant $a) use ($date) {
@@ -51,6 +53,7 @@ class TrainingController extends Controller
                     'trainee_status' => $a->trainee_status,
                     'rate' => $a->attendanceRate(),
                     'today' => $today?->status,
+                    'grade' => $a->gradeSummary(),
                 ];
             });
 
@@ -68,7 +71,39 @@ class TrainingController extends Controller
             'statuses' => ['Present', 'Absent', 'Late', 'Excused'],
             'canSetStatus' => $request->user()->can('trainee.status'),
             'traineeStatuses' => config('lpf.trainee_statuses'),
+            'canGrade' => $request->user()->can('assess'),
+            'gradeComponents' => collect(config('grading.components'))->values(),
+            'passingGrade' => (int) config('grading.passing', 75),
         ]);
+    }
+
+    /** Save a trainee's component scores (Settings → Grading system defines them). */
+    public function saveGrades(Request $request, Applicant $applicant): RedirectResponse
+    {
+        abort_unless($request->user()->can('assess'), 403);
+
+        $keys = collect(config('grading.components'))->pluck('key');
+        $rules = ['scores' => ['required', 'array']];
+        foreach ($keys as $key) {
+            $rules["scores.{$key}"] = ['nullable', 'numeric', 'min:0', 'max:100'];
+        }
+        $data = $request->validate($rules);
+
+        // Only configured components are stored; blanks clear a score.
+        $scores = [];
+        foreach ($keys as $key) {
+            $v = $data['scores'][$key] ?? null;
+            if ($v !== null && $v !== '') {
+                $scores[$key] = round((float) $v, 1);
+            }
+        }
+
+        Grade::updateOrCreate(
+            ['applicant_id' => $applicant->id],
+            ['scores' => $scores, 'graded_by' => $request->user()->id],
+        );
+
+        return back()->with('success', "Grades saved for {$applicant->display_name}.");
     }
 
     public function mark(Request $request, Applicant $applicant): RedirectResponse

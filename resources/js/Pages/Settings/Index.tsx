@@ -1,7 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
 import {
     SlidersHorizontal, UserCog, GraduationCap, Stamp, Building2, ShieldCheck, Palette,
-    ListChecks, List, BookOpen, DatabaseBackup, ChevronRight, Users2, ShieldAlert,
+    ListChecks, List, BookOpen, DatabaseBackup, ChevronRight, Users2, ShieldAlert, Award,
 } from 'lucide-react';
 import AppShell from '@/Layouts/AppShell';
 import SystemHealthPanel from '@/Components/SystemHealthPanel';
@@ -28,6 +28,7 @@ export default function SettingsIndex({ stats, system }: { stats: Stats; system:
                 { href: '/settings/form-builder', icon: SlidersHorizontal, title: 'Form Builder', desc: 'Customize the registration form — show/hide sections and add custom fields.', meta: `${stats.customFields} custom field${stats.customFields === 1 ? '' : 's'}${stats.hiddenSections ? ` · ${stats.hiddenSections} hidden` : ''}` },
                 { href: '/settings/requirements', icon: ListChecks, title: 'Document Requirements', desc: 'Manage the documentary-requirements checklist recorded for each applicant.', meta: 'Required documents' },
                 { href: '/settings/education', icon: GraduationCap, title: 'Education Grid', desc: 'Edit the levels and status options in the Educational Attainment table.', meta: 'Registration form' },
+                { href: '/settings/grading', icon: Award, title: 'Grading System', desc: 'Set the graded components, their weights, and the passing grade.', meta: 'Training grades' },
                 { href: '/settings/lists', icon: List, title: 'Reference Lists', desc: 'Edit the dropdown option lists used across the registration form.', meta: 'Form options' },
                 { href: '/programs', icon: GraduationCap, title: 'Programs & Batches', desc: 'Manage TESDA programs, fees, training hours and class batches.', meta: `${stats.programs} program${stats.programs === 1 ? '' : 's'}` },
             ],

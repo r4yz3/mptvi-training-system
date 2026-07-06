@@ -255,6 +255,11 @@ class ApplicantController extends Controller
             'eduLevels' => collect(config('lpf.education_levels'))->map(fn ($l) => [
                 'key' => $l['key'], 'label' => $l['label'],
             ])->values(),
+            'gradeInfo' => [
+                'summary' => $applicant->gradeSummary(),
+                'components' => collect(config('grading.components'))->values(),
+                'passing' => (int) config('grading.passing', 75),
+            ],
         ]);
     }
 

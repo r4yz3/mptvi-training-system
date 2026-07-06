@@ -69,6 +69,44 @@ class Applicant extends Model
         return $this->hasMany(Assessment::class)->latest('id');
     }
 
+    public function grade(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Grade::class);
+    }
+
+    /**
+     * Weighted final grade from the configured components (Settings → Grading
+     * system). Final stays null (remark "Incomplete") until every component
+     * has a score; scores for removed components are ignored.
+     */
+    public function gradeSummary(): array
+    {
+        $components = config('grading.components', []);
+        $scores = $this->grade?->scores ?? [];
+
+        $weightTotal = 0;
+        $weighted = 0;
+        $complete = true;
+        foreach ($components as $c) {
+            $s = $scores[$c['key']] ?? null;
+            if (! is_numeric($s)) {
+                $complete = false;
+                continue;
+            }
+            $weighted += (float) $s * (int) $c['weight'];
+            $weightTotal += (int) $c['weight'];
+        }
+
+        $final = $complete && $weightTotal > 0 ? round($weighted / $weightTotal, 1) : null;
+        $passing = (int) config('grading.passing', 75);
+
+        return [
+            'scores' => $scores,
+            'final' => $final,
+            'remark' => $final === null ? 'Incomplete' : ($final >= $passing ? 'Passed' : 'Failed'),
+        ];
+    }
+
     /** % of attendance records marked Present or Late. */
     public function attendanceRate(): int
     {

@@ -97,6 +97,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/training', [TrainingController::class, 'index'])->name('training.index');
         Route::get('/training/{batch}', [TrainingController::class, 'show'])->name('training.show');
         Route::post('/training/{applicant}/attendance', [TrainingController::class, 'mark'])->name('training.mark');
+        Route::put('/training/{applicant}/grades', [TrainingController::class, 'saveGrades'])->name('training.grades');
     });
 
     // Assessment & certs (P8) — admin/secretary/coordinator; assess cap gates actions.
@@ -157,6 +158,8 @@ Route::middleware('auth')->group(function () {
         Route::put('/settings/requirements', [SettingsController::class, 'updateRequirements'])->name('settings.requirements.update');
         Route::get('/settings/education', [SettingsController::class, 'education'])->name('settings.education');
         Route::put('/settings/education', [SettingsController::class, 'updateEducation'])->name('settings.education.update');
+        Route::get('/settings/grading', [SettingsController::class, 'grading'])->name('settings.grading');
+        Route::put('/settings/grading', [SettingsController::class, 'updateGrading'])->name('settings.grading.update');
         Route::get('/settings/lists', [SettingsController::class, 'lists'])->name('settings.lists');
         Route::put('/settings/lists', [SettingsController::class, 'updateLists'])->name('settings.lists.update');
         Route::get('/settings/academic', [SettingsController::class, 'academic'])->name('settings.academic');

@@ -47,8 +47,14 @@ interface DocItem {
 }
 interface CustomFieldDef { key: string; label: string; type: string; section: string }
 
+interface GradeInfo {
+    summary: { scores: Record<string, number>; final: number | null; remark: string };
+    components: { key: string; label: string; weight: number }[];
+    passing: number;
+}
+
 export default function ApplicantShow({
-    applicant, pii, documents, canVerifyDocs, customFields, traineeStatuses, eduLevels,
+    applicant, pii, documents, canVerifyDocs, customFields, traineeStatuses, eduLevels, gradeInfo,
 }: {
     applicant: Applicant;
     pii: boolean;
@@ -57,6 +63,7 @@ export default function ApplicantShow({
     customFields: CustomFieldDef[] | null;
     traineeStatuses: string[];
     eduLevels: { key: string; label: string }[];
+    gradeInfo: GradeInfo;
 }) {
     const { auth } = usePage<PageProps>().props;
     const toggle = useForm({});
@@ -163,6 +170,11 @@ export default function ApplicantShow({
             {/* Pipeline progress */}
             <div className="mt-6">
                 <PipelineStepper status={applicant.status} />
+            </div>
+
+            {/* Training grades — job data, visible to pii and non-pii roles alike */}
+            <div className="mt-6">
+                <GradesPanel info={gradeInfo} />
             </div>
 
             {pii ? (
@@ -402,6 +414,46 @@ const EDU_STATUS_STYLE: Record<string, string> = {
     Undergraduate: 'bg-amber-50 text-amber-700',
     Ongoing: 'bg-sky-50 text-sky-700',
 };
+
+const GRADE_REMARK_STYLE: Record<string, string> = {
+    Passed: 'bg-emerald-50 text-emerald-700',
+    Failed: 'bg-rose-50 text-rose-700',
+    Incomplete: 'bg-slate-100 text-slate-500',
+};
+
+function GradesPanel({ info }: { info: GradeInfo }) {
+    const { summary, components, passing } = info;
+    const hasAny = Object.keys(summary.scores ?? {}).length > 0;
+    if (!hasAny) return null; // nothing graded yet — keep the profile clean
+
+    return (
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div className="flex items-center justify-between gap-2.5 border-b border-slate-100 bg-slate-50/60 px-5 py-3">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600"><GraduationCap className="h-4 w-4" /></span>
+                    <h3 className="text-sm font-semibold text-slate-700">Training grades</h3>
+                </div>
+                <div className="flex items-center gap-2">
+                    {summary.final !== null && (
+                        <span className={`text-lg font-bold ${summary.remark === 'Passed' ? 'text-emerald-600' : 'text-rose-600'}`}>{summary.final}</span>
+                    )}
+                    <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${GRADE_REMARK_STYLE[summary.remark]}`}>{summary.remark}</span>
+                </div>
+            </div>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-3 px-5 py-4 sm:grid-cols-3">
+                {components.map((c) => {
+                    const s = summary.scores[c.key];
+                    return (
+                        <div key={c.key}>
+                            <div className="text-xs text-slate-400">{c.label} <span>({c.weight}%)</span></div>
+                            <div className={`text-sm font-semibold ${s == null ? 'text-slate-300' : s >= passing ? 'text-slate-800' : 'text-rose-600'}`}>{s ?? '—'}</div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
 
 function EducationBackground({ levels, history }: { levels: { key: string; label: string }[]; history: Record<string, Record<string, string>> }) {
     const rows = levels
