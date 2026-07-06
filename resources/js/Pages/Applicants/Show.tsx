@@ -48,7 +48,7 @@ interface DocItem {
 interface CustomFieldDef { key: string; label: string; type: string; section: string }
 
 export default function ApplicantShow({
-    applicant, pii, documents, canVerifyDocs, customFields, traineeStatuses,
+    applicant, pii, documents, canVerifyDocs, customFields, traineeStatuses, eduLevels,
 }: {
     applicant: Applicant;
     pii: boolean;
@@ -56,6 +56,7 @@ export default function ApplicantShow({
     canVerifyDocs: boolean;
     customFields: CustomFieldDef[] | null;
     traineeStatuses: string[];
+    eduLevels: { key: string; label: string }[];
 }) {
     const { auth } = usePage<PageProps>().props;
     const toggle = useForm({});
@@ -166,7 +167,7 @@ export default function ApplicantShow({
 
             {pii ? (
                 <>
-                    <FullProfile a={applicant} customFields={customFields ?? []} />
+                    <FullProfile a={applicant} customFields={customFields ?? []} eduLevels={eduLevels} />
                     {documents && (
                         <div className="mt-6">
                             <DocumentChecklist
@@ -208,7 +209,7 @@ function LimitedNotice({ a }: { a: Applicant }) {
     );
 }
 
-function FullProfile({ a, customFields }: { a: Applicant; customFields: CustomFieldDef[] }) {
+function FullProfile({ a, customFields, eduLevels }: { a: Applicant; customFields: CustomFieldDef[]; eduLevels: { key: string; label: string }[] }) {
     const v = (k: string) => (a[k] as string | null) || '—';
     const classifications = (a.classifications as string[] | null) ?? [];
     const customData = (a.custom_data as Record<string, unknown> | null) ?? {};
@@ -230,7 +231,7 @@ function FullProfile({ a, customFields }: { a: Applicant; customFields: CustomFi
                 <Field label="Year graduated">{v('year_graduated')}</Field>
             </Section>
 
-            <EducationBackground history={(a.education_history as Record<string, Record<string, string>> | null) ?? {}} />
+            <EducationBackground levels={eduLevels} history={(a.education_history as Record<string, Record<string, string>> | null) ?? {}} />
 
             <Section title="Address & contact">
                 <Field label="Street">{v('street')}</Field>
@@ -396,22 +397,15 @@ function PipelineStepper({ status }: { status: string }) {
     );
 }
 
-const EDU_LEVELS: [string, string][] = [
-    ['elementary', 'Elementary'],
-    ['junior_high', 'Junior High School'],
-    ['senior_high', 'Senior High School'],
-    ['college', 'College / Vocational'],
-    ['postgrad', 'Post-Graduate'],
-];
 const EDU_STATUS_STYLE: Record<string, string> = {
     Graduate: 'bg-emerald-50 text-emerald-700',
     Undergraduate: 'bg-amber-50 text-amber-700',
     Ongoing: 'bg-sky-50 text-sky-700',
 };
 
-function EducationBackground({ history }: { history: Record<string, Record<string, string>> }) {
-    const rows = EDU_LEVELS
-        .map(([key, label]) => {
+function EducationBackground({ levels, history }: { levels: { key: string; label: string }[]; history: Record<string, Record<string, string>> }) {
+    const rows = levels
+        .map(({ key, label }) => {
             const r = history[key] ?? {};
             return { key, label, school: r.school ?? '', started: r.started ?? '', graduated: r.graduated ?? '', status: r.status ?? '' };
         })

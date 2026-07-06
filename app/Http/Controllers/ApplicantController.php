@@ -249,6 +249,9 @@ class ApplicantController extends Controller
             'canVerifyDocs' => $request->user()->can('docs.verify'),
             'customFields' => $canPii ? $this->enabledCustomFields() : null,
             'traineeStatuses' => config('lpf.trainee_statuses'),
+            'eduLevels' => collect(config('lpf.education_levels'))->map(fn ($l) => [
+                'key' => $l['key'], 'label' => $l['label'],
+            ])->values(),
         ]);
     }
 

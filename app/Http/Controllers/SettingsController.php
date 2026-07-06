@@ -187,6 +187,58 @@ class SettingsController extends Controller
         return back()->with('success', 'Documentary requirements saved.');
     }
 
+    /* ----------------------------- Education grid ----------------------------- */
+
+    public function education(Request $request): Response
+    {
+        abort_unless($request->user()->can('settings'), 403);
+
+        return Inertia::render('Settings/Education', [
+            'levels' => collect(config('lpf.education_levels'))->map(fn ($l) => [
+                'key' => $l['key'],
+                'label' => $l['label'],
+            ])->values(),
+            'statuses' => array_values(config('lpf.education_statuses', [])),
+        ]);
+    }
+
+    public function updateEducation(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->can('settings'), 403);
+
+        $data = $request->validate([
+            'levels' => ['required', 'array', 'min:1'],
+            'levels.*.key' => ['nullable', 'string', 'max:60'],
+            'levels.*.label' => ['required', 'string', 'max:80'],
+            'statuses' => ['required', 'array', 'min:1'],
+            'statuses.*' => ['required', 'string', 'max:60'],
+        ]);
+
+        // Keys tie a row to the data already saved on applicants — keep existing
+        // ones untouched and derive a unique slug for rows added in the UI.
+        $used = [];
+        $levels = collect($data['levels'])->map(function ($l) use (&$used) {
+            $key = trim((string) ($l['key'] ?? ''));
+            if ($key === '') {
+                $key = \Illuminate\Support\Str::slug($l['label'], '_') ?: 'level';
+            }
+            $base = $key;
+            for ($i = 2; in_array($key, $used, true); $i++) {
+                $key = "{$base}_{$i}";
+            }
+            $used[] = $key;
+
+            return ['key' => $key, 'label' => trim($l['label'])];
+        })->values()->all();
+
+        $statuses = collect($data['statuses'])->map(fn ($s) => trim($s))->filter()->unique()->values()->all();
+
+        Setting::putJson('lpf_education_levels', $levels);
+        Setting::putJson('lpf_education_statuses', $statuses);
+
+        return back()->with('success', 'Educational attainment grid saved.');
+    }
+
     /* ----------------------------- Reference lists ----------------------------- */
 
     public function lists(Request $request): Response

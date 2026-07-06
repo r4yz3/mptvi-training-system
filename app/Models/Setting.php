@@ -88,6 +88,17 @@ class Setting extends Model
             }
         }
 
+        // Educational attainment grid — levels are key+label rows (not a flat
+        // list), statuses a flat list; both edited at Settings → Education grid.
+        foreach (['education_levels', 'education_statuses'] as $key) {
+            if ($v = ($rows["lpf_{$key}"] ?? null)) {
+                $decoded = json_decode($v, true);
+                if (is_array($decoded) && $decoded) {
+                    config(["lpf.{$key}" => array_values($decoded)]);
+                }
+            }
+        }
+
         // Academic defaults & numbering
         $map = [
             'acad_school_year' => 'academic.school_year',

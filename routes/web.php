@@ -155,6 +155,8 @@ Route::middleware('auth')->group(function () {
         Route::put('/settings/institution', [SettingsController::class, 'updateInstitution'])->name('settings.institution.update');
         Route::get('/settings/requirements', [SettingsController::class, 'requirements'])->name('settings.requirements');
         Route::put('/settings/requirements', [SettingsController::class, 'updateRequirements'])->name('settings.requirements.update');
+        Route::get('/settings/education', [SettingsController::class, 'education'])->name('settings.education');
+        Route::put('/settings/education', [SettingsController::class, 'updateEducation'])->name('settings.education.update');
         Route::get('/settings/lists', [SettingsController::class, 'lists'])->name('settings.lists');
         Route::put('/settings/lists', [SettingsController::class, 'updateLists'])->name('settings.lists.update');
         Route::get('/settings/academic', [SettingsController::class, 'academic'])->name('settings.academic');
