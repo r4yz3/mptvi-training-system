@@ -52,7 +52,10 @@ class ApplicantController extends Controller
                 'statuses' => config('lpf.statuses'),
                 'programs' => Program::orderBy('title')->get(['id', 'title'])->all(),
                 'barangays' => Applicant::query()->distinct()->orderBy('barangay')->pluck('barangay')->filter()->values(),
-                'school_years' => Applicant::query()->distinct()->whereNotNull('school_year')->orderByDesc('school_year')->pluck('school_year')->values(),
+                // Distinct years on record, with the configured current S.Y. always offered.
+                'school_years' => Applicant::query()->distinct()->whereNotNull('school_year')->pluck('school_year')
+                    ->push((string) config('academic.school_year', ''))
+                    ->filter()->unique()->sortDesc()->values(),
                 'class_sessions' => config('lpf.class_session'),
                 'listCustom' => $listCustom,
                 'filterCustom' => $filterCustom,

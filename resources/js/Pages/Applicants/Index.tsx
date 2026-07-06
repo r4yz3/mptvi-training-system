@@ -153,6 +153,10 @@ export default function ApplicantsIndex({
                     <option value="">All barangays</option>
                     {options.barangays.map((b) => <option key={b} value={b}>{b}</option>)}
                 </select>
+                <select className="input w-auto" value={form.school_year ?? ''} onChange={(e) => set('school_year', e.target.value)}>
+                    <option value="">All school years</option>
+                    {options.school_years.map((y) => <option key={y} value={y}>S.Y. {y}</option>)}
+                </select>
                 <select className="input w-auto" value={form.active ?? ''} onChange={(e) => set('active', e.target.value)}>
                     <option value="">Active &amp; inactive</option>
                     <option value="active">Active only</option>
