@@ -68,7 +68,7 @@ class ApplicantTest extends TestCase
             ])
             ->assertRedirect();
 
-        $a = Applicant::where('last_name', 'Reyes')->first();
+        $a = Applicant::where('last_name', 'REYES')->first();
         $this->assertNotNull($a);
         $this->assertSame('Registered', $a->status);
         $this->assertSame(28, $a->age); // derived from birthdate
@@ -150,9 +150,29 @@ class ApplicantTest extends TestCase
             'interviewed_by' => 'Juan Interviewer',
         ])->assertRedirect();
 
-        $a = Applicant::where('last_name', 'Signer')->first();
-        $this->assertSame('Juan Interviewer', $a->interviewed_by);
+        $a = Applicant::where('last_name', 'SIGNER')->first();
+        $this->assertSame('JUAN INTERVIEWER', $a->interviewed_by);
         $this->assertSame('2026-06-12', $a->date_accomplished->toDateString());
+    }
+
+    public function test_free_text_answers_are_stored_in_all_caps(): void
+    {
+        // Government-form convention: typed answers saved in ALL CAPS; email kept as-is.
+        $this->actingAs($this->as('registrar'))->post('/applicants', [
+            'last_name' => 'dela cruz', 'first_name' => 'juan', 'barangay' => 'poblacion',
+            'contact' => '0917-555-0001', 'sex' => 'Male', 'program_id' => Program::first()->id,
+            'email' => 'juan@example.com',
+            'education_history' => [
+                'elementary' => ['school' => 'magsaysay central es', 'status' => 'Graduate'],
+            ],
+        ])->assertRedirect();
+
+        $a = Applicant::where('first_name', 'JUAN')->firstOrFail();
+        $this->assertSame('DELA CRUZ', $a->last_name);
+        $this->assertSame('POBLACION', $a->barangay);
+        $this->assertSame('juan@example.com', $a->email);
+        $this->assertSame('MAGSAYSAY CENTRAL ES', $a->education_history['elementary']['school']);
+        $this->assertSame('Graduate', $a->education_history['elementary']['status']); // selects untouched
     }
 
     public function test_list_can_be_sorted_by_a_column(): void

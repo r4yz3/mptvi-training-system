@@ -295,6 +295,10 @@ export default function ApplicantForm({
     );
 }
 
+// Government-form convention: typed answers appear (and are stored) in ALL
+// CAPS. CSS-only while typing — the server uppercases the saved value.
+const CAPS = 'uppercase placeholder:normal-case';
+
 function spanClass(c: FieldDef['colspan']): string {
     if (c === 'full') return 'col-span-2 md:col-span-4';
     if (c === 2) return 'md:col-span-2';
@@ -331,7 +335,7 @@ function FieldRenderer({
         }
         let input: ReactNode;
         if (field.type === 'textarea') {
-            input = <textarea className="input" rows={2} value={(val as string) ?? ''} onChange={(e) => set(e.target.value)} />;
+            input = <textarea className={`input ${CAPS}`} rows={2} value={(val as string) ?? ''} onChange={(e) => set(e.target.value)} />;
         } else if (field.type === 'select') {
             input = (
                 <select className="input" value={(val as string) ?? ''} onChange={(e) => set(e.target.value)}>
@@ -341,7 +345,7 @@ function FieldRenderer({
             );
         } else {
             const t = field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text';
-            input = <input type={t} className="input" value={(val as string) ?? ''} onChange={(e) => set(e.target.value)} />;
+            input = <input type={t} className={`input ${t === 'text' ? CAPS : ''}`} value={(val as string) ?? ''} onChange={(e) => set(e.target.value)} />;
         }
         return (
             <label className={`block ${span}`}>
@@ -406,7 +410,7 @@ function FieldRenderer({
                     </div>
                     <div className="mt-2 pt-2">
                         <input
-                            className={`input text-center ${title ? 'font-semibold uppercase' : ''}`}
+                            className={`input text-center ${CAPS} ${title ? 'font-semibold' : ''}`}
                             placeholder={title ? undefined : `${field.label} name`}
                             value={(val as string) ?? ''}
                             onChange={(e) => set(e.target.value)}
@@ -442,7 +446,7 @@ function FieldRenderer({
                                         <tr key={lvl.key} className="align-middle">
                                             <td className="whitespace-nowrap px-3 py-2 font-medium text-slate-600">{lvl.label}</td>
                                             <td className="px-3 py-2">
-                                                <input className="input" value={row.school ?? ''} onChange={(e) => setCell(lvl.key, 'school', e.target.value)} placeholder="Name of school" />
+                                                <input className={`input ${CAPS}`} value={row.school ?? ''} onChange={(e) => setCell(lvl.key, 'school', e.target.value)} placeholder="Name of school" />
                                             </td>
                                             <td className="px-3 py-2">
                                                 <input className="input" value={row.started ?? ''} onChange={(e) => setCell(lvl.key, 'started', e.target.value)} placeholder="e.g. 2010" inputMode="numeric" />
@@ -498,17 +502,18 @@ function FieldRenderer({
             return (
                 <label className={`block ${span}`}>
                     {labelEl}
-                    <textarea className="input" rows={2} value={(val as string) ?? ''} onChange={(e) => set(e.target.value)} />
+                    <textarea className={`input ${CAPS}`} rows={2} value={(val as string) ?? ''} onChange={(e) => set(e.target.value)} />
                     {err && <span className="mt-1 block text-xs text-rose-600">{err}</span>}
                 </label>
             );
 
         default: {
             const t = field.widget === 'date' ? 'date' : field.widget === 'number' ? 'number' : field.widget === 'tel' ? 'tel' : 'text';
+            const caps = t === 'text' && field.key !== 'email' ? CAPS : '';
             return (
                 <label className={`block ${span}`}>
                     {labelEl}
-                    <input type={t} className="input" value={(val as string) ?? ''} placeholder={field.placeholder ?? undefined} onChange={(e) => set(e.target.value)} />
+                    <input type={t} className={`input ${caps}`} value={(val as string) ?? ''} placeholder={field.placeholder ?? undefined} onChange={(e) => set(e.target.value)} />
                     {err && <span className="mt-1 block text-xs text-rose-600">{err}</span>}
                 </label>
             );

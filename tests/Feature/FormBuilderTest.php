@@ -70,7 +70,7 @@ class FormBuilderTest extends TestCase
             'custom' => ['tshirt_size' => 'M'],
         ])->assertRedirect();
 
-        $a = Applicant::where('last_name', 'Cruz')->first();
+        $a = Applicant::where('last_name', 'CRUZ')->first();
         $this->assertSame('M', $a->custom_data['tshirt_size']);
     }
 

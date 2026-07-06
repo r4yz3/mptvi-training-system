@@ -442,7 +442,34 @@ class ApplicantController extends Controller
             $validated['education_history'] = $this->cleanEducationHistory($validated['education_history']);
         }
 
-        return $validated;
+        return $this->uppercaseText($validated);
+    }
+
+    /**
+     * Government-form convention: free-text answers are stored in ALL CAPS.
+     * Applies to text/textarea/signature built-in fields (email excluded) and
+     * the school names in the education grid. Selects/dates/numbers untouched.
+     */
+    private function uppercaseText(array $data): array
+    {
+        $keys = collect(config('builtin_fields.fields'))
+            ->filter(fn ($f) => in_array($f['widget'] ?? 'text', ['text', 'textarea', 'signature'], true))
+            ->pluck('key')
+            ->reject(fn ($k) => $k === 'email');
+
+        foreach ($keys as $key) {
+            if (isset($data[$key]) && is_string($data[$key])) {
+                $data[$key] = mb_strtoupper($data[$key], 'UTF-8');
+            }
+        }
+
+        foreach ($data['education_history'] ?? [] as $lvl => $row) {
+            if (isset($row['school']) && is_string($row['school'])) {
+                $data['education_history'][$lvl]['school'] = mb_strtoupper($row['school'], 'UTF-8');
+            }
+        }
+
+        return $data;
     }
 
     /** Keep only known levels with at least one value; normalize the row shape. */
@@ -582,7 +609,12 @@ class ApplicantController extends Controller
 
         $out = [];
         foreach ($fields as $f) {
-            $out[$f->key] = data_get($validated, "custom.{$f->key}");
+            $value = data_get($validated, "custom.{$f->key}");
+            // Free-text custom answers follow the same ALL-CAPS convention.
+            if (in_array($f->type, ['text', 'textarea'], true) && is_string($value)) {
+                $value = mb_strtoupper($value, 'UTF-8');
+            }
+            $out[$f->key] = $value;
         }
 
         return $out;

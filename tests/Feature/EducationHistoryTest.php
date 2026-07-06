@@ -43,8 +43,8 @@ class EducationHistoryTest extends TestCase
             ],
         ])->assertRedirect();
 
-        $a = Applicant::where('last_name', 'Cruz')->firstOrFail();
-        $this->assertSame('Magsaysay Central ES', $a->education_history['elementary']['school']);
+        $a = Applicant::where('last_name', 'CRUZ')->firstOrFail();
+        $this->assertSame('MAGSAYSAY CENTRAL ES', $a->education_history['elementary']['school']);
         $this->assertSame('Graduate', $a->education_history['elementary']['status']);
         $this->assertSame('Ongoing', $a->education_history['college']['status']);
     }
@@ -58,7 +58,7 @@ class EducationHistoryTest extends TestCase
             ],
         ])->assertRedirect();
 
-        $a = Applicant::where('last_name', 'Cruz')->firstOrFail();
+        $a = Applicant::where('last_name', 'CRUZ')->firstOrFail();
         $this->assertArrayHasKey('elementary', $a->education_history);
         $this->assertArrayNotHasKey('junior_high', $a->education_history);
     }
@@ -81,7 +81,7 @@ class EducationHistoryTest extends TestCase
             ],
         ])->assertRedirect();
 
-        $a = Applicant::where('last_name', 'Cruz')->firstOrFail();
+        $a = Applicant::where('last_name', 'CRUZ')->firstOrFail();
         $this->assertArrayNotHasKey('kindergarten', $a->education_history);
         $this->assertArrayHasKey('college', $a->education_history);
     }
