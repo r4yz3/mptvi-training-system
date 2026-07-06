@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Applicant;
 use App\Models\Batch;
 use App\Models\Program;
 use Illuminate\Http\RedirectResponse;
@@ -40,6 +41,55 @@ class BatchController extends Controller
         $batch->delete();
 
         return back()->with('success', "Batch “{$code}” deleted.");
+    }
+
+    /** Add a learner to this batch. Cross-program adds must be explicit (move_program). */
+    public function assign(Request $request, Batch $batch): RedirectResponse
+    {
+        abort_unless($request->user()->can('program.manage'), 403);
+
+        $data = $request->validate([
+            'applicant_id' => ['required', 'integer', 'exists:applicants,id'],
+            'move_program' => ['nullable', 'boolean'],
+        ]);
+        $applicant = Applicant::findOrFail($data['applicant_id']);
+
+        if (! $applicant->active || $applicant->status === 'Disqualified') {
+            return back()->with('error', 'Only active, non-disqualified learners can be added to a batch.');
+        }
+        if ($applicant->batch_id === $batch->id) {
+            return back()->with('error', "“{$applicant->display_name}” is already in batch {$batch->code}.");
+        }
+        if (in_array($batch->status, ['Closed', 'Completed'], true)) {
+            return back()->with('error', "Batch {$batch->code} is {$batch->status} — learners can no longer be added.");
+        }
+        if ($batch->capacity > 0 && $batch->applicants()->count() >= $batch->capacity) {
+            return back()->with('error', "Batch {$batch->code} is full ({$batch->capacity} slots).");
+        }
+
+        $update = ['batch_id' => $batch->id];
+        if ($applicant->program_id !== $batch->program_id) {
+            if (! $request->boolean('move_program')) {
+                return back()->with('error', "“{$applicant->display_name}” belongs to a different program.");
+            }
+            $update['program_id'] = $batch->program_id;
+        }
+        $applicant->update($update);
+
+        return back()->with('success', "“{$applicant->display_name}” added to batch {$batch->code}.");
+    }
+
+    /** Remove a learner from this batch (keeps their program and pipeline status). */
+    public function unassign(Request $request, Batch $batch, Applicant $applicant): RedirectResponse
+    {
+        abort_unless($request->user()->can('program.manage'), 403);
+
+        if ($applicant->batch_id !== $batch->id) {
+            return back()->with('error', "“{$applicant->display_name}” is not in batch {$batch->code}.");
+        }
+        $applicant->update(['batch_id' => null]);
+
+        return back()->with('success', "“{$applicant->display_name}” removed from batch {$batch->code}.");
     }
 
     private function endDate(array $data): ?string

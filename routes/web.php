@@ -73,9 +73,12 @@ Route::middleware('auth')->group(function () {
         Route::post('/programs', [ProgramController::class, 'store'])->name('programs.store');
         Route::put('/programs/{program}', [ProgramController::class, 'update'])->name('programs.update');
         Route::delete('/programs/{program}', [ProgramController::class, 'destroy'])->name('programs.destroy');
+        Route::post('/programs/{program}/learners', [ProgramController::class, 'assign'])->name('programs.assign');
         Route::post('/batches', [BatchController::class, 'store'])->name('batches.store');
         Route::put('/batches/{batch}', [BatchController::class, 'update'])->name('batches.update');
         Route::delete('/batches/{batch}', [BatchController::class, 'destroy'])->name('batches.destroy');
+        Route::post('/batches/{batch}/learners', [BatchController::class, 'assign'])->name('batches.assign');
+        Route::delete('/batches/{batch}/learners/{applicant}', [BatchController::class, 'unassign'])->name('batches.unassign');
     });
 
     // Cashier (P6) — admin/cashier; payment.record / payment.void gate the actions.

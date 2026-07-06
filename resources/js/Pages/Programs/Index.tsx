@@ -1,18 +1,23 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
-import { Plus, Pencil, Trash2, X, Layers, CalendarDays, Clock, Users, GraduationCap, Banknote } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Layers, CalendarDays, Clock, Users, UserPlus, UserMinus, Search, GraduationCap, Banknote } from 'lucide-react';
 import AppShell from '@/Layouts/AppShell';
+import StatusBadge from '@/Components/StatusBadge';
 import { PageProps } from '@/types';
 
 interface Batch {
     id: number; program_id: number; code: string; class_session: string; class_days: string;
     school_year: string | null; capacity: number; trainer: string | null; venue: string | null;
-    start_date: string | null; end_date: string | null; status: string;
+    start_date: string | null; end_date: string | null; status: string; applicants_count: number;
 }
 interface Program {
     id: number; title: string; qualification: string | null; level: string | null;
     hours: number; fee: number; slots: number; active: boolean;
     batches_count: number; applicants_count: number; batches: Batch[];
+}
+interface Learner {
+    id: number; name: string; program_id: number | null; batch_id: number | null;
+    session: string | null; status: string;
 }
 interface Options {
     levels: string[]; class_sessions: string[]; class_days: string[]; batch_statuses: string[];
@@ -30,11 +35,19 @@ const fmtDate = (d: string | null) => {
     return isNaN(dt.getTime()) ? d.slice(0, 10) : dt.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 };
 
-export default function ProgramsIndex({ programs, options }: { programs: Program[]; options: Options }) {
+export default function ProgramsIndex({ programs, learners, options }: { programs: Program[]; learners: Learner[]; options: Options }) {
     const { auth } = usePage<PageProps>().props;
     const canManage = auth.can['program.manage'];
     const [progModal, setProgModal] = useState<Program | 'new' | null>(null);
     const [batchModal, setBatchModal] = useState<{ programId: number; batch: Batch | null } | null>(null);
+    // Stored as ids so the modals re-derive fresh data after each Inertia reload.
+    const [rosterBatchId, setRosterBatchId] = useState<number | null>(null);
+    const [enrollProgramId, setEnrollProgramId] = useState<number | null>(null);
+
+    const rosterBatch = rosterBatchId !== null
+        ? programs.flatMap((p) => p.batches.map((b) => ({ batch: b, program: p }))).find((x) => x.batch.id === rosterBatchId) ?? null
+        : null;
+    const enrollProgram = enrollProgramId !== null ? programs.find((p) => p.id === enrollProgramId) ?? null : null;
 
     const totalBatches = programs.reduce((s, p) => s + p.batches_count, 0);
     const totalApplicants = programs.reduce((s, p) => s + p.applicants_count, 0);
@@ -80,6 +93,9 @@ export default function ProgramsIndex({ programs, options }: { programs: Program
                             </div>
                             {canManage && (
                                 <div className="flex shrink-0 gap-1">
+                                    <button onClick={() => setEnrollProgramId(p.id)} className="btn-ghost px-2.5 py-1.5 text-xs">
+                                        <UserPlus className="h-3.5 w-3.5" /> Learner
+                                    </button>
                                     <button onClick={() => setBatchModal({ programId: p.id, batch: null })} className="btn-ghost px-2.5 py-1.5 text-xs">
                                         <Plus className="h-3.5 w-3.5" /> Batch
                                     </button>
@@ -99,7 +115,8 @@ export default function ProgramsIndex({ programs, options }: { programs: Program
                                         <tr>
                                             <th className="px-5 py-2">Batch</th><th className="px-5 py-2">Session</th>
                                             <th className="px-5 py-2">Schedule</th><th className="px-5 py-2">Dates</th>
-                                            <th className="px-5 py-2">Trainer</th><th className="px-5 py-2">Status</th>
+                                            <th className="px-5 py-2">Trainer</th><th className="px-5 py-2">Learners</th>
+                                            <th className="px-5 py-2">Status</th>
                                             {canManage && <th className="px-5 py-2" />}
                                         </tr>
                                     </thead>
@@ -114,6 +131,19 @@ export default function ProgramsIndex({ programs, options }: { programs: Program
                                                     <div className="text-xs text-slate-400">→ {fmtDate(b.end_date)}</div>
                                                 </td>
                                                 <td className="px-5 py-2.5 text-slate-600">{b.trainer ?? '—'}<div className="text-xs text-slate-400">{b.venue}</div></td>
+                                                <td className="px-5 py-2.5">
+                                                    <button
+                                                        onClick={() => setRosterBatchId(b.id)}
+                                                        className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium ring-1 transition ${
+                                                            b.applicants_count >= b.capacity
+                                                                ? 'bg-amber-50 text-amber-700 ring-amber-200 hover:bg-amber-100'
+                                                                : 'bg-slate-50 text-slate-600 ring-slate-200 hover:bg-brand-50 hover:text-brand-700'
+                                                        }`}
+                                                        title="View / manage batch learners"
+                                                    >
+                                                        <Users className="h-3.5 w-3.5" /> {b.applicants_count}/{b.capacity}
+                                                    </button>
+                                                </td>
                                                 <td className="px-5 py-2.5"><span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${BATCH_STATUS[b.status]}`}>{b.status}</span></td>
                                                 {canManage && (
                                                     <td className="px-5 py-2.5">
@@ -150,7 +180,165 @@ export default function ProgramsIndex({ programs, options }: { programs: Program
 
             {progModal && <ProgramModal program={progModal === 'new' ? null : progModal} options={options} onClose={() => setProgModal(null)} />}
             {batchModal && <BatchModal programId={batchModal.programId} batch={batchModal.batch} options={options} onClose={() => setBatchModal(null)} />}
+            {rosterBatch && (
+                <RosterModal
+                    batch={rosterBatch.batch} program={rosterBatch.program} programs={programs}
+                    learners={learners} canManage={canManage} onClose={() => setRosterBatchId(null)}
+                />
+            )}
+            {enrollProgram && (
+                <EnrollModal program={enrollProgram} programs={programs} learners={learners} onClose={() => setEnrollProgramId(null)} />
+            )}
         </AppShell>
+    );
+}
+
+/** Batch roster: current learners (with remove) + searchable picker to add more. */
+function RosterModal({ batch, program, programs, learners, canManage, onClose }: {
+    batch: Batch; program: Program; programs: Program[]; learners: Learner[]; canManage: boolean; onClose: () => void;
+}) {
+    const [search, setSearch] = useState('');
+    const [busy, setBusy] = useState(false);
+    const programTitle = useMemo(() => Object.fromEntries(programs.map((p) => [p.id, p.title])), [programs]);
+
+    const roster = learners.filter((l) => l.batch_id === batch.id);
+    const finished = batch.status === 'Closed' || batch.status === 'Completed';
+    const full = roster.length >= batch.capacity;
+
+    const q = search.trim().toLowerCase();
+    const candidates = q === '' ? [] : learners
+        .filter((l) => l.batch_id !== batch.id && l.name.toLowerCase().includes(q))
+        // Same-program learners first — they're the expected adds.
+        .sort((a, b) => Number(b.program_id === batch.program_id) - Number(a.program_id === batch.program_id))
+        .slice(0, 8);
+
+    const add = (l: Learner) => {
+        const crossProgram = l.program_id !== batch.program_id;
+        if (crossProgram && !confirm(`“${l.name}” is enrolled in ${programTitle[l.program_id ?? 0] ?? 'another program'}. Move them to ${program.title} and add to batch ${batch.code}?`)) return;
+        if (!crossProgram && l.batch_id !== null && !confirm(`“${l.name}” is already in another batch. Move them to batch ${batch.code}?`)) return;
+        setBusy(true);
+        router.post(`/batches/${batch.id}/learners`, { applicant_id: l.id, move_program: crossProgram }, {
+            preserveScroll: true, onFinish: () => { setBusy(false); setSearch(''); },
+        });
+    };
+
+    const remove = (l: Learner) => {
+        if (!confirm(`Remove “${l.name}” from batch ${batch.code}?`)) return;
+        setBusy(true);
+        router.delete(`/batches/${batch.id}/learners/${l.id}`, { preserveScroll: true, onFinish: () => setBusy(false) });
+    };
+
+    return (
+        <Modal title={`Batch ${batch.code} — learners`} onClose={onClose}>
+            <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                <span className="font-medium text-slate-700">{program.title}</span>
+                <span>·</span><span>{batch.class_session}</span>
+                <span>·</span>
+                <span className={full ? 'font-semibold text-amber-600' : ''}>{roster.length}/{batch.capacity} slots</span>
+                {finished && <span className="rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-500">{batch.status} — adding disabled</span>}
+            </div>
+
+            {canManage && !finished && (
+                <div className="mb-3">
+                    <div className="relative">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <input
+                            className="input pl-9" placeholder={full ? 'Batch is full' : 'Search a learner to add…'}
+                            value={search} onChange={(e) => setSearch(e.target.value)} disabled={full || busy} autoFocus
+                        />
+                    </div>
+                    {candidates.length > 0 && (
+                        <div className="mt-1 divide-y divide-slate-50 rounded-lg border border-slate-200 bg-white shadow-sm">
+                            {candidates.map((l) => (
+                                <button key={l.id} onClick={() => add(l)} disabled={busy}
+                                    className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-brand-50/60 disabled:opacity-50">
+                                    <span>
+                                        <span className="font-medium text-slate-700">{l.name}</span>
+                                        <span className="ml-2 text-xs text-slate-400">
+                                            {l.program_id === batch.program_id
+                                                ? (l.batch_id !== null ? 'in another batch' : l.session ?? '')
+                                                : `↷ ${programTitle[l.program_id ?? 0] ?? 'other program'}`}
+                                        </span>
+                                    </span>
+                                    <StatusBadge status={l.status} />
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                    {q !== '' && candidates.length === 0 && <p className="mt-1 text-xs text-slate-400">No learners match “{search}”.</p>}
+                </div>
+            )}
+
+            {roster.length > 0 ? (
+                <div className="divide-y divide-slate-50 rounded-lg border border-slate-100">
+                    {roster.map((l) => (
+                        <div key={l.id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+                            <a href={`/applicants/${l.id}`} className="font-medium text-slate-700 hover:text-brand-600 hover:underline">{l.name}</a>
+                            <span className="flex items-center gap-2">
+                                <StatusBadge status={l.status} />
+                                {canManage && (
+                                    <button onClick={() => remove(l)} disabled={busy} title="Remove from batch"
+                                        className="rounded p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50">
+                                        <UserMinus className="h-4 w-4" />
+                                    </button>
+                                )}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <p className="rounded-lg border border-dashed border-slate-200 px-3 py-6 text-center text-sm text-slate-400">No learners in this batch yet.</p>
+            )}
+        </Modal>
+    );
+}
+
+/** Move an existing learner into this program (their batch from the old program is cleared). */
+function EnrollModal({ program, programs, learners, onClose }: {
+    program: Program; programs: Program[]; learners: Learner[]; onClose: () => void;
+}) {
+    const [search, setSearch] = useState('');
+    const [busy, setBusy] = useState(false);
+    const programTitle = useMemo(() => Object.fromEntries(programs.map((p) => [p.id, p.title])), [programs]);
+
+    const q = search.trim().toLowerCase();
+    const candidates = q === '' ? [] : learners
+        .filter((l) => l.program_id !== program.id && l.name.toLowerCase().includes(q))
+        .slice(0, 8);
+
+    const add = (l: Learner) => {
+        if (!confirm(`Move “${l.name}” from ${programTitle[l.program_id ?? 0] ?? 'their current program'} to ${program.title}?${l.batch_id !== null ? ' They will be removed from their current batch.' : ''}`)) return;
+        setBusy(true);
+        router.post(`/programs/${program.id}/learners`, { applicant_id: l.id }, {
+            preserveScroll: true, onFinish: () => setBusy(false), onSuccess: onClose,
+        });
+    };
+
+    return (
+        <Modal title={`Add learner to ${program.title}`} onClose={onClose}>
+            <p className="mb-3 text-xs text-slate-500">
+                Search a learner enrolled in another program to move them here. New applicants are registered under Applicants → New applicant.
+            </p>
+            <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input className="input pl-9" placeholder="Search learner name…" value={search} onChange={(e) => setSearch(e.target.value)} disabled={busy} autoFocus />
+            </div>
+            {candidates.length > 0 && (
+                <div className="mt-1 divide-y divide-slate-50 rounded-lg border border-slate-200 bg-white shadow-sm">
+                    {candidates.map((l) => (
+                        <button key={l.id} onClick={() => add(l)} disabled={busy}
+                            className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-brand-50/60 disabled:opacity-50">
+                            <span>
+                                <span className="font-medium text-slate-700">{l.name}</span>
+                                <span className="ml-2 text-xs text-slate-400">{programTitle[l.program_id ?? 0] ?? 'No program'}</span>
+                            </span>
+                            <StatusBadge status={l.status} />
+                        </button>
+                    ))}
+                </div>
+            )}
+            {q !== '' && candidates.length === 0 && <p className="mt-1 text-xs text-slate-400">No learners match “{search}”.</p>}
+        </Modal>
     );
 }
 
