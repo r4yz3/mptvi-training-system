@@ -63,7 +63,6 @@
         <thead>
             <tr>
                 <th style="width:18px">#</th>
-                <th>ULI</th>
                 <th>Name</th>
                 <th>Sex</th>
                 <th>Age</th>
@@ -79,7 +78,6 @@
             @forelse($rows as $i => $a)
                 <tr>
                     <td>{{ $i + 1 }}</td>
-                    <td style="font-family:monospace;font-size:8.5px">{{ $a->uli ?: '—' }}</td>
                     <td><b>{{ $a->display_name }}</b></td>
                     <td>{{ $a->sex }}</td>
                     <td>{{ $a->age }}</td>

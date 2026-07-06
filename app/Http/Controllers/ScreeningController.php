@@ -28,7 +28,6 @@ class ScreeningController extends Controller
 
         $applicants = $query->paginate(12)->withQueryString()->through(fn (Applicant $a) => [
             'id' => $a->id,
-            'uli' => $a->uli,
             'name' => $a->display_name,
             'age' => $a->age,
             'program' => $a->program?->title,

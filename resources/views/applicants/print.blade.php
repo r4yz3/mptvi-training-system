@@ -63,8 +63,8 @@
         <div class="pic" style="{{ $a->photo_url ? "background-image:url('{$a->photo_url}')" : '' }}">{{ $a->photo_url ? '' : 'PICTURE' }}</div>
     </div>
 
-    <div class="sec">1 · T2MIS Auto Generated</div>
-    <div class="grid">{!! $cell('Unique Learner Identifier (ULI)', $a->uli, 2).$cell('Entry date', optional($a->registered_at)->format('Y-m-d')) !!}</div>
+    <div class="sec">1 · Registration</div>
+    <div class="grid">{!! $cell('Entry date', optional($a->registered_at)->format('Y-m-d')) !!}</div>
 
     <div class="sec">2 · Learner / Manpower Profile</div>
     <div class="grid">{!! $cell('Last name, Ext.', trim($a->last_name.' '.$a->ext_name), 1.4).$cell('First name', $a->first_name, 1.2).$cell('Middle name', $a->middle_name, 1.2) !!}</div>
@@ -127,7 +127,7 @@
 
     {{-- PAGE 2 --}}
     <div class="pgbreak"></div>
-    <div class="p2head">MAXIMINO PELLERIN SR. TVI · Enrollment / Learner's Profile — Page 2 of 2 · {{ $a->display_name }}{{ $a->uli ? ' · '.$a->uli : '' }}</div>
+    <div class="p2head">MAXIMINO PELLERIN SR. TVI · Enrollment / Learner's Profile — Page 2 of 2 · {{ $a->display_name }}</div>
 
     <div class="sec top">4 · Learner / Trainee / Student (Clients) Classification</div>
     {!! $cks($lpf['classifications'], $a->classifications, 3) !!}

@@ -30,7 +30,6 @@ class ApplicantTest extends TestCase
     private function makeApplicant(array $overrides = []): Applicant
     {
         return Applicant::create(array_merge([
-            'uli' => 'MPT-26-0001',
             'program_id' => Program::first()->id,
             'status' => 'Registered',
             'active' => true,
@@ -55,7 +54,7 @@ class ApplicantTest extends TestCase
             ->assertInertia(fn (Assert $p) => $p->component('Applicants/Index')->has('applicants.data', 1));
     }
 
-    public function test_registrar_can_register_applicant_and_uli_is_generated(): void
+    public function test_registrar_can_register_applicant(): void
     {
         $this->actingAs($this->as('registrar'))
             ->post('/applicants', [
@@ -71,7 +70,6 @@ class ApplicantTest extends TestCase
 
         $a = Applicant::where('last_name', 'Reyes')->first();
         $this->assertNotNull($a);
-        $this->assertStringStartsWith('MPT-', $a->uli);
         $this->assertSame('Registered', $a->status);
         $this->assertSame(28, $a->age); // derived from birthdate
     }
@@ -159,8 +157,8 @@ class ApplicantTest extends TestCase
 
     public function test_list_can_be_sorted_by_a_column(): void
     {
-        $this->makeApplicant(['last_name' => 'Zamora', 'uli' => 'MPT-26-0010']);
-        $this->makeApplicant(['last_name' => 'Abad', 'first_name' => 'Ana', 'uli' => 'MPT-26-0011']);
+        $this->makeApplicant(['last_name' => 'Zamora']);
+        $this->makeApplicant(['last_name' => 'Abad', 'first_name' => 'Ana']);
 
         // Ascending by name → Abad first.
         $this->actingAs($this->as('registrar'))->get('/applicants?sort=name&dir=asc')
@@ -174,8 +172,8 @@ class ApplicantTest extends TestCase
 
     public function test_filtered_csv_export_respects_filters_and_export_cap(): void
     {
-        $this->makeApplicant(['status' => 'Certified', 'uli' => 'MPT-26-0100']);
-        $this->makeApplicant(['status' => 'Registered', 'first_name' => 'Ana', 'last_name' => 'Lim', 'uli' => null]);
+        $this->makeApplicant(['status' => 'Certified']);
+        $this->makeApplicant(['status' => 'Registered', 'first_name' => 'Ana', 'last_name' => 'Lim']);
 
         // Direct download is admin-only now; other staff route through the Downloads queue.
         $res = $this->actingAs($this->as('admin'))->get('/applicants/export.csv?status=Certified');
@@ -217,8 +215,8 @@ class ApplicantTest extends TestCase
 
     public function test_index_filters_by_status(): void
     {
-        $this->makeApplicant(['status' => 'Certified', 'uli' => 'MPT-26-0002']);
-        $this->makeApplicant(['status' => 'Registered', 'first_name' => 'Ana', 'last_name' => 'Lim', 'uli' => null]);
+        $this->makeApplicant(['status' => 'Certified']);
+        $this->makeApplicant(['status' => 'Registered', 'first_name' => 'Ana', 'last_name' => 'Lim']);
 
         $this->actingAs($this->as('admin'))
             ->get('/applicants?status=Certified')

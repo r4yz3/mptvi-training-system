@@ -29,7 +29,6 @@ class ApplicantController extends Controller
             ->withQueryString()
             ->through(fn (Applicant $a) => [
                 'id' => $a->id,
-                'uli' => $a->uli,
                 'name' => $a->display_name,
                 'sex' => $a->sex,
                 'age' => $a->age,
@@ -82,7 +81,6 @@ class ApplicantController extends Controller
                 $q->where(function ($q) use ($search, $filterCustom) {
                     $q->where('first_name', 'like', "%{$search}%")
                         ->orWhere('last_name', 'like', "%{$search}%")
-                        ->orWhere('uli', 'like', "%{$search}%")
                         ->orWhere('contact', 'like', "%{$search}%");
                     foreach ($filterCustom as $cf) {
                         $q->orWhere("custom_data->{$cf['key']}", 'like', "%{$search}%");
@@ -108,7 +106,7 @@ class ApplicantController extends Controller
         // Click-to-sort columns (server-side, so it sorts the whole result set,
         // not just the current page). Defaults to newest registered first.
         $sortable = [
-            'name' => 'last_name', 'uli' => 'uli', 'program' => 'program_id',
+            'name' => 'last_name', 'program' => 'program_id',
             'barangay' => 'barangay', 'status' => 'status', 'active' => 'active',
         ];
         $sort = $request->input('sort');
@@ -155,7 +153,7 @@ class ApplicantController extends Controller
         $custom = CustomField::where('enabled', true)->orderBy('section')->orderBy('sort_order')->get();
 
         $header = array_merge(
-            ['ULI', 'Last name', 'First name', 'Sex', 'Age', 'Barangay', 'Contact', 'Education',
+            ['Last name', 'First name', 'Sex', 'Age', 'Barangay', 'Contact', 'Education',
                 'Program', 'Level', 'Class session', 'School year', 'Status', 'Active', 'Registered'],
             $custom->pluck('label')->all(),
         );
@@ -167,7 +165,7 @@ class ApplicantController extends Controller
             fputcsv($out, $header);
             foreach ($rows as $a) {
                 $line = [
-                    $a->uli, $a->last_name, $a->first_name, $a->sex, $a->age, $a->barangay, $a->contact,
+                    $a->last_name, $a->first_name, $a->sex, $a->age, $a->barangay, $a->contact,
                     $a->education, $a->program?->title, $a->program?->level, $a->class_session, $a->school_year,
                     $a->status, $a->active ? 'Active' : 'Inactive', $a->registered_at?->toDateString(),
                 ];
@@ -214,7 +212,6 @@ class ApplicantController extends Controller
         $data = $this->validateApplicant($request);
         $data = $this->withDerived($data, $request);
         $data['custom_data'] = $this->customData($request);
-        $data['uli'] = $this->nextUli();
         $data['status'] = 'Registered';
         $data['registered_at'] = now()->toDateString();
 
@@ -222,7 +219,7 @@ class ApplicantController extends Controller
 
         return redirect()
             ->route('applicants.show', $applicant)
-            ->with('success', "Applicant “{$applicant->display_name}” registered (ULI {$applicant->uli}).");
+            ->with('success', "Applicant “{$applicant->display_name}” registered.");
     }
 
     /** Printable TESDA Learner Profile Form (full record — restricted). */
@@ -487,19 +484,6 @@ class ApplicantController extends Controller
         return $data;
     }
 
-    private function nextUli(): string
-    {
-        $year = now()->format('y');
-        $seq = Applicant::whereNotNull('uli')->count() + 1;
-
-        do {
-            $uli = sprintf('MPT-%s-%04d', $year, $seq);
-            $seq++;
-        } while (Applicant::where('uli', $uli)->exists());
-
-        return $uli;
-    }
-
     private function formOptions(): array
     {
         return [
@@ -621,7 +605,6 @@ class ApplicantController extends Controller
     {
         return [
             'id' => $a->id,
-            'uli' => $a->uli,
             'display_name' => $a->display_name,
             'photo_url' => $a->photo_url,
             'active' => $a->active,

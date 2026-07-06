@@ -17,24 +17,21 @@ class IdController extends Controller
 
         $applicants = Applicant::query()
             ->with('program:id,title,level', 'batch:id,code')
-            ->whereNotNull('uli')
             ->when($search, fn ($q) => $q->where(fn ($q) => $q
                 ->where('first_name', 'like', "%{$search}%")
-                ->orWhere('last_name', 'like', "%{$search}%")
-                ->orWhere('uli', 'like', "%{$search}%")))
+                ->orWhere('last_name', 'like', "%{$search}%")))
             ->orderBy('last_name')
             ->paginate(12)->withQueryString()
             ->through(fn (Applicant $a) => [
                 'id' => $a->id,
                 'name' => $a->display_name,
-                'uli' => $a->uli,
                 'program' => $a->program?->title,
                 'status' => $a->status,
                 'issued' => $a->id_issued_at?->toDateString(),
             ]);
 
-        $total = Applicant::whereNotNull('uli')->count();
-        $issued = Applicant::whereNotNull('uli')->whereNotNull('id_issued_at')->count();
+        $total = Applicant::count();
+        $issued = Applicant::whereNotNull('id_issued_at')->count();
 
         return Inertia::render('Id/Index', [
             'applicants' => $applicants,
@@ -52,7 +49,6 @@ class IdController extends Controller
             'applicant' => [
                 'id' => $applicant->id,
                 'name' => $applicant->display_name,
-                'uli' => $applicant->uli,
                 'photo_url' => $applicant->photo_url,
                 'program' => $applicant->program?->title,
                 'level' => $applicant->program?->level,

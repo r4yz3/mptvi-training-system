@@ -5,7 +5,7 @@ import AppShell from '@/Layouts/AppShell';
 import StatusBadge from '@/Components/StatusBadge';
 
 interface Row {
-    id: number; name: string; uli: string | null; program: string | null; level: string | null;
+    id: number; name: string; program: string | null; level: string | null;
     status: string; rate: number; cert_number: string | null; last_result: string | null;
     cert_assessor: string | null; assessor: string | null;
 }
@@ -69,7 +69,6 @@ export default function AssessmentIndex({ applicants, canAssess, canEditAssessor
                                             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-semibold text-brand-700">{initials(a.name)}</span>
                                             <div>
                                                 <Link href={`/applicants/${a.id}`} className="font-medium text-slate-800 hover:text-brand-600">{a.name}</Link>
-                                                <div className="font-mono text-xs text-slate-400">{a.uli ?? '—'}</div>
                                             </div>
                                         </div>
                                     </td>

@@ -55,15 +55,14 @@ class ApplicantSeeder extends Seeder
         foreach ($people as $idx => [$first, $last, $sex, $age, $civil, $status, $voter]) {
             $i++;
             $programId = $programs[$idx % count($programs)];
-            $hasUli = in_array($status, $advanced, true);
+            $isAdvanced = in_array($status, $advanced, true);
             $birthYear = 2026 - $age;
             // Advanced-stage learners are assigned to a batch of their program (for Training/Assessment).
-            $batchId = $hasUli ? Batch::where('program_id', $programId)->value('id') : null;
+            $batchId = $isAdvanced ? Batch::where('program_id', $programId)->value('id') : null;
 
             Applicant::firstOrCreate(
                 ['first_name' => $first, 'last_name' => $last],
                 [
-                    'uli' => $hasUli ? sprintf('MPT-26-%04d', $i) : null,
                     'program_id' => $programId,
                     'batch_id' => $batchId,
                     'status' => $status,

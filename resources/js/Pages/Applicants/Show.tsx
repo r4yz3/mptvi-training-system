@@ -30,7 +30,6 @@ const SECTION_ICON: Record<string, LucideIcon> = {
 
 interface Applicant {
     id: number;
-    uli: string | null;
     display_name: string;
     photo_url: string | null;
     active: boolean;
@@ -96,7 +95,6 @@ export default function ApplicantShow({
                             <div className="min-w-0">
                                 <h2 className="text-xl font-semibold text-slate-800">{applicant.display_name}</h2>
                                 <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                                    <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-600">{applicant.uli ?? 'No ULI'}</span>
                                     <StatusBadge status={applicant.status} />
                                     {!applicant.active && (
                                         <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">Inactive</span>

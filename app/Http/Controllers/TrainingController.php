@@ -47,7 +47,6 @@ class TrainingController extends Controller
                 return [
                     'id' => $a->id,
                     'name' => $a->display_name,
-                    'uli' => $a->uli,
                     'status' => $a->status,
                     'trainee_status' => $a->trainee_status,
                     'rate' => $a->attendanceRate(),

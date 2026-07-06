@@ -8,7 +8,6 @@ import { PageProps } from '@/types';
 
 interface Row {
     id: number;
-    uli: string | null;
     name: string;
     sex: string | null;
     age: number | null;
@@ -118,7 +117,7 @@ export default function ApplicantsIndex({
                     <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                     <input
                         className="input pl-9"
-                        placeholder="Search name, ULI, contact…"
+                        placeholder="Search name, contact…"
                         value={form.search ?? ''}
                         onChange={(e) => setForm({ ...form, search: e.target.value })}
                     />
@@ -185,7 +184,6 @@ export default function ApplicantsIndex({
                         <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                             <tr>
                                 <Th label="Applicant" sortKey="name" sort={filters.sort} dir={filters.dir} onSort={sortBy} />
-                                <Th label="ULI" sortKey="uli" sort={filters.sort} dir={filters.dir} onSort={sortBy} />
                                 <Th label="Program" sortKey="program" sort={filters.sort} dir={filters.dir} onSort={sortBy} />
                                 <Th label="Barangay" sortKey="barangay" sort={filters.sort} dir={filters.dir} onSort={sortBy} />
                                 {listCustom.map((cf) => <th key={cf.key} className="px-4 py-3">{cf.label}</th>)}
@@ -215,7 +213,6 @@ export default function ApplicantsIndex({
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-4 py-3 font-mono text-xs text-slate-500">{a.uli ?? '—'}</td>
                                     <td className="px-4 py-3 text-slate-600">
                                         {a.program ? (
                                             <span>{a.program} <span className="text-slate-400">{a.level}</span></span>

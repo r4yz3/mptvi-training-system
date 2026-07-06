@@ -4,7 +4,7 @@ import { ArrowLeft, Printer, BadgeCheck, Clock, UserCircle2 } from 'lucide-react
 import AppShell from '@/Layouts/AppShell';
 
 interface Card {
-    id: number; name: string; uli: string | null; photo_url: string | null;
+    id: number; name: string; photo_url: string | null;
     program: string | null; level: string | null; batch: string | null;
     barangay: string | null; province: string | null; contact: string | null;
     emergency_name: string | null; emergency_contact: string | null;
@@ -82,11 +82,6 @@ export default function IdCard({ applicant, canIssue, signatory }: { applicant: 
                                 </div>
                             </div>
 
-                            <div className="w-full rounded border border-dashed border-brand-200 bg-brand-50/50 px-2 py-0.5 text-center">
-                                <div className="text-[5px] uppercase tracking-wide text-slate-900">Unique Learner Identifier</div>
-                                <div className="font-mono text-[9px] font-bold tracking-wider text-brand-700">{applicant.uli ?? '—'}</div>
-                            </div>
-
                             <div className="flex w-full items-end justify-between">
                                 <div className="space-y-px text-[6px] text-slate-900">
                                     <div><span className="text-slate-900">Batch</span> <span className="font-semibold text-slate-900">{applicant.batch ?? '—'}</span></div>
@@ -94,7 +89,7 @@ export default function IdCard({ applicant, canIssue, signatory }: { applicant: 
                                     <div><span className="text-slate-900">Issued</span> <span className="font-semibold text-slate-900">{issued ?? '—'}</span></div>
                                 </div>
                                 <div className="rounded border border-slate-100 bg-white p-0.5 shadow-sm">
-                                    <QRCodeSVG value={applicant.uli ?? String(applicant.id)} size={42} level="M" />
+                                    <QRCodeSVG value={String(applicant.id)} size={42} level="M" />
                                 </div>
                             </div>
 
@@ -135,8 +130,8 @@ export default function IdCard({ applicant, canIssue, signatory }: { applicant: 
                                 If found, please return to the MPTVI office, Magsaysay, Davao del Sur.
                             </p>
                         </div>
-                        <div className="bg-slate-100 py-0.5 text-center font-mono text-[6px] tracking-[0.2em] text-slate-900">
-                            {applicant.uli ?? '—'}
+                        <div className="bg-slate-100 py-0.5 text-center text-[6px] uppercase tracking-[0.2em] text-slate-900">
+                            Maximino Pellerin Sr. TVI
                         </div>
                     </div>
                 </div>

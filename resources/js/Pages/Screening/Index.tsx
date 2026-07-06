@@ -17,7 +17,6 @@ interface EligItem { label: string; ok: boolean; note: string }
 interface Batch { id: number; program_id: number; code: string; session: string; days: string; capacity: number; used: number; status: string }
 interface Row {
     id: number;
-    uli: string | null;
     name: string;
     age: number | null;
     program: string | null;
@@ -126,7 +125,7 @@ export default function ScreeningIndex({
                                                         {a.name}
                                                     </Link>
                                                     <div className="text-xs text-slate-400">
-                                                        {[a.uli, a.age ? `${a.age} yrs` : null].filter(Boolean).join(' · ')}
+                                                        {a.age ? `${a.age} yrs` : ''}
                                                     </div>
                                                 </div>
                                             </div>

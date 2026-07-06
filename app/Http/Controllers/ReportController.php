@@ -61,14 +61,14 @@ class ReportController extends Controller
         $custom = \App\Models\CustomField::where('enabled', true)->orderBy('section')->orderBy('sort_order')->get();
 
         $header = array_merge(
-            ['ULI', 'Last name', 'First name', 'Sex', 'Age', 'Barangay', 'Contact',
+            ['Last name', 'First name', 'Sex', 'Age', 'Barangay', 'Contact',
                 'Education', 'Program', 'Level', 'Class session', 'School year', 'Status', 'Active', 'Registered'],
             $custom->pluck('label')->all(),
         );
 
         return $this->stream('applicants', $header, $rows->map(function (Applicant $a) use ($custom) {
             $base = [
-                $a->uli, $a->last_name, $a->first_name, $a->sex, $a->age, $a->barangay, $a->contact,
+                $a->last_name, $a->first_name, $a->sex, $a->age, $a->barangay, $a->contact,
                 $a->education, $a->program?->title, $a->program?->level,
                 $a->class_session, $a->school_year, $a->status, $a->active ? 'Active' : 'Inactive',
                 $a->registered_at?->toDateString(),

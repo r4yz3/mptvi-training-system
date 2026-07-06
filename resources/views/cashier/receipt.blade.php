@@ -52,7 +52,6 @@
         <div class="rno">No. <b>{{ $p->or_number ?? ('AR-'.str_pad($p->id, 5, '0', STR_PAD_LEFT)) }}</b> &nbsp;·&nbsp; {{ $p->paid_at?->format('F j, Y') }}</div>
 
         <div class="row"><div class="k">Received from</div><div class="v">{{ $a?->display_name ?? '—' }}</div></div>
-        <div class="row"><div class="k">ULI / Learner no.</div><div class="v">{{ $a?->uli ?? '—' }}</div></div>
         <div class="row"><div class="k">Program</div><div class="v">{{ $a?->program?->title ?? '—' }}{{ $a?->program?->level ? ' ('.$a->program->level.')' : '' }}</div></div>
         <div class="row"><div class="k">Particulars</div><div class="v">{{ $p->category }}{{ $p->description ? ' — '.$p->description : '' }}</div></div>
 

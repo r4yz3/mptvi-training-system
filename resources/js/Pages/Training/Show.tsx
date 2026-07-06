@@ -5,7 +5,7 @@ import StatusBadge from '@/Components/StatusBadge';
 import TraineeStatusBadge from '@/Components/TraineeStatusBadge';
 
 interface RosterRow {
-    id: number; name: string; uli: string | null; status: string; trainee_status: string | null; rate: number; today: string | null;
+    id: number; name: string; status: string; trainee_status: string | null; rate: number; today: string | null;
 }
 interface Props {
     batch: { id: number; code: string; program: string | null; start_date: string | null; end_date: string | null };
@@ -102,10 +102,7 @@ export default function TrainingShow({ batch, roster, date, canMark, statuses, c
                                     <td className="px-4 py-3">
                                         <div className="flex items-center gap-3">
                                             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-semibold text-brand-700">{initials(r.name)}</span>
-                                            <div>
-                                                <div className="font-medium text-slate-800">{r.name}</div>
-                                                <div className="font-mono text-xs text-slate-400">{r.uli}</div>
-                                            </div>
+                                            <div className="font-medium text-slate-800">{r.name}</div>
                                         </div>
                                     </td>
                                     <td className="px-4 py-3"><StatusBadge status={r.status} /></td>

@@ -4,7 +4,7 @@ import { Search, IdCard, CheckCircle2, Clock, Users } from 'lucide-react';
 import AppShell from '@/Layouts/AppShell';
 import Pagination from '@/Components/Pagination';
 
-interface Row { id: number; name: string; uli: string | null; program: string | null; status: string; issued: string | null }
+interface Row { id: number; name: string; program: string | null; status: string; issued: string | null }
 interface Paginated { data: Row[]; links: { url: string | null; label: string; active: boolean }[]; from: number | null; to: number | null; total: number }
 interface Stats { total: number; issued: number; pending: number }
 
@@ -45,7 +45,7 @@ export default function IdIndex({ applicants, filters, canIssue, stats }: { appl
 
             <form onSubmit={submit} className="relative mb-4 max-w-sm">
                 <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                <input className="input pl-9" placeholder="Search learner with ULI…" value={search} onChange={(e) => setSearch(e.target.value)} />
+                <input className="input pl-9" placeholder="Search learner…" value={search} onChange={(e) => setSearch(e.target.value)} />
             </form>
 
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -65,10 +65,7 @@ export default function IdIndex({ applicants, filters, canIssue, stats }: { appl
                                     <td className="px-4 py-3">
                                         <div className="flex items-center gap-3">
                                             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-semibold text-brand-700">{initials(a.name)}</span>
-                                            <div>
-                                                <div className="font-medium text-slate-800">{a.name}</div>
-                                                <div className="font-mono text-xs text-slate-400">{a.uli ?? '—'}</div>
-                                            </div>
+                                            <div className="font-medium text-slate-800">{a.name}</div>
                                         </div>
                                     </td>
                                     <td className="px-4 py-3 text-slate-600">{a.program ?? '—'}</td>
@@ -87,7 +84,7 @@ export default function IdIndex({ applicants, filters, canIssue, stats }: { appl
                             {applicants.data.length === 0 && (
                                 <tr><td colSpan={4} className="px-4 py-14 text-center text-sm text-slate-400">
                                     <IdCard className="mx-auto mb-2 h-8 w-8 text-slate-300" />
-                                    {filters.search ? 'No learners match your search.' : 'No learners with a ULI yet.'}
+                                    {filters.search ? 'No learners match your search.' : 'No learners yet.'}
                                 </td></tr>
                             )}
                         </tbody>

@@ -52,7 +52,7 @@ class ReportTest extends TestCase
         $res->assertOk();
         $res->assertHeader('content-type', 'text/csv; charset=UTF-8');
         $content = $res->streamedContent();
-        $this->assertStringContainsString('ULI', $content);
+        $this->assertStringContainsString('Last name', $content);
         $this->assertStringContainsString('Cruz', $content);
         $this->assertStringContainsString('Juan', $content);
     }

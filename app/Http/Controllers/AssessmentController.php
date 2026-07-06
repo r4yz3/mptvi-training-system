@@ -27,7 +27,6 @@ class AssessmentController extends Controller
             ->map(fn (Applicant $a) => [
                 'id' => $a->id,
                 'name' => $a->display_name,
-                'uli' => $a->uli,
                 'program' => $a->program?->title,
                 'level' => $a->program?->level,
                 'status' => $a->status,

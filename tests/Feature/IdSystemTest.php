@@ -26,10 +26,10 @@ class IdSystemTest extends TestCase
         return User::role($role)->firstOrFail();
     }
 
-    private function withUli(): Applicant
+    private function makeLearner(): Applicant
     {
         return Applicant::create([
-            'program_id' => Program::first()->id, 'status' => 'Paid', 'active' => true, 'uli' => 'MPT-26-0001',
+            'program_id' => Program::first()->id, 'status' => 'Paid', 'active' => true,
             'last_name' => 'Cruz', 'first_name' => 'Juan', 'barangay' => 'Pob', 'contact' => '09',
         ]);
     }
@@ -43,7 +43,7 @@ class IdSystemTest extends TestCase
 
     public function test_issue_requires_id_issue_cap_and_stamps_date(): void
     {
-        $a = $this->withUli();
+        $a = $this->makeLearner();
 
         // registrar has id.issue
         $this->actingAs($this->as('registrar'))->put("/idsystem/{$a->id}/issue")->assertRedirect();
@@ -52,7 +52,7 @@ class IdSystemTest extends TestCase
 
     public function test_card_loads_after_an_id_is_issued(): void
     {
-        $a = $this->withUli();
+        $a = $this->makeLearner();
         $this->actingAs($this->as('registrar'))->put("/idsystem/{$a->id}/issue");
 
         // Regression: id_issued_at must be a date cast, not a raw string, or the
@@ -60,13 +60,13 @@ class IdSystemTest extends TestCase
         $this->actingAs($this->as('registrar'))->get("/idsystem/{$a->id}")->assertOk();
     }
 
-    public function test_index_only_lists_learners_with_uli(): void
+    public function test_index_lists_all_learners(): void
     {
-        $this->withUli();
+        $this->makeLearner();
         Applicant::create(['program_id' => Program::first()->id, 'status' => 'Registered', 'active' => true,
-            'last_name' => 'NoUli', 'first_name' => 'X', 'barangay' => 'Z', 'contact' => '0']);
+            'last_name' => 'Reyes', 'first_name' => 'X', 'barangay' => 'Z', 'contact' => '0']);
 
         $this->actingAs($this->as('registrar'))->get('/idsystem')
-            ->assertInertia(fn ($p) => $p->has('applicants.data', 1));
+            ->assertInertia(fn ($p) => $p->has('applicants.data', 2));
     }
 }
