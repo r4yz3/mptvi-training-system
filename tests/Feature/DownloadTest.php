@@ -109,7 +109,7 @@ class DownloadTest extends TestCase
         $this->actingAs($cashier)->post('/downloads', ['type' => 'cashier_csv']);
         $dr = DownloadRequest::where('user_id', $cashier->id)->firstOrFail();
 
-        $this->actingAs($this->as('registrar'))->put("/downloads/{$dr->id}/approve")->assertForbidden();
+        $this->actingAs($this->as('coordinator'))->put("/downloads/{$dr->id}/approve")->assertForbidden();
         $this->assertSame('pending', $dr->fresh()->status);
     }
 
@@ -120,8 +120,8 @@ class DownloadTest extends TestCase
         $dr = DownloadRequest::where('user_id', $cashier->id)->firstOrFail();
         $this->actingAs($this->as('admin'))->put("/downloads/{$dr->id}/approve");
 
-        // Registrar (a different non-admin) must not fetch the cashier's file.
-        $this->actingAs($this->as('registrar'))->get("/downloads/{$dr->id}/file")->assertForbidden();
+        // A different non-approver (coordinator) must not fetch the cashier's file.
+        $this->actingAs($this->as('coordinator'))->get("/downloads/{$dr->id}/file")->assertForbidden();
     }
 
     public function test_downloads_page_loads_for_cashier(): void

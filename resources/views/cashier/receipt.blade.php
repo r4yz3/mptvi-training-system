@@ -68,6 +68,13 @@
             <span class="chip">Type: <b>{{ $p->type }}</b></span>
         </div>
 
+        <div class="sign">
+            <div class="ln">
+                <b>{{ $p->cashier?->name ?? '' }}</b><br>
+                <span style="color:#64748b">Cashier — signature over printed name</span>
+            </div>
+        </div>
+
         <div class="foot">This acknowledgement receipt confirms the amount received above. Not a BIR-registered official receipt. Keep for your records.</div>
     </div>
 </body>

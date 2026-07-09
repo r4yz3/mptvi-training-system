@@ -87,7 +87,10 @@ Route::middleware('auth')->group(function () {
         // Direct download is admin-only; other staff route through the Downloads approval queue.
         Route::get('/cashier/report', [CashierController::class, 'report'])->middleware('can:download.approve')->name('cashier.report');
         Route::get('/cashier/export.csv', [CashierController::class, 'exportCsv'])->middleware('can:download.approve')->name('cashier.export');
+        // Daily cash report — cashiers may print their own day; finance sees all.
+        Route::get('/cashier/daily', [CashierController::class, 'daily'])->name('cashier.daily');
         Route::post('/cashier/{applicant}/payments', [CashierController::class, 'record'])->name('cashier.record');
+        Route::get('/cashier/{applicant}/statement', [CashierController::class, 'statement'])->name('cashier.statement');
         Route::get('/cashier/payments/{payment}/receipt', [CashierController::class, 'receipt'])->name('cashier.receipt');
         Route::put('/cashier/payments/{payment}/void', [CashierController::class, 'void'])->name('cashier.void');
     });
@@ -96,8 +99,10 @@ Route::middleware('auth')->group(function () {
     Route::middleware('module:training')->group(function () {
         Route::get('/training', [TrainingController::class, 'index'])->name('training.index');
         Route::get('/training/{batch}', [TrainingController::class, 'show'])->name('training.show');
-        Route::post('/training/{applicant}/attendance', [TrainingController::class, 'mark'])->name('training.mark');
-        Route::put('/training/{applicant}/grades', [TrainingController::class, 'saveGrades'])->name('training.grades');
+        Route::get('/training/{batch}/class-record', [TrainingController::class, 'classRecord'])->name('training.class-record');
+        Route::post('/training/{applicant}/start', [TrainingController::class, 'startTraining'])->name('training.start');
+        Route::put('/training/{applicant}/competency', [TrainingController::class, 'rateCompetency'])->name('training.competency');
+        Route::get('/training/{applicant}/report-card', [TrainingController::class, 'reportCard'])->name('training.report-card');
     });
 
     // Assessment & certs (P8) — admin/secretary/coordinator; assess cap gates actions.
@@ -112,6 +117,7 @@ Route::middleware('auth')->group(function () {
     // ID system (P9) — admin/secretary/registrar; id.issue cap gates issuing.
     Route::middleware('module:idsystem')->group(function () {
         Route::get('/idsystem', [IdController::class, 'index'])->name('idsystem.index');
+        Route::get('/idsystem/sheet', [IdController::class, 'sheet'])->name('idsystem.sheet');
         Route::get('/idsystem/{applicant}', [IdController::class, 'card'])->name('idsystem.card');
         Route::put('/idsystem/{applicant}/issue', [IdController::class, 'issue'])->name('idsystem.issue');
     });
@@ -158,8 +164,8 @@ Route::middleware('auth')->group(function () {
         Route::put('/settings/requirements', [SettingsController::class, 'updateRequirements'])->name('settings.requirements.update');
         Route::get('/settings/education', [SettingsController::class, 'education'])->name('settings.education');
         Route::put('/settings/education', [SettingsController::class, 'updateEducation'])->name('settings.education.update');
-        Route::get('/settings/grading', [SettingsController::class, 'grading'])->name('settings.grading');
-        Route::put('/settings/grading', [SettingsController::class, 'updateGrading'])->name('settings.grading.update');
+        Route::get('/settings/competencies', [SettingsController::class, 'competencies'])->name('settings.competencies');
+        Route::put('/settings/competencies/{program}', [SettingsController::class, 'updateCompetencies'])->name('settings.competencies.update');
         Route::get('/settings/lists', [SettingsController::class, 'lists'])->name('settings.lists');
         Route::put('/settings/lists', [SettingsController::class, 'updateLists'])->name('settings.lists.update');
         Route::get('/settings/academic', [SettingsController::class, 'academic'])->name('settings.academic');

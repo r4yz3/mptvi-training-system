@@ -34,7 +34,7 @@ class FormBuilderTest extends TestCase
     {
         $this->actingAs($this->as('admin'))->get('/settings/form-builder')->assertOk();
         $this->actingAs($this->as('manager'))->get('/settings/form-builder')->assertForbidden();
-        $this->actingAs($this->as('registrar'))->get('/settings/form-builder')->assertForbidden();
+        $this->actingAs($this->as('coordinator'))->get('/settings/form-builder')->assertForbidden();
     }
 
     public function test_admin_can_create_custom_field_with_slug_key(): void

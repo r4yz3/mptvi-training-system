@@ -41,7 +41,7 @@ class CashierTest extends TestCase
     {
         $this->actingAs($this->as('cashier'))->get('/cashier')->assertOk();
         $this->actingAs($this->as('admin'))->get('/cashier')->assertOk();
-        $this->actingAs($this->as('registrar'))->get('/cashier')->assertForbidden();
+        $this->actingAs($this->as('manager'))->get('/cashier')->assertForbidden();
         $this->actingAs($this->as('coordinator'))->get('/cashier')->assertForbidden();
     }
 
@@ -81,10 +81,10 @@ class CashierTest extends TestCase
         $this->assertSame('Qualified', $a->fresh()->status);
     }
 
-    public function test_registrar_cannot_record_payment(): void
+    public function test_coordinator_cannot_record_payment(): void
     {
         $a = $this->qualified();
-        $this->actingAs($this->as('registrar'))
+        $this->actingAs($this->as('coordinator'))
             ->post("/cashier/{$a->id}/payments", ['amount' => 100, 'type' => 'Partial', 'method' => 'Cash', 'paid_at' => '2026-06-01'])
             ->assertForbidden();
     }
@@ -109,6 +109,38 @@ class CashierTest extends TestCase
 
         $this->actingAs($this->as('admin'))->get('/cashier/report?status=valid')
             ->assertOk()->assertSee('PAYMENTS / COLLECTIONS REPORT', false);
+    }
+
+    public function test_statement_of_account_renders_for_a_learner(): void
+    {
+        $a = $this->qualified();
+        $cashier = $this->as('cashier');
+        $this->actingAs($cashier)->post("/cashier/{$a->id}/payments", [
+            'amount' => 400, 'type' => 'Partial', 'method' => 'Cash', 'paid_at' => '2026-06-01',
+        ]);
+
+        $res = $this->actingAs($cashier)->get("/cashier/{$a->id}/statement");
+        $res->assertOk()
+            ->assertSee('STATEMENT OF ACCOUNT', false)
+            ->assertSee('Juan Cruz')
+            ->assertSee('OR-0001');
+
+        // coordinator has no cashier module
+        $this->actingAs($this->as('coordinator'))->get("/cashier/{$a->id}/statement")->assertForbidden();
+    }
+
+    public function test_daily_cash_report_renders_and_is_module_gated(): void
+    {
+        $a = $this->qualified();
+        $cashier = $this->as('cashier');
+        $this->actingAs($cashier)->post("/cashier/{$a->id}/payments", [
+            'amount' => 500, 'type' => 'Partial', 'method' => 'Cash', 'paid_at' => now()->toDateString(),
+        ]);
+
+        $this->actingAs($cashier)->get('/cashier/daily')
+            ->assertOk()->assertSee('DAILY CASH COLLECTION REPORT', false);
+
+        $this->actingAs($this->as('coordinator'))->get('/cashier/daily')->assertForbidden();
     }
 
     public function test_cashier_has_the_full_finance_view(): void

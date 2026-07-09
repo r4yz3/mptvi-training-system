@@ -44,34 +44,31 @@ class TrainingTest extends TestCase
         $this->actingAs($this->as('cashier'))->get('/training')->assertForbidden();
     }
 
-    public function test_marking_attendance_promotes_paid_to_in_training(): void
+    public function test_start_training_promotes_paid_to_in_training(): void
     {
         $a = $this->paidTrainee();
 
         $this->actingAs($this->as('coordinator'))
-            ->post("/training/{$a->id}/attendance", ['date' => '2026-06-16', 'status' => 'Present'])
-            ->assertRedirect();
+            ->post("/training/{$a->id}/start")
+            ->assertRedirect()->assertSessionHas('success');
 
         $this->assertSame('In training', $a->fresh()->status);
-        $this->assertSame(100, $a->fresh()->attendanceRate());
     }
 
-    public function test_attendance_rate_counts_present_and_late(): void
+    public function test_start_training_only_applies_to_paid_learners(): void
     {
         $a = $this->paidTrainee();
-        $coord = $this->as('coordinator');
-        $this->actingAs($coord)->post("/training/{$a->id}/attendance", ['date' => '2026-06-16', 'status' => 'Present']);
-        $this->actingAs($coord)->post("/training/{$a->id}/attendance", ['date' => '2026-06-17', 'status' => 'Absent']);
-        $this->actingAs($coord)->post("/training/{$a->id}/attendance", ['date' => '2026-06-18', 'status' => 'Late']);
+        $a->update(['status' => 'Qualified']); // not Paid yet
 
-        $this->assertSame(67, $a->fresh()->attendanceRate()); // 2 of 3
+        $this->actingAs($this->as('coordinator'))->post("/training/{$a->id}/start")->assertRedirect();
+        $this->assertSame('Qualified', $a->fresh()->status);
     }
 
-    public function test_registrar_cannot_mark_attendance(): void
+    public function test_cashier_cannot_start_training(): void
     {
         $a = $this->paidTrainee();
-        $this->actingAs($this->as('registrar'))
-            ->post("/training/{$a->id}/attendance", ['date' => '2026-06-16', 'status' => 'Present'])
+        $this->actingAs($this->as('cashier'))
+            ->post("/training/{$a->id}/start")
             ->assertForbidden();
     }
 }

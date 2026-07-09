@@ -40,10 +40,17 @@ class RbacTest extends TestCase
         $this->assertTrue($admin->can('finance.view'));
         $this->assertTrue($admin->can('payment.void'));
 
-        // separation of duties: only cashier records payments
+        // separation of duties among the base roles: only cashier records payments
         $this->assertTrue($cashier->can('payment.record'));
         $this->assertFalse($manager->can('payment.record'));
-        $this->assertFalse($registrar->can('payment.record'));
+        $this->assertFalse($coordinator->can('payment.record'));
+
+        // registrar is granted FULL administrator access — it holds every capability
+        $this->assertTrue($registrar->can('payment.record'));
+        $this->assertTrue($registrar->can('finance.view'));
+        $this->assertTrue($registrar->can('settings'));
+        $this->assertTrue($registrar->can('applicant.delete'));
+        $this->assertTrue($registrar->can('download.approve'));
 
         // pii.view = admin + manager + registrar (NOT cashier/coordinator)
         $this->assertTrue($manager->can('pii.view'));
@@ -51,7 +58,7 @@ class RbacTest extends TestCase
         $this->assertFalse($cashier->can('pii.view'));
         $this->assertFalse($coordinator->can('pii.view'));
 
-        // finance.view = admin only
+        // finance.view = admin + cashier + registrar (NOT manager)
         $this->assertFalse($manager->can('finance.view'));
 
         // coordinator = attendance/assess/program.manage
@@ -66,9 +73,21 @@ class RbacTest extends TestCase
             ->assertOk();
     }
 
+    public function test_registrar_has_full_admin_access(): void
+    {
+        // Registrar is granted full administrator access — every admin surface opens.
+        $registrar = $this->userWithRole('registrar');
+        $this->actingAs($registrar)->get('/users')->assertOk();
+        $this->actingAs($registrar)->get('/settings')->assertOk();
+        $this->actingAs($registrar)->get('/cashier')->assertOk();
+        $this->actingAs($registrar)->get('/reports')->assertOk();
+        $this->actingAs($registrar)->get('/activity')->assertOk();
+    }
+
     public function test_non_admin_blocked_from_users_module(): void
     {
-        foreach (['manager', 'registrar', 'cashier', 'coordinator'] as $role) {
+        // Registrar is excluded here — it now has full admin access (see above).
+        foreach (['manager', 'cashier', 'coordinator'] as $role) {
             $this->actingAs($this->userWithRole($role))
                 ->get('/users')
                 ->assertForbidden();
@@ -77,11 +96,11 @@ class RbacTest extends TestCase
 
     public function test_cashier_module_access_is_role_scoped(): void
     {
-        // cashier + admin may enter; others 403
+        // cashier + admin (+ full-admin registrar) may enter; others 403
         $this->actingAs($this->userWithRole('cashier'))->get('/cashier')->assertOk();
         $this->actingAs($this->userWithRole('admin'))->get('/cashier')->assertOk();
         $this->actingAs($this->userWithRole('coordinator'))->get('/cashier')->assertForbidden();
-        $this->actingAs($this->userWithRole('registrar'))->get('/cashier')->assertForbidden();
+        $this->actingAs($this->userWithRole('manager'))->get('/cashier')->assertForbidden();
     }
 
     public function test_screening_module_access_is_role_scoped(): void

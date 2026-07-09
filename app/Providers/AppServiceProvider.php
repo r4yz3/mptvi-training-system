@@ -38,9 +38,10 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
         }
 
-        // Admin holds '*' — grant every ability (mirrors the demo's allow() with PERMS['admin']=['*']).
+        // Administrators — and Registrars, who are granted full administrator
+        // access — hold '*': every ability is granted (mirrors PERMS['admin']=['*']).
         Gate::before(function (User $user, string $ability) {
-            return $user->hasRole('admin') ? true : null;
+            return ($user->hasRole('admin') || $user->hasRole('registrar')) ? true : null;
         });
 
         // Security audit log — capture authentication events (Settings → Security).

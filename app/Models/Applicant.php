@@ -59,65 +59,53 @@ class Applicant extends Model
         return $this->hasMany(Payment::class);
     }
 
-    public function attendances(): HasMany
-    {
-        return $this->hasMany(Attendance::class);
-    }
-
     public function assessments(): HasMany
     {
         return $this->hasMany(Assessment::class)->latest('id');
     }
 
-    public function grade(): \Illuminate\Database\Eloquent\Relations\HasOne
+    public function competencyResults(): HasMany
     {
-        return $this->hasOne(Grade::class);
+        return $this->hasMany(CompetencyResult::class);
     }
 
     /**
-     * Weighted final grade from the configured components (Settings → Grading
-     * system). Final stays null (remark "Incomplete") until every component
-     * has a score; scores for removed components are ignored.
+     * TESDA competency-based summary. Lists every Unit of Competency of the
+     * trainee's program with this trainee's rating (Competent / Not Yet
+     * Competent / null = not yet rated). "complete" is true only when every
+     * unit is Competent — the institutional-completion rule that qualifies a
+     * trainee to be endorsed for national assessment.
      */
-    public function gradeSummary(): array
+    public function competencySummary(): array
     {
-        $components = config('grading.components', []);
-        $scores = $this->grade?->scores ?? [];
+        $units = $this->program?->competencyUnits ?? collect();
+        $byUnit = $this->competencyResults->keyBy('competency_unit_id');
 
-        $weightTotal = 0;
-        $weighted = 0;
-        $complete = true;
-        foreach ($components as $c) {
-            $s = $scores[$c['key']] ?? null;
-            if (! is_numeric($s)) {
-                $complete = false;
-                continue;
-            }
-            $weighted += (float) $s * (int) $c['weight'];
-            $weightTotal += (int) $c['weight'];
-        }
+        $rows = $units->map(function (CompetencyUnit $u) use ($byUnit) {
+            $r = $byUnit->get($u->id);
 
-        $final = $complete && $weightTotal > 0 ? round($weighted / $weightTotal, 1) : null;
-        $passing = (int) config('grading.passing', 75);
+            return [
+                'unit_id' => $u->id,
+                'code' => $u->code,
+                'title' => $u->title,
+                'type' => $u->type,
+                'result' => $r?->result,
+                'rated_at' => $r?->rated_at?->toDateString(),
+                'remarks' => $r?->remarks,
+            ];
+        })->values();
+
+        $total = $rows->count();
+        $competent = $rows->where('result', CompetencyResult::COMPETENT)->count();
 
         return [
-            'scores' => $scores,
-            'final' => $final,
-            'remark' => $final === null ? 'Incomplete' : ($final >= $passing ? 'Passed' : 'Failed'),
+            'units' => $rows,
+            'total' => $total,
+            'competent' => $competent,
+            'complete' => $total > 0 && $competent === $total,
         ];
     }
 
-    /** % of attendance records marked Present or Late. */
-    public function attendanceRate(): int
-    {
-        $total = $this->attendances()->count();
-        if ($total === 0) {
-            return 0;
-        }
-        $present = $this->attendances()->whereIn('status', ['Present', 'Late'])->count();
-
-        return (int) round($present / $total * 100);
-    }
 
     /** Program misc fee in whole pesos. */
     public function fee(): int

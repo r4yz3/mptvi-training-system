@@ -19,6 +19,12 @@ const TONE: Record<string, { badge: string; value: string; bar: string }> = {
     slate: { badge: 'bg-slate-100 text-slate-500', value: 'text-slate-700', bar: 'bg-slate-400' },
 };
 
+// Card-count → grid columns so a row is never left with a lone stranded card.
+const COLS: Record<number, string> = {
+    1: 'lg:grid-cols-2', 2: 'lg:grid-cols-2', 3: 'lg:grid-cols-3',
+    4: 'lg:grid-cols-4', 5: 'lg:grid-cols-5',
+};
+
 function cardIcon(label: string): LucideIcon {
     const l = label.toLowerCase();
     if (l.includes('collected') || l.includes('collect')) return Banknote;
@@ -58,7 +64,7 @@ export default function Dashboard({
         can['applicant.create'] && { href: '/applicants/create', label: 'Register applicant', icon: Plus },
         can['screen'] && { href: '/screening', label: 'Screening queue', icon: ClipboardCheck },
         can['payment.record'] && { href: '/cashier', label: 'Record payment', icon: Banknote },
-        can['attendance'] && { href: '/training', label: 'Take attendance', icon: GraduationCap },
+        can['attendance'] && { href: '/training', label: 'Training', icon: GraduationCap },
         can['assess'] && { href: '/assessment', label: 'Assessment', icon: ClipboardList },
     ].filter(Boolean) as { href: string; label: string; icon: LucideIcon }[];
 
@@ -100,59 +106,61 @@ export default function Dashboard({
                 )}
             </div>
 
-            {/* Stat cards */}
+            {/* Stat cards — grid columns track the card count so the row is always balanced */}
             {cards.length > 0 && (
-                <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className={`mt-6 grid grid-cols-2 gap-3 sm:gap-4 ${COLS[cards.length] ?? 'lg:grid-cols-4'}`}>
                     {cards.map((c) => {
                         const Icon = cardIcon(c.label);
                         const t = TONE[c.tone] ?? TONE.slate;
                         return (
-                            <div key={c.label} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm font-medium text-slate-500">{c.label}</span>
-                                    <span className={`flex h-9 w-9 items-center justify-center rounded-lg ${t.badge}`}>
-                                        <Icon className="h-[18px] w-[18px]" />
+                            <div key={c.label} className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md sm:p-5">
+                                <div className="flex items-start justify-between gap-2">
+                                    <span className="min-w-0 truncate text-sm font-medium text-slate-500">{c.label}</span>
+                                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${t.badge}`}>
+                                        <Icon className="h-[17px] w-[17px]" />
                                     </span>
                                 </div>
-                                <div className={`mt-3 text-3xl font-semibold ${t.value}`}>{c.value}</div>
+                                <div className={`mt-2 text-3xl font-semibold tracking-tight ${t.value}`}>{c.value}</div>
+                                <div className={`mt-3 h-1 rounded-full ${t.bar} opacity-70 transition-opacity group-hover:opacity-100`} />
                             </div>
                         );
                     })}
                 </div>
             )}
 
-            <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <div className={`mt-6 grid grid-cols-1 gap-6 ${pipeline && customBreakdowns.length > 0 ? 'lg:grid-cols-3' : ''}`}>
                 {/* Pipeline */}
                 {pipeline && (
-                    <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
+                    <div className={`rounded-xl border border-slate-200 bg-white p-6 shadow-sm ${customBreakdowns.length > 0 ? 'lg:col-span-2' : ''}`}>
                         <div className="mb-5 flex items-center justify-between">
                             <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Applicant pipeline</h3>
-                            <span className="text-xs text-slate-400">{pipeTotal} total</span>
+                            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500">{pipeTotal} in pipeline</span>
                         </div>
-                        <div className="space-y-3.5">
-                            {pipeline.map((p) => (
-                                <div key={p.label} className="flex items-center gap-3">
-                                    <div className="flex w-32 shrink-0 items-center gap-2 text-sm text-slate-600">
-                                        <span className={`h-2.5 w-2.5 rounded-full ${STAGE[p.label] ?? 'bg-slate-400'}`} />
-                                        {p.label}
-                                    </div>
-                                    <div className="h-7 flex-1 overflow-hidden rounded-lg bg-slate-100">
-                                        <div className={`flex h-full items-center justify-end rounded-lg px-2.5 text-xs font-semibold text-white ${STAGE[p.label] ?? 'bg-slate-400'}`} style={{ width: `${Math.max(8, (p.value / maxPipe) * 100)}%` }}>
-                                            {p.value > 0 ? p.value : ''}
+                        <div className="space-y-2.5">
+                            {pipeline.map((p) => {
+                                const pct = Math.round((p.value / pipeTotal) * 100);
+                                return (
+                                    <div key={p.label} className="flex items-center gap-3">
+                                        <div className="flex w-32 shrink-0 items-center gap-2 text-sm text-slate-600">
+                                            <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${STAGE[p.label] ?? 'bg-slate-400'}`} />
+                                            <span className="truncate">{p.label}</span>
                                         </div>
+                                        <div className="h-6 flex-1 overflow-hidden rounded-md bg-slate-100/80">
+                                            <div className={`flex h-full items-center justify-end rounded-md px-2 text-xs font-semibold text-white ${STAGE[p.label] ?? 'bg-slate-400'}`} style={{ width: `${Math.max(p.value > 0 ? 7 : 0, (p.value / maxPipe) * 100)}%` }}>
+                                                {p.value > 0 ? p.value : ''}
+                                            </div>
+                                        </div>
+                                        <div className="w-9 shrink-0 text-right text-xs tabular-nums text-slate-400">{pct}%</div>
                                     </div>
-                                    <div className="w-10 shrink-0 text-right text-xs text-slate-400">
-                                        {Math.round((p.value / pipeTotal) * 100)}%
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
                 )}
 
-                {/* Custom breakdowns (stacked in the side column) */}
+                {/* Custom breakdowns (side column beside the pipeline, or a full row on their own) */}
                 {customBreakdowns.length > 0 && (
-                    <div className={`space-y-6 ${pipeline ? '' : 'lg:col-span-3 lg:grid lg:grid-cols-3 lg:gap-6 lg:space-y-0'}`}>
+                    <div className={`space-y-6 ${pipeline ? '' : 'lg:grid lg:grid-cols-3 lg:gap-6 lg:space-y-0'}`}>
                         {customBreakdowns.map((b) => {
                             const max = Math.max(1, ...b.items.map((i) => i.value));
                             return (

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
-import { Banknote, Receipt, Wallet, TrendingUp, X, Ban, FileSpreadsheet, Printer, Plus, Tags, Search } from 'lucide-react';
+import { Banknote, Receipt, Wallet, TrendingUp, X, Ban, FileSpreadsheet, Printer, Plus, Tags, Search, FileText, CalendarClock } from 'lucide-react';
 import AppShell from '@/Layouts/AppShell';
 import { PageProps } from '@/types';
 
@@ -90,6 +90,11 @@ export default function CashierIndex(props: Props) {
                             <Plus className="h-4 w-4" /> Receive payment
                         </button>
                     )}
+                    {(canRecord || canFinance) && (
+                        <a href="/cashier/daily" target="_blank" rel="noopener noreferrer" className="btn-ghost">
+                            <CalendarClock className="h-4 w-4" /> Daily report
+                        </a>
+                    )}
                     {canFinance && (
                         <button onClick={() => setReportOpen(true)} className="btn-ghost">
                             <FileSpreadsheet className="h-4 w-4" /> Report / Export
@@ -176,14 +181,22 @@ export default function CashierIndex(props: Props) {
                                 <span>Paid {peso(w.paid)}</span>
                                 {w.pay_status === 'Partial' && <span className="rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-medium text-sky-600">Partial</span>}
                             </div>
-                            {canRecord && (
-                                <button
-                                    onClick={() => setPay({ learner: { id: w.id, name: w.name, program: w.program, balance: w.balance } })}
-                                    className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white active:scale-[0.98]"
+                            <div className="mt-3 flex items-center gap-2">
+                                {canRecord && (
+                                    <button
+                                        onClick={() => setPay({ learner: { id: w.id, name: w.name, program: w.program, balance: w.balance } })}
+                                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white active:scale-[0.98]"
+                                    >
+                                        <Banknote className="h-4 w-4" /> Collect {peso(w.balance)}
+                                    </button>
+                                )}
+                                <a
+                                    href={`/cashier/${w.id}/statement`} target="_blank" rel="noopener noreferrer"
+                                    className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-600 active:bg-slate-50"
                                 >
-                                    <Banknote className="h-4 w-4" /> Collect {peso(w.balance)}
-                                </button>
-                            )}
+                                    <FileText className="h-4 w-4" /> Statement
+                                </a>
+                            </div>
                         </div>
                     ))}
                     {shownWork.length === 0 && (
@@ -223,11 +236,16 @@ export default function CashierIndex(props: Props) {
                                             <span className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-sm font-semibold text-amber-700">{peso(w.balance)}</span>
                                         </td>
                                         <td className="px-4 py-3 text-right">
-                                            {canRecord && (
-                                                <button onClick={() => setPay({ learner: { id: w.id, name: w.name, program: w.program, balance: w.balance } })} className="inline-flex items-center gap-1 rounded-md bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700">
-                                                    <Banknote className="h-3.5 w-3.5" /> Collect
-                                                </button>
-                                            )}
+                                            <div className="flex items-center justify-end gap-1.5">
+                                                <a href={`/cashier/${w.id}/statement`} target="_blank" rel="noopener noreferrer" title="Statement of account" className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-50">
+                                                    <FileText className="h-3.5 w-3.5" /> Statement
+                                                </a>
+                                                {canRecord && (
+                                                    <button onClick={() => setPay({ learner: { id: w.id, name: w.name, program: w.program, balance: w.balance } })} className="inline-flex items-center gap-1 rounded-md bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700">
+                                                        <Banknote className="h-3.5 w-3.5" /> Collect
+                                                    </button>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -256,12 +274,17 @@ export default function CashierIndex(props: Props) {
                                             <p className="truncate text-xs text-slate-500">{l.program ?? '—'}</p>
                                         </div>
                                     </div>
-                                    <button
-                                        onClick={() => setPay({ learner: l })}
-                                        className="inline-flex shrink-0 items-center gap-1 rounded-md border border-brand-200 px-3 py-1.5 text-xs font-medium text-brand-700 hover:bg-brand-50"
-                                    >
-                                        <Banknote className="h-3.5 w-3.5" /> Receive payment
-                                    </button>
+                                    <div className="flex shrink-0 items-center gap-1.5">
+                                        <a href={`/cashier/${l.id}/statement`} target="_blank" rel="noopener noreferrer" title="Statement of account" className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-50">
+                                            <FileText className="h-3.5 w-3.5" /> Statement
+                                        </a>
+                                        <button
+                                            onClick={() => setPay({ learner: l })}
+                                            className="inline-flex items-center gap-1 rounded-md border border-brand-200 px-3 py-1.5 text-xs font-medium text-brand-700 hover:bg-brand-50"
+                                        >
+                                            <Banknote className="h-3.5 w-3.5" /> Receive payment
+                                        </button>
+                                    </div>
                                 </div>
                             ))}
                         </div>

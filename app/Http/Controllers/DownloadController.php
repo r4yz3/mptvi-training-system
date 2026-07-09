@@ -24,7 +24,8 @@ class DownloadController extends Controller
             'id' => $d->id,
             'type' => $d->type,
             'label' => $d->label(),
-            'format' => ReportCatalog::format($d->type),
+            // Honor a per-request format override (e.g. Excel) chosen at request time.
+            'format' => ($d->params['format'] ?? null) === 'xlsx' ? 'xlsx' : ReportCatalog::format($d->type),
             'summary' => ReportCatalog::describe($d->params),
             'status' => $d->status,
             'reason' => $d->reason,

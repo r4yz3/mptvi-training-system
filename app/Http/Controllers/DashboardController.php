@@ -27,7 +27,7 @@ class DashboardController extends Controller
         $cards = [];
         $pipeline = null;
 
-        if (in_array($role, ['admin', 'manager'], true)) {
+        if (in_array($role, ['admin', 'manager', 'registrar'], true)) {
             $pipeline = [
                 ['label' => 'Registered', 'value' => $stat('Registered')],
                 ['label' => 'Qualified', 'value' => $stat('Qualified')],
@@ -45,13 +45,6 @@ class DashboardController extends Controller
             if ($user->can('finance.view')) {
                 $cards[] = ['label' => 'Total collected', 'value' => '₱' . number_format((int) Payment::valid()->sum('amount')), 'tone' => 'emerald'];
             }
-        } elseif ($role === 'registrar') {
-            $cards = [
-                ['label' => 'Total applicants', 'value' => (int) Applicant::count(), 'tone' => 'brand'],
-                ['label' => 'Newly registered', 'value' => $stat('Registered'), 'tone' => 'amber'],
-                ['label' => 'Qualified', 'value' => $stat('Qualified'), 'tone' => 'indigo'],
-                ['label' => 'Inactive', 'value' => (int) Applicant::where('active', false)->count(), 'tone' => 'slate'],
-            ];
         } elseif ($role === 'cashier') {
             // No ₱ totals — a payment worklist only.
             $owing = Applicant::with('program:id,fee')->where('active', true)->where('status', '!=', 'Disqualified')->get()
@@ -74,7 +67,7 @@ class DashboardController extends Controller
             'roleLabel' => config('rbac.roles')[$role] ?? $role,
             'cards' => $cards,
             'pipeline' => $pipeline,
-            'customBreakdowns' => in_array($role, ['admin', 'manager'], true) ? $this->customBreakdowns() : [],
+            'customBreakdowns' => in_array($role, ['admin', 'manager', 'registrar'], true) ? $this->customBreakdowns() : [],
         ]);
     }
 

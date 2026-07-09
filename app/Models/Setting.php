@@ -99,17 +99,6 @@ class Setting extends Model
             }
         }
 
-        // Grading system — weighted components + passing grade (Settings → Grading).
-        if ($v = ($rows['grading_components'] ?? null)) {
-            $decoded = json_decode($v, true);
-            if (is_array($decoded) && $decoded) {
-                config(['grading.components' => array_values($decoded)]);
-            }
-        }
-        if (($v = ($rows['grading_passing'] ?? null)) !== null && $v !== '') {
-            config(['grading.passing' => (int) $v]);
-        }
-
         // Academic defaults & numbering
         $map = [
             'acad_school_year' => 'academic.school_year',

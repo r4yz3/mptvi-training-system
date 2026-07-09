@@ -30,7 +30,6 @@ class AssessmentController extends Controller
                 'program' => $a->program?->title,
                 'level' => $a->program?->level,
                 'status' => $a->status,
-                'rate' => $a->attendanceRate(),
                 'cert_number' => $a->cert_number,
                 'last_result' => $a->assessments->first()?->result,
                 // assessor printed on the certificate (override → recorded → default)

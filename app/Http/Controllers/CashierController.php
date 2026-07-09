@@ -247,6 +247,112 @@ class CashierController extends Controller
         return 'OR-' . str_pad($max + 1, 4, '0', STR_PAD_LEFT);
     }
 
+    /** Printable statement of account for one learner — fee, all payments, balance. */
+    public function statement(Request $request, Applicant $applicant): \Illuminate\Contracts\View\View
+    {
+        abort_unless($request->user()->can('payment.record') || $request->user()->can('finance.view'), 403);
+        $applicant->load('program:id,title,level,fee');
+
+        $trainingCat = config('lpf.training_fee_category');
+
+        // All non-voided payments, oldest first, so the running fee balance reads top-down.
+        $payments = $applicant->payments()
+            ->with('cashier:id,name')
+            ->orderBy('paid_at')->orderBy('id')
+            ->get();
+
+        $fee = $applicant->fee();
+        $running = $fee;
+        $rows = $payments->map(function (Payment $p) use ($trainingCat, &$running) {
+            $isFee = $p->category === $trainingCat;
+            // Only valid training-fee payments draw down the program-fee balance.
+            if ($isFee && ! $p->isVoided()) {
+                $running = max(0, $running - (int) $p->amount);
+            }
+
+            return [
+                'date' => $p->paid_at,
+                'or_number' => $p->or_number,
+                'category' => $p->category,
+                'description' => $p->description,
+                'method' => $p->method,
+                'type' => $p->type,
+                'amount' => (int) $p->amount,
+                'is_fee' => $isFee,
+                'voided' => $p->isVoided(),
+                'balance' => $isFee ? $running : null,
+                'cashier' => $p->cashier?->name,
+            ];
+        });
+
+        return view('cashier.statement', [
+            'a' => $applicant,
+            'rows' => $rows,
+            'fee' => $fee,
+            'paid' => $applicant->paidTotal(),
+            'balance' => $applicant->balance(),
+            'other' => $applicant->otherCollected(),
+            'payStatus' => $applicant->payStatus(),
+            'user' => $request->user(),
+        ]);
+    }
+
+    /**
+     * End-of-day cash report for reconciliation. Finance sees all cashiers (with
+     * an optional cashier filter); a plain cashier sees only their own day.
+     */
+    public function daily(Request $request): \Illuminate\Contracts\View\View
+    {
+        abort_unless($request->user()->can('payment.record') || $request->user()->can('finance.view'), 403);
+
+        $canFinance = $request->user()->can('finance.view');
+        $date = $request->date('date') ?? now();
+        $cashierId = $canFinance ? $request->integer('cashier') : $request->user()->id;
+
+        $payments = Payment::query()
+            ->with(['applicant:id,first_name,last_name,middle_name,ext_name', 'cashier:id,name'])
+            ->whereDate('paid_at', $date)
+            ->when($cashierId, fn ($q) => $q->where('cashier_id', $cashierId))
+            ->orderBy('or_number')->orderBy('id')
+            ->get();
+
+        $valid = $payments->reject->isVoided();
+
+        $byMethod = $valid->groupBy('method')
+            ->map(fn ($g, $m) => ['method' => $m, 'count' => $g->count(), 'total' => (int) $g->sum('amount')])
+            ->sortByDesc('total')->values();
+
+        $byCategory = $valid->groupBy('category')
+            ->map(fn ($g, $c) => ['category' => $c, 'count' => $g->count(), 'total' => (int) $g->sum('amount')])
+            ->sortByDesc('total')->values();
+
+        // Per-cashier breakdown is only meaningful when finance views all cashiers unfiltered.
+        $byCashier = ($canFinance && ! $cashierId)
+            ? $valid->groupBy(fn (Payment $p) => $p->cashier?->name ?? '—')
+                ->map(fn ($g, $name) => ['cashier' => $name, 'count' => $g->count(), 'total' => (int) $g->sum('amount')])
+                ->sortByDesc('total')->values()
+            : collect();
+
+        $ors = $valid->pluck('or_number')->filter()->sort()->values();
+
+        return view('cashier.daily', [
+            'date' => $date,
+            'rows' => $payments,
+            'collected' => (int) $valid->sum('amount'),
+            'count' => $valid->count(),
+            'voidedCount' => $payments->count() - $valid->count(),
+            'voidedTotal' => (int) $payments->filter->isVoided()->sum('amount'),
+            'byMethod' => $byMethod,
+            'byCategory' => $byCategory,
+            'byCashier' => $byCashier,
+            'orFrom' => $ors->first(),
+            'orTo' => $ors->last(),
+            'cashierName' => $cashierId ? (\App\Models\User::find($cashierId)?->name) : null,
+            'showCashierCol' => $canFinance && ! $cashierId,
+            'user' => $request->user(),
+        ]);
+    }
+
     /** Printable acknowledgement receipt for a single payment. */
     public function receipt(Request $request, Payment $payment): \Illuminate\Contracts\View\View
     {

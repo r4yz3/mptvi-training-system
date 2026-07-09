@@ -38,4 +38,12 @@ class Program extends Model
     {
         return $this->hasMany(Batch::class);
     }
+
+    /** TESDA Units of Competency, ordered Basic → Common → Core then by sort. */
+    public function competencyUnits(): HasMany
+    {
+        return $this->hasMany(CompetencyUnit::class)
+            ->orderByRaw("CASE type WHEN 'Basic' THEN 0 WHEN 'Common' THEN 1 WHEN 'Core' THEN 2 ELSE 3 END")
+            ->orderBy('sort')->orderBy('id');
+    }
 }

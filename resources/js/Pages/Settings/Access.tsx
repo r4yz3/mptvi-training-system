@@ -12,8 +12,9 @@ interface Props {
 }
 
 export default function Access({ roles, capabilities, matrix, modules }: Props) {
-    // admin implicitly holds everything (Gate::before).
-    const can = (roleKey: string, cap: string) => roleKey === 'admin' || (matrix[roleKey] ?? []).includes(cap);
+    // admin — and registrar (granted full admin access) — implicitly hold everything (Gate::before).
+    const FULL_ACCESS = ['admin', 'registrar'];
+    const can = (roleKey: string, cap: string) => FULL_ACCESS.includes(roleKey) || (matrix[roleKey] ?? []).includes(cap);
     const canModule = (roleKey: string, mod: ModuleRow) => mod.roles.includes(roleKey);
 
     const Cell = ({ on }: { on: boolean }) => on

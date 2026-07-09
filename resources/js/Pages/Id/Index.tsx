@@ -1,12 +1,13 @@
 import { FormEvent, useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
-import { Search, IdCard, CheckCircle2, Clock, Users } from 'lucide-react';
+import { Search, IdCard, CheckCircle2, Clock, Users, Printer, Layers } from 'lucide-react';
 import AppShell from '@/Layouts/AppShell';
 import Pagination from '@/Components/Pagination';
 
-interface Row { id: number; name: string; program: string | null; status: string; issued: string | null }
+interface Row { id: number; name: string; program: string | null; batch: string | null; status: string; issued: string | null }
 interface Paginated { data: Row[]; links: { url: string | null; label: string; active: boolean }[]; from: number | null; to: number | null; total: number }
 interface Stats { total: number; issued: number; pending: number }
+interface BatchOpt { id: number; code: string; program: string | null }
 
 function initials(name: string) {
     const p = name.trim().split(/\s+/);
@@ -18,9 +19,25 @@ function fmtDate(d: string | null) {
     return isNaN(dt.getTime()) ? d : dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-export default function IdIndex({ applicants, filters, canIssue, stats }: { applicants: Paginated; filters: { search?: string }; canIssue: boolean; stats: Stats }) {
+export default function IdIndex({ applicants, filters, batches, canIssue, stats }: { applicants: Paginated; filters: { search?: string; batch?: string }; batches: BatchOpt[]; canIssue: boolean; stats: Stats }) {
     const [search, setSearch] = useState(filters.search ?? '');
-    const submit = (e: FormEvent) => { e.preventDefault(); router.get('/idsystem', { search }, { preserveState: true, replace: true }); };
+    const [selected, setSelected] = useState<Set<number>>(new Set()); // persists across pages (Pagination preserves state)
+
+    const go = (patch: Record<string, string>) =>
+        router.get('/idsystem', { search, batch: filters.batch ?? '', ...patch }, { preserveState: true, preserveScroll: true, replace: true });
+    const submit = (e: FormEvent) => { e.preventDefault(); go({ search }); };
+
+    const toggle = (id: number) => setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    const pageIds = applicants.data.map((a) => a.id);
+    const allOnPage = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
+    const togglePage = () => setSelected((s) => {
+        const n = new Set(s);
+        allOnPage ? pageIds.forEach((id) => n.delete(id)) : pageIds.forEach((id) => n.add(id));
+        return n;
+    });
+
+    const printSelected = () => selected.size && window.open(`/idsystem/sheet?ids=${[...selected].join(',')}`, '_blank', 'noopener');
+    const printBatch = () => filters.batch && window.open(`/idsystem/sheet?batch=${filters.batch}`, '_blank', 'noopener');
 
     const tiles = [
         { label: 'Learners', value: stats.total, icon: Users, tile: 'bg-brand-50 text-brand-600' },
@@ -43,25 +60,55 @@ export default function IdIndex({ applicants, filters, canIssue, stats }: { appl
                 ))}
             </div>
 
-            <form onSubmit={submit} className="relative mb-4 max-w-sm">
-                <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                <input className="input pl-9" placeholder="Search learner…" value={search} onChange={(e) => setSearch(e.target.value)} />
-            </form>
+            {/* Filters + bulk print */}
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-wrap items-center gap-2">
+                    <form onSubmit={submit} className="relative max-w-xs flex-1">
+                        <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                        <input className="input pl-9" placeholder="Search learner…" value={search} onChange={(e) => setSearch(e.target.value)} />
+                    </form>
+                    <select
+                        className="input w-auto"
+                        value={filters.batch ?? ''}
+                        onChange={(e) => go({ batch: e.target.value })}
+                    >
+                        <option value="">All batches</option>
+                        {batches.map((b) => <option key={b.id} value={String(b.id)}>{b.code}{b.program ? ` — ${b.program}` : ''}</option>)}
+                    </select>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                    {filters.batch && (
+                        <button onClick={printBatch} className="btn-ghost">
+                            <Layers className="h-4 w-4" /> Print batch IDs ({applicants.total})
+                        </button>
+                    )}
+                    <button onClick={printSelected} disabled={selected.size === 0} className="btn-primary disabled:opacity-40">
+                        <Printer className="h-4 w-4" /> Print selected ({selected.size})
+                    </button>
+                </div>
+            </div>
 
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-slate-200 text-sm">
                         <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                             <tr>
+                                <th className="w-10 px-4 py-3">
+                                    <input type="checkbox" className="rounded border-slate-300 text-brand-600 focus:ring-brand-400" checked={allOnPage} onChange={togglePage} title="Select all on this page" />
+                                </th>
                                 <th className="px-4 py-3">Learner</th>
                                 <th className="px-4 py-3">Program</th>
+                                <th className="px-4 py-3">Batch</th>
                                 <th className="px-4 py-3">ID status</th>
                                 <th className="px-4 py-3 text-right">Action</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {applicants.data.map((a) => (
-                                <tr key={a.id} className="hover:bg-slate-50">
+                                <tr key={a.id} className={`hover:bg-slate-50 ${selected.has(a.id) ? 'bg-brand-50/40' : ''}`}>
+                                    <td className="px-4 py-3">
+                                        <input type="checkbox" className="rounded border-slate-300 text-brand-600 focus:ring-brand-400" checked={selected.has(a.id)} onChange={() => toggle(a.id)} />
+                                    </td>
                                     <td className="px-4 py-3">
                                         <div className="flex items-center gap-3">
                                             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-semibold text-brand-700">{initials(a.name)}</span>
@@ -69,6 +116,7 @@ export default function IdIndex({ applicants, filters, canIssue, stats }: { appl
                                         </div>
                                     </td>
                                     <td className="px-4 py-3 text-slate-600">{a.program ?? '—'}</td>
+                                    <td className="px-4 py-3 text-slate-500">{a.batch ?? '—'}</td>
                                     <td className="px-4 py-3">
                                         {a.issued
                                             ? <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700"><CheckCircle2 className="h-3.5 w-3.5" /> Issued {fmtDate(a.issued)}</span>
@@ -82,9 +130,9 @@ export default function IdIndex({ applicants, filters, canIssue, stats }: { appl
                                 </tr>
                             ))}
                             {applicants.data.length === 0 && (
-                                <tr><td colSpan={4} className="px-4 py-14 text-center text-sm text-slate-400">
+                                <tr><td colSpan={6} className="px-4 py-14 text-center text-sm text-slate-400">
                                     <IdCard className="mx-auto mb-2 h-8 w-8 text-slate-300" />
-                                    {filters.search ? 'No learners match your search.' : 'No learners yet.'}
+                                    {filters.search || filters.batch ? 'No learners match your filters.' : 'No learners yet.'}
                                 </td></tr>
                             )}
                         </tbody>

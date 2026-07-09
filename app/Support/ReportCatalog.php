@@ -36,12 +36,12 @@ class ReportCatalog
             'controller' => ApplicantController::class, 'method' => 'exportCsv',
         ],
         'reports_applicants_csv' => [
-            'label' => 'Applicants summary (CSV)', 'format' => 'csv',
+            'label' => 'Applicants export', 'format' => 'csv',
             'cap' => 'pii.view', 'module' => 'reports',
             'controller' => ReportController::class, 'method' => 'applicantsCsv',
         ],
         'reports_payments_csv' => [
-            'label' => 'Payments summary (CSV)', 'format' => 'csv',
+            'label' => 'Payments export', 'format' => 'csv',
             'cap' => 'finance.view', 'module' => 'reports',
             'controller' => ReportController::class, 'method' => 'paymentsCsv',
         ],

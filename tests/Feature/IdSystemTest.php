@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Applicant;
+use App\Models\Batch;
 use App\Models\Program;
 use App\Models\User;
 use Database\Seeders\ProgramSeeder;
@@ -68,5 +69,30 @@ class IdSystemTest extends TestCase
 
         $this->actingAs($this->as('registrar'))->get('/idsystem')
             ->assertInertia(fn ($p) => $p->has('applicants.data', 2));
+    }
+
+    public function test_bulk_sheet_by_handpicked_ids(): void
+    {
+        $a = $this->makeLearner();
+        $b = Applicant::create(['program_id' => Program::first()->id, 'status' => 'Paid', 'active' => true,
+            'last_name' => 'Reyes', 'first_name' => 'Ana', 'barangay' => 'Z', 'contact' => '0']);
+
+        $this->actingAs($this->as('registrar'))->get("/idsystem/sheet?ids={$a->id},{$b->id}")
+            ->assertOk()
+            ->assertInertia(fn ($p) => $p->component('Id/Sheet')->has('applicants', 2));
+    }
+
+    public function test_bulk_sheet_by_batch(): void
+    {
+        $batch = Batch::create(['program_id' => Program::first()->id, 'code' => 'ID-B', 'class_session' => 'Morning',
+            'class_days' => 'Mon–Fri', 'capacity' => 20, 'status' => 'Ongoing']);
+        $a = $this->makeLearner();
+        $a->update(['batch_id' => $batch->id]);
+        // a learner in no batch must NOT appear in the batch sheet
+        $this->makeLearner();
+
+        $this->actingAs($this->as('registrar'))->get("/idsystem/sheet?batch={$batch->id}")
+            ->assertOk()
+            ->assertInertia(fn ($p) => $p->component('Id/Sheet')->has('applicants', 1));
     }
 }

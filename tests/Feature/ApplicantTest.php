@@ -130,7 +130,8 @@ class ApplicantTest extends TestCase
     {
         $a = $this->makeApplicant();
 
-        $this->actingAs($this->as('registrar'))
+        // A base role without applicant.delete (registrar now has full admin access).
+        $this->actingAs($this->as('coordinator'))
             ->delete("/applicants/{$a->id}")
             ->assertForbidden();
 
@@ -203,8 +204,8 @@ class ApplicantTest extends TestCase
         $this->assertStringContainsString('Dela Cruz', $content); // the Certified one
         $this->assertStringNotContainsString('Lim', $content);    // filtered out
 
-        // Non-admins can't hit the direct route — they must request via the queue.
-        $this->actingAs($this->as('registrar'))->get('/applicants/export.csv')->assertForbidden();
+        // Non-approvers can't hit the direct route — they must request via the queue.
+        $this->actingAs($this->as('coordinator'))->get('/applicants/export.csv')->assertForbidden();
         $this->actingAs($this->as('cashier'))->get('/applicants/export.csv')->assertForbidden();
     }
 
@@ -215,8 +216,8 @@ class ApplicantTest extends TestCase
         $res->assertOk();
         $res->assertSee('APPLICANTS / LEARNERS REPORT', false);
 
-        // Direct access is admin-only; registrar requests through the Downloads queue.
-        $this->actingAs($this->as('registrar'))->get('/applicants/report')->assertForbidden();
+        // Direct access needs download.approve; others request through the Downloads queue.
+        $this->actingAs($this->as('coordinator'))->get('/applicants/report')->assertForbidden();
     }
 
     public function test_print_form_is_pii_gated(): void

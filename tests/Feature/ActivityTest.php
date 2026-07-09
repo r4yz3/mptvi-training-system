@@ -31,7 +31,7 @@ class ActivityTest extends TestCase
     {
         $this->actingAs($this->as('manager'))->get('/activity')->assertOk();
         $this->actingAs($this->as('cashier'))->get('/activity')->assertForbidden();
-        $this->actingAs($this->as('registrar'))->get('/activity')->assertForbidden();
+        $this->actingAs($this->as('coordinator'))->get('/activity')->assertForbidden();
     }
 
     public function test_creating_an_applicant_writes_an_activity_attributed_to_user(): void

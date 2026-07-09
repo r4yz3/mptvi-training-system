@@ -3,9 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Applicant;
-use App\Models\Attendance;
 use App\Models\Batch;
-use App\Models\Grade;
+use App\Models\CompetencyResult;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -36,95 +35,143 @@ class TrainingController extends Controller
 
     public function show(Request $request, Batch $batch): Response
     {
-        $date = $request->input('date', now()->toDateString());
+        $batch->loadMissing('program.competencyUnits');
+        $units = $batch->program?->competencyUnits ?? collect();
 
         $roster = $batch->applicants()
             ->whereIn('status', ['Paid', 'In training', 'For assessment', 'Certified'])
-            ->with('grade')
+            ->with('competencyResults')
             ->orderBy('last_name')
             ->get()
-            ->map(function (Applicant $a) use ($date) {
-                $today = $a->attendances()->whereDate('date', $date)->first();
-
-                return [
-                    'id' => $a->id,
-                    'name' => $a->display_name,
-                    'status' => $a->status,
-                    'trainee_status' => $a->trainee_status,
-                    'rate' => $a->attendanceRate(),
-                    'today' => $today?->status,
-                    'grade' => $a->gradeSummary(),
-                ];
-            });
+            ->map(fn (Applicant $a) => [
+                'id' => $a->id,
+                'name' => $a->display_name,
+                'status' => $a->status,
+                'trainee_status' => $a->trainee_status,
+                'competency' => $a->competencySummary(),
+            ]);
 
         return Inertia::render('Training/Show', [
             'batch' => [
                 'id' => $batch->id,
                 'code' => $batch->code,
                 'program' => $batch->program?->title,
+                'program_id' => $batch->program_id,
                 'start_date' => $batch->start_date?->toDateString(),
                 'end_date' => $batch->end_date?->toDateString(),
             ],
             'roster' => $roster,
-            'date' => $date,
-            'canMark' => $request->user()->can('attendance'),
-            'statuses' => ['Present', 'Absent', 'Late', 'Excused'],
             'canSetStatus' => $request->user()->can('trainee.status'),
             'traineeStatuses' => config('lpf.trainee_statuses'),
             'canGrade' => $request->user()->can('assess'),
-            'gradeComponents' => collect(config('grading.components'))->values(),
-            'passingGrade' => (int) config('grading.passing', 75),
+            'canStartTraining' => $request->user()->can('attendance'),
+            // The batch program's Units of Competency (Basic/Common/Core) for the rating sheet.
+            'units' => $units->map(fn ($u) => [
+                'id' => $u->id, 'code' => $u->code, 'title' => $u->title, 'type' => $u->type,
+            ])->values(),
+            'results' => CompetencyResult::RESULTS,
         ]);
     }
 
-    /** Save a trainee's component scores (Settings → Grading system defines them). */
-    public function saveGrades(Request $request, Applicant $applicant): RedirectResponse
+    /**
+     * Institutional competency evaluation — rate a trainee's Units of Competency
+     * Competent / Not Yet Competent. Accepts the full unit list; a null result
+     * clears that unit's rating. Only units of the trainee's program are stored.
+     */
+    public function rateCompetency(Request $request, Applicant $applicant): RedirectResponse
     {
         abort_unless($request->user()->can('assess'), 403);
 
-        $keys = collect(config('grading.components'))->pluck('key');
-        $rules = ['scores' => ['required', 'array']];
-        foreach ($keys as $key) {
-            $rules["scores.{$key}"] = ['nullable', 'numeric', 'min:0', 'max:100'];
-        }
-        $data = $request->validate($rules);
+        $data = $request->validate([
+            'ratings' => ['present', 'array'],
+            'ratings.*.unit_id' => ['required', 'integer'],
+            'ratings.*.result' => ['nullable', Rule::in(CompetencyResult::RESULTS)],
+            'ratings.*.remarks' => ['nullable', 'string', 'max:255'],
+            'rated_at' => ['required', 'date'],
+        ]);
 
-        // Only configured components are stored; blanks clear a score.
-        $scores = [];
-        foreach ($keys as $key) {
-            $v = $data['scores'][$key] ?? null;
-            if ($v !== null && $v !== '') {
-                $scores[$key] = round((float) $v, 1);
+        // Guard: only accept units that actually belong to this trainee's program.
+        $validUnitIds = $applicant->program?->competencyUnits()->pluck('id')->all() ?? [];
+
+        foreach ($data['ratings'] as $row) {
+            if (! in_array((int) $row['unit_id'], $validUnitIds, true)) {
+                continue;
             }
+            $result = $row['result'] ?? null;
+
+            if ($result === null || $result === '') {
+                // Blank clears any existing rating for this unit.
+                CompetencyResult::where('applicant_id', $applicant->id)
+                    ->where('competency_unit_id', $row['unit_id'])->delete();
+
+                continue;
+            }
+
+            CompetencyResult::updateOrCreate(
+                ['applicant_id' => $applicant->id, 'competency_unit_id' => $row['unit_id']],
+                ['result' => $result, 'remarks' => $row['remarks'] ?? null,
+                    'rated_at' => $data['rated_at'], 'rated_by' => $request->user()->id],
+            );
         }
 
-        Grade::updateOrCreate(
-            ['applicant_id' => $applicant->id],
-            ['scores' => $scores, 'graded_by' => $request->user()->id],
-        );
+        // All units Competent promotes an active trainee's training status to Completed.
+        if ($applicant->fresh()->competencySummary()['complete']
+            && in_array($applicant->trainee_status, [null, 'Active'], true)) {
+            $applicant->update(['trainee_status' => 'Completed']);
+        }
 
-        return back()->with('success', "Grades saved for {$applicant->display_name}.");
+        return back()->with('success', "Competencies updated for {$applicant->display_name}.");
     }
 
-    public function mark(Request $request, Applicant $applicant): RedirectResponse
+    /** Printable batch-wide Achievement Chart — every trainee × Unit of Competency. */
+    public function classRecord(Request $request, Batch $batch): \Illuminate\Contracts\View\View
+    {
+        abort_unless($request->user()->can('assess'), 403);
+        $batch->load('program.competencyUnits');
+        $units = $batch->program?->competencyUnits ?? collect();
+
+        $roster = $batch->applicants()
+            ->whereIn('status', ['Paid', 'In training', 'For assessment', 'Certified'])
+            ->orderBy('last_name')->orderBy('first_name')
+            ->with('competencyResults')
+            ->get()
+            ->map(fn (Applicant $a) => [
+                'name' => $a->full_name,
+                'summary' => $a->competencySummary(),
+            ]);
+
+        return view('training.class_record', [
+            'batch' => $batch,
+            'units' => $units,
+            'roster' => $roster,
+            'user' => $request->user(),
+        ]);
+    }
+
+    /** Printable Competency Achievement Record for one trainee. */
+    public function reportCard(Request $request, Applicant $applicant): \Illuminate\Contracts\View\View
+    {
+        abort_unless($request->user()->can('assess'), 403);
+        $applicant->load('program.competencyUnits', 'batch:id,code', 'competencyResults');
+
+        return view('training.report_card', [
+            'a' => $applicant,
+            'summary' => $applicant->competencySummary(),
+            'user' => $request->user(),
+        ]);
+    }
+
+    /** Move a Paid learner into training (replaces the old first-attendance trigger). */
+    public function startTraining(Request $request, Applicant $applicant): RedirectResponse
     {
         abort_unless($request->user()->can('attendance'), 403);
 
-        $data = $request->validate([
-            'date' => ['required', 'date'],
-            'status' => ['required', Rule::in(['Present', 'Absent', 'Late', 'Excused'])],
-        ]);
-
-        Attendance::updateOrCreate(
-            ['applicant_id' => $applicant->id, 'date' => $data['date']],
-            ['status' => $data['status'], 'recorded_by' => $request->user()->id],
-        );
-
-        // First attendance promotes a Paid learner into training.
-        if ($applicant->status === 'Paid') {
-            $applicant->update(['status' => 'In training']);
+        if ($applicant->status !== 'Paid') {
+            return back()->with('error', 'Only a Paid learner can be moved into training.');
         }
 
-        return back()->with('success', "Attendance saved: {$data['status']}.");
+        $applicant->update(['status' => 'In training']);
+
+        return back()->with('success', "{$applicant->display_name} is now in training.");
     }
 }

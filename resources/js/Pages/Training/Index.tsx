@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import { GraduationCap, Users, ChevronRight, ClipboardCheck, Layers } from 'lucide-react';
+import { GraduationCap, Users, ChevronRight, ListChecks, Layers } from 'lucide-react';
 import AppShell from '@/Layouts/AppShell';
 
 interface BatchRow {
@@ -17,7 +17,7 @@ export default function TrainingIndex({ batches }: { batches: BatchRow[] }) {
     const totalTrainees = batches.reduce((s, b) => s + b.trainees, 0);
 
     return (
-        <AppShell title="Training & attendance">
+        <AppShell title="Training">
             <Head title="Training" />
 
             <div className="mb-5 flex flex-wrap items-center gap-2.5">
@@ -33,7 +33,7 @@ export default function TrainingIndex({ batches }: { batches: BatchRow[] }) {
                 </span>
             </div>
 
-            <p className="mb-3 text-sm text-slate-500">Select a batch to take attendance.</p>
+            <p className="mb-3 text-sm text-slate-500">Select a batch to rate competencies and manage its trainees.</p>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {batches.map((b) => (
@@ -47,7 +47,7 @@ export default function TrainingIndex({ batches }: { batches: BatchRow[] }) {
                         <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-sm">
                             <span className="inline-flex items-center gap-1.5 text-slate-500"><Users className="h-4 w-4 text-slate-400" /> {b.trainees} trainees</span>
                             <span className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 opacity-0 transition group-hover:opacity-100">
-                                <ClipboardCheck className="h-3.5 w-3.5" /> Take attendance
+                                <ListChecks className="h-3.5 w-3.5" /> Open roster
                             </span>
                             <ChevronRight className="h-4 w-4 text-slate-300 group-hover:hidden" />
                         </div>

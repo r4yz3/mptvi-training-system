@@ -28,7 +28,7 @@ class SettingsEducationTest extends TestCase
 
     public function test_page_is_admin_only(): void
     {
-        $this->actingAs($this->as('registrar'))->get('/settings/education')->assertForbidden();
+        $this->actingAs($this->as('coordinator'))->get('/settings/education')->assertForbidden();
 
         $this->actingAs($this->as('admin'))->get('/settings/education')
             ->assertOk()

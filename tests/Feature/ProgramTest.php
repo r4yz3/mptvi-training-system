@@ -31,7 +31,6 @@ class ProgramTest extends TestCase
         $this->actingAs($this->as('coordinator'))->get('/programs')->assertOk();
         $this->actingAs($this->as('admin'))->get('/programs')->assertOk();
         $this->actingAs($this->as('cashier'))->get('/programs')->assertForbidden();
-        $this->actingAs($this->as('registrar'))->get('/programs')->assertForbidden();
     }
 
     public function test_coordinator_can_create_program(): void

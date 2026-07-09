@@ -63,4 +63,37 @@ class ReportTest extends TestCase
         $this->actingAs($this->as('manager'))->get('/reports/payments.csv')->assertForbidden();
         $this->actingAs($this->as('admin'))->get('/reports/payments.csv')->assertOk();
     }
+
+    public function test_complete_columns_export_includes_full_lpf_fields(): void
+    {
+        $res = $this->actingAs($this->as('admin'))->get('/reports/applicants.csv?columns=full');
+        $res->assertOk();
+        $content = $res->streamedContent();
+
+        // Summary export would NOT carry these; the complete set does.
+        $this->assertStringContainsString('Birthdate', $content);
+        $this->assertStringContainsString('Mother', $content);
+        $this->assertStringContainsString('Guardian', $content);
+        $this->assertStringContainsString('Emergency contact', $content);
+        $this->assertStringContainsString('Cruz', $content);
+    }
+
+    public function test_applicants_export_as_excel(): void
+    {
+        $res = $this->actingAs($this->as('admin'))->get('/reports/applicants.csv?format=xlsx&columns=full');
+        $res->assertOk();
+        $this->assertStringContainsString('spreadsheetml.sheet', (string) $res->headers->get('content-type'));
+        $this->assertStringContainsString('.xlsx', (string) $res->headers->get('content-disposition'));
+
+        // The download is a real Office Open XML package (a ZIP → starts with "PK").
+        $bytes = file_get_contents($res->baseResponse->getFile()->getPathname());
+        $this->assertStringStartsWith('PK', $bytes);
+    }
+
+    public function test_payments_export_as_excel(): void
+    {
+        $res = $this->actingAs($this->as('admin'))->get('/reports/payments.csv?format=xlsx');
+        $res->assertOk();
+        $this->assertStringContainsString('.xlsx', (string) $res->headers->get('content-disposition'));
+    }
 }

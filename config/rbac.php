@@ -31,7 +31,7 @@ return [
         'docs.verify',
         'payment.record',
         'payment.void',
-        'attendance',
+        'attendance',       // move a Paid learner into training on the Training roster
         'trainee.status',   // set a trainee's training status (Active/Inactive/Completed/Incomplete)
         'assess',
         'cert.assessor',    // edit the assessor printed on a trainee's certificate
@@ -69,22 +69,23 @@ return [
     ],
 
     // Sidebar nav. icon = lucide-react icon name (kebab → mapped in React). group = sidebar section.
+    // NOTE: the registrar is granted FULL administrator access, so it appears on every module.
     'modules' => [
         ['id' => 'dashboard',  'label' => 'Dashboard',             'icon' => 'layout-dashboard', 'group' => 'Overview',       'roles' => ['admin', 'manager', 'registrar', 'cashier', 'coordinator']],
         ['id' => 'applicants', 'label' => 'Applicants',            'icon' => 'users',            'group' => 'Enrollment',     'roles' => ['admin', 'manager', 'registrar', 'cashier', 'coordinator']],
         ['id' => 'screening',  'label' => 'Screening',             'icon' => 'clipboard-check',  'group' => 'Enrollment',     'roles' => ['admin', 'manager', 'registrar']],
-        ['id' => 'cashier',    'label' => 'Cashier',               'icon' => 'banknote',         'group' => 'Enrollment',     'roles' => ['admin', 'cashier']],
-        ['id' => 'programs',   'label' => 'Programs & batches',    'icon' => 'calendar-days',    'group' => 'Training',       'roles' => ['admin', 'manager', 'coordinator']],
-        ['id' => 'training',   'label' => 'Training & attendance', 'icon' => 'graduation-cap',   'group' => 'Training',       'roles' => ['admin', 'manager', 'coordinator']],
+        ['id' => 'cashier',    'label' => 'Cashier',               'icon' => 'banknote',         'group' => 'Enrollment',     'roles' => ['admin', 'registrar', 'cashier']],
+        ['id' => 'programs',   'label' => 'Programs & batches',    'icon' => 'calendar-days',    'group' => 'Training',       'roles' => ['admin', 'manager', 'registrar', 'coordinator']],
+        ['id' => 'training',   'label' => 'Training',              'icon' => 'graduation-cap',   'group' => 'Training',       'roles' => ['admin', 'manager', 'registrar', 'coordinator']],
         ['id' => 'assessment', 'label' => 'Assessment & certs',    'icon' => 'award',            'group' => 'Training',       'roles' => ['admin', 'manager', 'registrar', 'coordinator']],
         ['id' => 'idsystem',   'label' => 'ID system',             'icon' => 'id-card',          'group' => 'Training',       'roles' => ['admin', 'manager', 'registrar']],
         ['id' => 'messages',   'label' => 'Messages',              'icon' => 'message-square',   'group' => 'Communication',  'roles' => ['admin', 'manager', 'registrar', 'cashier', 'coordinator']],
         ['id' => 'events',     'label' => 'Calendar & events',     'icon' => 'megaphone',        'group' => 'Communication',  'roles' => ['admin', 'manager', 'registrar', 'cashier', 'coordinator']],
-        ['id' => 'reports',    'label' => 'Reports',               'icon' => 'bar-chart-3',      'group' => 'Administration', 'roles' => ['admin', 'manager']],
+        ['id' => 'reports',    'label' => 'Reports',               'icon' => 'bar-chart-3',      'group' => 'Administration', 'roles' => ['admin', 'manager', 'registrar']],
         ['id' => 'downloads',  'label' => 'Downloads',             'icon' => 'download',         'group' => 'Administration', 'roles' => ['admin', 'manager', 'registrar', 'cashier']],
-        ['id' => 'activity',   'label' => 'Activity log',          'icon' => 'history',          'group' => 'Administration', 'roles' => ['admin', 'manager']],
-        ['id' => 'users',      'label' => 'Users',                 'icon' => 'user-cog',         'group' => 'Administration', 'roles' => ['admin']],
-        ['id' => 'settings',   'label' => 'Settings',              'icon' => 'settings',         'group' => 'Administration', 'roles' => ['admin']],
+        ['id' => 'activity',   'label' => 'Activity log',          'icon' => 'history',          'group' => 'Administration', 'roles' => ['admin', 'manager', 'registrar']],
+        ['id' => 'users',      'label' => 'Users',                 'icon' => 'user-cog',         'group' => 'Administration', 'roles' => ['admin', 'registrar']],
+        ['id' => 'settings',   'label' => 'Settings',              'icon' => 'settings',         'group' => 'Administration', 'roles' => ['admin', 'registrar']],
     ],
 
 ];

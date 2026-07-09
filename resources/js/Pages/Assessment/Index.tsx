@@ -6,7 +6,7 @@ import StatusBadge from '@/Components/StatusBadge';
 
 interface Row {
     id: number; name: string; program: string | null; level: string | null;
-    status: string; rate: number; cert_number: string | null; last_result: string | null;
+    status: string; cert_number: string | null; last_result: string | null;
     cert_assessor: string | null; assessor: string | null;
 }
 
@@ -54,7 +54,6 @@ export default function AssessmentIndex({ applicants, canAssess, canEditAssessor
                             <tr>
                                 <th className="px-4 py-3">Trainee</th>
                                 <th className="px-4 py-3">Program</th>
-                                <th className="px-4 py-3">Attendance</th>
                                 <th className="px-4 py-3">Stage</th>
                                 <th className="px-4 py-3">Certificate</th>
                                 <th className="px-4 py-3">Assessor</th>
@@ -73,14 +72,6 @@ export default function AssessmentIndex({ applicants, canAssess, canEditAssessor
                                         </div>
                                     </td>
                                     <td className="px-4 py-3 text-slate-600">{a.program ?? '—'} {a.level && <span className="text-slate-400">{a.level}</span>}</td>
-                                    <td className="px-4 py-3">
-                                        <div className="flex items-center gap-2">
-                                            <div className="h-2 w-16 overflow-hidden rounded-full bg-slate-100">
-                                                <div className={`h-full rounded-full ${a.rate >= 80 ? 'bg-emerald-500' : a.rate >= 50 ? 'bg-amber-500' : 'bg-rose-400'}`} style={{ width: `${a.rate}%` }} />
-                                            </div>
-                                            <span className={`text-xs font-semibold ${a.rate >= 80 ? 'text-emerald-600' : a.rate >= 50 ? 'text-amber-600' : 'text-slate-400'}`}>{a.rate}%</span>
-                                        </div>
-                                    </td>
                                     <td className="px-4 py-3"><StatusBadge status={a.status} /></td>
                                     <td className="px-4 py-3">
                                         {a.cert_number
@@ -125,7 +116,7 @@ export default function AssessmentIndex({ applicants, canAssess, canEditAssessor
                                 </tr>
                             ))}
                             {applicants.length === 0 && (
-                                <tr><td colSpan={7} className="px-4 py-14 text-center text-sm text-slate-400">
+                                <tr><td colSpan={6} className="px-4 py-14 text-center text-sm text-slate-400">
                                     <Award className="mx-auto mb-2 h-8 w-8 text-slate-300" />
                                     No trainees in the assessment pipeline yet.
                                 </td></tr>

@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Applicant;
+use App\Models\CompetencyUnit;
 use App\Models\CustomField;
 use App\Models\FormSection;
+use App\Models\Program;
 use App\Models\SecurityEvent;
 use App\Models\Setting;
 use App\Models\User;
@@ -13,6 +15,7 @@ use App\Support\SystemHealth;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -239,59 +242,60 @@ class SettingsController extends Controller
         return back()->with('success', 'Educational attainment grid saved.');
     }
 
-    /* ----------------------------- Grading system ----------------------------- */
+    /* ------------------------- Competency standards (TESDA) ------------------------- */
 
-    public function grading(Request $request): Response
+    public function competencies(Request $request): Response
     {
         abort_unless($request->user()->can('settings'), 403);
 
-        return Inertia::render('Settings/Grading', [
-            'components' => collect(config('grading.components'))->map(fn ($c) => [
-                'key' => $c['key'],
-                'label' => $c['label'],
-                'weight' => (int) $c['weight'],
-            ])->values(),
-            'passing' => (int) config('grading.passing', 75),
+        $programs = Program::with('competencyUnits')->orderBy('title')->get()
+            ->map(fn (Program $p) => [
+                'id' => $p->id,
+                'title' => $p->title,
+                'level' => $p->level,
+                'units' => $p->competencyUnits->map(fn (CompetencyUnit $u) => [
+                    'id' => $u->id, 'code' => $u->code, 'title' => $u->title, 'type' => $u->type,
+                ])->values(),
+            ]);
+
+        return Inertia::render('Settings/Competencies', [
+            'programs' => $programs,
+            'types' => CompetencyUnit::TYPES,
         ]);
     }
 
-    public function updateGrading(Request $request): RedirectResponse
+    /** Replace one program's Units of Competency. Rows with an id are kept (so
+     *  existing ratings survive); rows omitted are deleted (cascading ratings). */
+    public function updateCompetencies(Request $request, Program $program): RedirectResponse
     {
         abort_unless($request->user()->can('settings'), 403);
 
         $data = $request->validate([
-            'components' => ['required', 'array', 'min:1'],
-            'components.*.key' => ['nullable', 'string', 'max:60'],
-            'components.*.label' => ['required', 'string', 'max:80'],
-            'components.*.weight' => ['required', 'integer', 'min:1', 'max:100'],
-            'passing' => ['required', 'integer', 'min:1', 'max:100'],
+            'units' => ['present', 'array'],
+            'units.*.id' => ['nullable', 'integer'],
+            'units.*.code' => ['nullable', 'string', 'max:60'],
+            'units.*.title' => ['required', 'string', 'max:160'],
+            'units.*.type' => ['required', Rule::in(CompetencyUnit::TYPES)],
         ]);
 
-        if (collect($data['components'])->sum('weight') !== 100) {
-            return back()->withErrors(['components' => 'Component weights must add up to exactly 100%.']);
+        $keptIds = [];
+        foreach (array_values($data['units']) as $sort => $row) {
+            $unit = $program->competencyUnits()->updateOrCreate(
+                ['id' => $row['id'] ?? null],
+                [
+                    'code' => trim((string) ($row['code'] ?? '')) ?: null,
+                    'title' => trim($row['title']),
+                    'type' => $row['type'],
+                    'sort' => $sort,
+                ],
+            );
+            $keptIds[] = $unit->id;
         }
 
-        // Keys tie a component to scores already saved on trainees — keep
-        // existing ones untouched and derive a unique slug for new rows.
-        $used = [];
-        $components = collect($data['components'])->map(function ($c) use (&$used) {
-            $key = trim((string) ($c['key'] ?? ''));
-            if ($key === '') {
-                $key = \Illuminate\Support\Str::slug($c['label'], '_') ?: 'component';
-            }
-            $base = $key;
-            for ($i = 2; in_array($key, $used, true); $i++) {
-                $key = "{$base}_{$i}";
-            }
-            $used[] = $key;
+        // Remove units the admin deleted (their ratings cascade away).
+        $program->competencyUnits()->whereNotIn('id', $keptIds)->delete();
 
-            return ['key' => $key, 'label' => trim($c['label']), 'weight' => (int) $c['weight']];
-        })->values()->all();
-
-        Setting::putJson('grading_components', $components);
-        Setting::put('grading_passing', (string) $data['passing']);
-
-        return back()->with('success', 'Grading system saved.');
+        return back()->with('success', "Competency standards saved for {$program->title}.");
     }
 
     /* ----------------------------- Reference lists ----------------------------- */
