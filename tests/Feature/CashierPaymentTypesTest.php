@@ -121,11 +121,24 @@ class CashierPaymentTypesTest extends TestCase
             'description' => 'size M', 'type' => 'Full', 'method' => 'Cash', 'paid_at' => '2026-06-10',
         ]);
 
+        \App\Models\Setting::put('org_address', 'Poblacion, Magsaysay, Davao del Sur');
+
         $res = $this->actingAs($this->as('cashier'))->get("/cashier/payments/{$p->id}/receipt");
         $res->assertOk();
         $res->assertSee('ACKNOWLEDGEMENT RECEIPT');
         $res->assertSee('School uniform');
         $res->assertSee('Three Hundred Fifty Pesos');
+        // Relabelled OR No. → Control No.
+        $res->assertSee('Control No.');
+        $res->assertDontSee('OR No.');
+        // Two copies on one A4: Trainee's + File.
+        $res->assertSee('FILE COPY');
+        $res->assertSeeText('Trainee', false);
+        // The PESO (Magsaysay municipal) logo is removed; institute logo stays.
+        $res->assertDontSee('magsaysay-logo.png');
+        $res->assertSee('mptvi-logo.png');
+        // Editable address from institution settings is printed.
+        $res->assertSee('Poblacion, Magsaysay, Davao del Sur');
     }
 
     public function test_cashier_index_exposes_categories_and_learners(): void

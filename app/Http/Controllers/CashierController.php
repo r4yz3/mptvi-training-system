@@ -368,6 +368,7 @@ class CashierController extends Controller
             'p' => $payment,
             'a' => $payment->applicant,
             'amountWords' => \App\Support\Money::inWords((int) $payment->amount),
+            'inst' => \App\Models\Setting::institution(),
         ]);
     }
 
