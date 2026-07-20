@@ -229,12 +229,12 @@ class CashierController extends Controller
         $payment->cashier_id = $request->user()->id;
         $payment->save();
 
-        // A fully-paid training fee enrolls the trainee outright — no separate
-        // screening/qualification step is required. Advance from either Registered
-        // (not yet screened) or Qualified; never from Disqualified or later stages.
+        // Any training-fee payment — even a partial one — enrolls the trainee; no
+        // separate screening/qualification step is required. Advance from either
+        // Registered (not yet screened) or Qualified; never from Disqualified or
+        // later stages. The Partial/Paid pay-status still reflects the real balance.
         if ($payment->category === config('lpf.training_fee_category')
-            && in_array($applicant->status, ['Registered', 'Qualified'], true)
-            && $applicant->balance() === 0) {
+            && in_array($applicant->status, ['Registered', 'Qualified'], true)) {
             $applicant->update(['status' => 'Paid']);
         }
 
@@ -390,9 +390,10 @@ class CashierController extends Controller
             'voided_by' => $request->user()->id,
         ]);
 
-        // Voiding a completing payment reverts Paid → Qualified.
+        // Un-enroll only when the void leaves the trainee with no valid training-fee
+        // payment at all (they may still have other partial payments on record).
         $applicant = $payment->applicant;
-        if ($applicant && $applicant->status === 'Paid' && $applicant->balance() > 0) {
+        if ($applicant && $applicant->status === 'Paid' && $applicant->paidTotal() === 0) {
             $applicant->update(['status' => 'Qualified']);
         }
 

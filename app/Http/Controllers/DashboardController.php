@@ -46,12 +46,15 @@ class DashboardController extends Controller
                 $cards[] = ['label' => 'Total collected', 'value' => '₱' . number_format((int) Payment::valid()->sum('amount')), 'tone' => 'emerald'];
             }
         } elseif ($role === 'cashier') {
-            // No ₱ totals — a payment worklist only.
-            $owing = Applicant::with('program:id,fee')->where('active', true)->where('status', '!=', 'Disqualified')->get()
-                ->filter(fn (Applicant $a) => $a->balance() > 0)->count();
+            // No ₱ totals — a payment worklist only. Count by actual balance, since
+            // enrolment (status Paid) can now happen on a partial payment.
+            $feePayers = Applicant::with('program:id,fee')->where('active', true)->where('status', '!=', 'Disqualified')->get()
+                ->filter(fn (Applicant $a) => $a->fee() > 0);
+            $owing = $feePayers->filter(fn (Applicant $a) => $a->balance() > 0)->count();
+            $fullyPaid = $feePayers->filter(fn (Applicant $a) => $a->balance() === 0)->count();
             $cards = [
                 ['label' => 'Accounts to collect', 'value' => $owing, 'tone' => 'amber'],
-                ['label' => 'Fully paid', 'value' => $stat('Paid') + $stat('In training') + $stat('For assessment') + $stat('Certified'), 'tone' => 'emerald'],
+                ['label' => 'Fully paid', 'value' => $fullyPaid, 'tone' => 'emerald'],
                 ['label' => 'My payments today', 'value' => (int) Payment::where('cashier_id', $user->id)->whereDate('paid_at', now())->count(), 'tone' => 'brand'],
             ];
         } elseif ($role === 'coordinator') {

@@ -45,25 +45,29 @@ class CashierTest extends TestCase
         $this->actingAs($this->as('coordinator'))->get('/cashier')->assertForbidden();
     }
 
-    public function test_partial_payment_keeps_qualified_full_payment_advances_to_paid(): void
+    public function test_even_a_partial_payment_enrolls_the_trainee(): void
     {
         $a = $this->qualified();
         $cashier = $this->as('cashier');
 
+        // A partial payment already enrolls (→ Paid), while the balance still shows.
         $this->actingAs($cashier)->post("/cashier/{$a->id}/payments", [
             'amount' => 400, 'type' => 'Partial', 'method' => 'Cash', 'paid_at' => '2026-06-01',
         ])->assertRedirect();
-        $this->assertSame('Qualified', $a->fresh()->status);
+        $this->assertSame('Paid', $a->fresh()->status);
         $this->assertSame(600, $a->fresh()->balance());
+        $this->assertSame('Partial', $a->fresh()->payStatus());
 
+        // Completing the balance keeps them enrolled; pay-status flips to Paid.
         $this->actingAs($cashier)->post("/cashier/{$a->id}/payments", [
             'amount' => 600, 'type' => 'Full Payment', 'method' => 'GCash', 'paid_at' => '2026-06-05',
         ])->assertRedirect();
         $this->assertSame('Paid', $a->fresh()->status);
         $this->assertSame(0, $a->fresh()->balance());
+        $this->assertSame('Paid', $a->fresh()->payStatus());
     }
 
-    public function test_full_payment_auto_enrolls_a_registered_trainee_without_screening(): void
+    public function test_partial_payment_auto_enrolls_a_registered_trainee_without_screening(): void
     {
         // A brand-new Registered trainee — never screened/qualified.
         $a = Applicant::create([
@@ -72,12 +76,13 @@ class CashierTest extends TestCase
             'last_name' => 'Reyes', 'first_name' => 'Ana', 'barangay' => 'Pob', 'contact' => '0918',
         ]);
 
+        // Even a partial down payment enrolls them (→ Paid) with no screening step.
         $this->actingAs($this->as('cashier'))->post("/cashier/{$a->id}/payments", [
-            'amount' => 1000, 'type' => 'Full Payment', 'method' => 'Cash', 'paid_at' => '2026-06-01',
+            'amount' => 300, 'type' => 'Partial', 'method' => 'Cash', 'paid_at' => '2026-06-01',
         ])->assertRedirect();
 
-        // Paying the full fee enrolls them (→ Paid) with no screening step.
         $this->assertSame('Paid', $a->fresh()->status);
+        $this->assertSame(700, $a->fresh()->balance());
     }
 
     public function test_disqualified_trainee_is_not_auto_enrolled_by_paying(): void
