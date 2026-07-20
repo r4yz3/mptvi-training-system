@@ -10,14 +10,32 @@ class Program extends Model
 {
     use LogsActivity;
 
+    /** Normal TESDA training — runs for months, collects a fee. */
+    public const SCHOOL_BASED = 'school_based';
+
+    /** Free soft-skills training — no payment. */
+    public const COMMUNITY_BASED = 'community_based';
+
     public function activityLabel(): string
     {
         return "program {$this->title}";
     }
 
     protected $fillable = [
-        'title', 'qualification', 'level', 'hours', 'fee', 'slots', 'active',
+        'title', 'qualification', 'training_type', 'level', 'hours', 'fee', 'slots', 'active',
     ];
+
+    /** Free soft-skills community offering (no payment). */
+    public function isCommunityBased(): bool
+    {
+        return $this->training_type === self::COMMUNITY_BASED;
+    }
+
+    /** Human label for the training type. */
+    public function trainingTypeLabel(): string
+    {
+        return $this->isCommunityBased() ? 'Community-Based' : 'School-Based';
+    }
 
     protected function casts(): array
     {

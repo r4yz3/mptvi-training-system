@@ -11,7 +11,7 @@ interface Batch {
     start_date: string | null; end_date: string | null; status: string; applicants_count: number;
 }
 interface Program {
-    id: number; title: string; qualification: string | null; level: string | null;
+    id: number; title: string; qualification: string | null; training_type: string; level: string | null;
     hours: number; fee: number; slots: number; active: boolean;
     batches_count: number; applicants_count: number; batches: Batch[];
 }
@@ -20,6 +20,7 @@ interface Learner {
     session: string | null; status: string;
 }
 interface Options {
+    training_types: { value: string; label: string }[];
     levels: string[]; class_sessions: string[]; class_days: string[]; batch_statuses: string[];
 }
 
@@ -80,12 +81,17 @@ export default function ProgramsIndex({ programs, learners, options }: { program
                                     <div className="flex flex-wrap items-center gap-2">
                                         <h3 className="text-base font-semibold text-slate-800">{p.title}</h3>
                                         {p.level && <span className="rounded bg-brand-50 px-1.5 py-0.5 text-xs font-medium text-brand-700">{p.level}</span>}
+                                        {p.training_type === 'community_based'
+                                            ? <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-xs font-medium text-emerald-700">Community-Based</span>
+                                            : <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-xs font-medium text-indigo-700">School-Based</span>}
                                         {!p.active && <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500">Inactive</span>}
                                     </div>
                                     {p.qualification && <div className="mt-0.5 text-xs text-slate-400">{p.qualification}</div>}
                                     <div className="mt-2 flex flex-wrap gap-1.5">
                                         <Tag icon={<Clock className="h-3.5 w-3.5" />}>{p.hours} hrs</Tag>
-                                        <Tag icon={<Banknote className="h-3.5 w-3.5" />}>₱{p.fee.toLocaleString()}</Tag>
+                                        {p.training_type === 'community_based'
+                                            ? <Tag icon={<Banknote className="h-3.5 w-3.5" />}>Free</Tag>
+                                            : <Tag icon={<Banknote className="h-3.5 w-3.5" />}>₱{p.fee.toLocaleString()}</Tag>}
                                         <Tag icon={<Users className="h-3.5 w-3.5" />}>{p.applicants_count} applicants</Tag>
                                         <Tag icon={<Layers className="h-3.5 w-3.5" />}>{p.batches_count} batches</Tag>
                                     </div>
@@ -377,9 +383,11 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 function ProgramModal({ program, options, onClose }: { program: Program | null; options: Options; onClose: () => void }) {
     const isEdit = !!program;
     const { data, setData, post, put, processing, errors } = useForm({
-        title: program?.title ?? '', qualification: program?.qualification ?? '', level: program?.level ?? 'NC II',
+        title: program?.title ?? '', qualification: program?.qualification ?? '',
+        training_type: program?.training_type ?? 'school_based', level: program?.level ?? 'NC II',
         hours: program?.hours ?? 0, fee: program?.fee ?? 1000, slots: program?.slots ?? 25, active: program?.active ?? true,
     });
+    const isCommunity = data.training_type === 'community_based';
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
         const opts = { preserveScroll: true, onSuccess: onClose };
@@ -389,11 +397,17 @@ function ProgramModal({ program, options, onClose }: { program: Program | null; 
         <Modal title={isEdit ? 'Edit program' : 'Add program'} onClose={onClose}>
             <form onSubmit={submit} className="space-y-3">
                 <Fld label="Title" error={errors.title}><input className="input" value={data.title} onChange={(e) => setData('title', e.target.value)} autoFocus /></Fld>
+                <Fld label="Training type" error={errors.training_type}>
+                    <select className="input" value={data.training_type} onChange={(e) => setData('training_type', e.target.value)}>
+                        {options.training_types.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                    </select>
+                    {isCommunity && <span className="mt-1 block text-xs text-emerald-600">Free soft-skills training — no fee is collected.</span>}
+                </Fld>
                 <div className="grid grid-cols-2 gap-3">
                     <Fld label="Qualification / sector"><input className="input" value={data.qualification} onChange={(e) => setData('qualification', e.target.value)} /></Fld>
                     <Fld label="NC level"><select className="input" value={data.level} onChange={(e) => setData('level', e.target.value)}>{options.levels.map((l) => <option key={l}>{l}</option>)}</select></Fld>
                     <Fld label="Training hours" error={errors.hours}><input type="number" className="input" value={data.hours} onChange={(e) => setData('hours', Number(e.target.value))} /></Fld>
-                    <Fld label="Misc fee (₱)" error={errors.fee}><input type="number" className="input" value={data.fee} onChange={(e) => setData('fee', Number(e.target.value))} /></Fld>
+                    {!isCommunity && <Fld label="Misc fee (₱)" error={errors.fee}><input type="number" className="input" value={data.fee} onChange={(e) => setData('fee', Number(e.target.value))} /></Fld>}
                     <Fld label="Default slots"><input type="number" className="input" value={data.slots} onChange={(e) => setData('slots', Number(e.target.value))} /></Fld>
                     <label className="flex items-end gap-2 pb-2 text-sm text-slate-600"><input type="checkbox" className="rounded border-slate-300 text-brand-600" checked={data.active} onChange={(e) => setData('active', e.target.checked)} /> Active</label>
                 </div>

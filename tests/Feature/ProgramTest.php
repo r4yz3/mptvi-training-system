@@ -37,11 +37,32 @@ class ProgramTest extends TestCase
     {
         $this->actingAs($this->as('coordinator'))
             ->post('/programs', [
-                'title' => 'Carpentry NC II', 'level' => 'NC II', 'qualification' => 'Construction',
+                'title' => 'Carpentry NC II', 'training_type' => 'school_based', 'level' => 'NC II', 'qualification' => 'Construction',
                 'hours' => 232, 'fee' => 1000, 'slots' => 25, 'active' => true,
             ])
             ->assertRedirect();
-        $this->assertDatabaseHas('programs', ['title' => 'Carpentry NC II', 'hours' => 232]);
+        $this->assertDatabaseHas('programs', ['title' => 'Carpentry NC II', 'hours' => 232, 'training_type' => 'school_based']);
+    }
+
+    public function test_community_based_program_is_forced_free(): void
+    {
+        $this->actingAs($this->as('coordinator'))
+            ->post('/programs', [
+                'title' => 'Financial Literacy Workshop', 'training_type' => 'community_based', 'level' => 'Non-NC',
+                'qualification' => 'Soft Skills', 'hours' => 16, 'fee' => 500, 'slots' => 40, 'active' => true,
+            ])
+            ->assertRedirect();
+        // Community-Based training never carries a fee, even if one is submitted.
+        $this->assertDatabaseHas('programs', ['title' => 'Financial Literacy Workshop', 'training_type' => 'community_based', 'fee' => 0]);
+    }
+
+    public function test_training_type_is_required_and_validated(): void
+    {
+        $this->actingAs($this->as('coordinator'))
+            ->post('/programs', [
+                'title' => 'Bogus', 'training_type' => 'nonsense', 'hours' => 10, 'fee' => 0, 'slots' => 10,
+            ])
+            ->assertSessionHasErrors('training_type');
     }
 
     public function test_batch_end_date_is_auto_computed(): void

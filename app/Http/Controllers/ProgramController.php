@@ -37,6 +37,10 @@ class ProgramController extends Controller
             'programs' => $programs,
             'learners' => $learners,
             'options' => [
+                'training_types' => [
+                    ['value' => Program::SCHOOL_BASED, 'label' => 'School-Based (fee, months-long)'],
+                    ['value' => Program::COMMUNITY_BASED, 'label' => 'Community-Based (free soft-skills)'],
+                ],
                 'levels' => ['NC I', 'NC II', 'NC III', 'NC IV', 'Non-NC'],
                 'class_sessions' => ['Morning', 'Afternoon', 'Whole-day'],
                 'class_days' => ['Mon–Fri', 'MWF', 'Tue-Thu', 'Mon-Sat', 'Sat'],
@@ -100,14 +104,22 @@ class ProgramController extends Controller
 
     private function validateProgram(Request $request): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'title' => ['required', 'string', 'max:200'],
             'qualification' => ['nullable', 'string', 'max:120'],
+            'training_type' => ['required', 'in:' . Program::SCHOOL_BASED . ',' . Program::COMMUNITY_BASED],
             'level' => ['nullable', 'string', 'max:20'],
             'hours' => ['required', 'integer', 'min:0', 'max:5000'],
             'fee' => ['required', 'integer', 'min:0'],
             'slots' => ['required', 'integer', 'min:0', 'max:500'],
             'active' => ['boolean'],
         ]);
+
+        // Community-based training is free soft-skills — never carries a fee.
+        if ($data['training_type'] === Program::COMMUNITY_BASED) {
+            $data['fee'] = 0;
+        }
+
+        return $data;
     }
 }

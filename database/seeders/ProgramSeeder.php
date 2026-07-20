@@ -24,7 +24,20 @@ class ProgramSeeder extends Seeder
         foreach ($programs as $p) {
             Program::firstOrCreate(
                 ['title' => $p['title']],
-                [...$p, 'fee' => 1000, 'active' => true],
+                [...$p, 'training_type' => Program::SCHOOL_BASED, 'fee' => 1000, 'active' => true],
+            );
+        }
+
+        // Community-Based Training — free soft-skills offerings (no payment).
+        $community = [
+            ['title' => 'Basic Communication & Workplace Etiquette', 'qualification' => 'Soft Skills', 'level' => 'Non-NC', 'hours' => 24, 'slots' => 40],
+            ['title' => 'Financial Literacy & Personal Budgeting',   'qualification' => 'Soft Skills', 'level' => 'Non-NC', 'hours' => 16, 'slots' => 40],
+            ['title' => 'Job Readiness & Interview Skills',          'qualification' => 'Soft Skills', 'level' => 'Non-NC', 'hours' => 20, 'slots' => 40],
+        ];
+        foreach ($community as $p) {
+            Program::firstOrCreate(
+                ['title' => $p['title']],
+                [...$p, 'training_type' => Program::COMMUNITY_BASED, 'fee' => 0, 'active' => true],
             );
         }
 

@@ -46,7 +46,7 @@ interface FieldDef {
 }
 
 interface Options {
-    programs: { id: number; title: string; level: string | null }[];
+    programs: { id: number; title: string; level: string | null; training_type: string; fee: number }[];
     sex: string[];
     civil_status: string[];
     emp_status: string[];
@@ -471,18 +471,41 @@ function FieldRenderer({
             );
         }
 
-        case 'program':
+        case 'program': {
+            const school = options.programs.filter((p) => p.training_type !== 'community_based');
+            const community = options.programs.filter((p) => p.training_type === 'community_based');
+            const selected = options.programs.find((p) => p.id === Number(val));
+            const isCommunity = selected?.training_type === 'community_based';
             return (
                 <label className={`block ${span || 'md:col-span-2'}`}>
                     {labelEl}
                     <select className="input" value={val as number} onChange={(e) => set(Number(e.target.value))}>
-                        {options.programs.map((p) => (
-                            <option key={p.id} value={p.id}>{p.title} {p.level ? `(${p.level})` : ''}</option>
-                        ))}
+                        {school.length > 0 && (
+                            <optgroup label="School-Based Training (with fee)">
+                                {school.map((p) => (
+                                    <option key={p.id} value={p.id}>{p.title} {p.level ? `(${p.level})` : ''}</option>
+                                ))}
+                            </optgroup>
+                        )}
+                        {community.length > 0 && (
+                            <optgroup label="Community-Based Training (free · soft skills)">
+                                {community.map((p) => (
+                                    <option key={p.id} value={p.id}>{p.title} {p.level ? `(${p.level})` : ''}</option>
+                                ))}
+                            </optgroup>
+                        )}
                     </select>
+                    {selected && (
+                        <span className={`mt-1 block text-xs ${isCommunity ? 'text-emerald-600' : 'text-slate-500'}`}>
+                            {isCommunity
+                                ? 'Community-Based · free soft-skills training — no payment required.'
+                                : `School-Based · training fee ₱${selected.fee.toLocaleString()}.`}
+                        </span>
+                    )}
                     {err && <span className="mt-1 block text-xs text-rose-600">{err}</span>}
                 </label>
             );
+        }
 
         case 'select': {
             const opts = (options[field.source as keyof Options] as string[]) ?? [];

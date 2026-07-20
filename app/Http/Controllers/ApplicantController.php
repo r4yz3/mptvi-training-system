@@ -521,7 +521,7 @@ class ApplicantController extends Controller
     private function formOptions(): array
     {
         return [
-            'programs' => Program::where('active', true)->orderBy('title')->get(['id', 'title', 'level'])->all(),
+            'programs' => Program::where('active', true)->orderBy('title')->get(['id', 'title', 'level', 'training_type', 'fee'])->all(),
             'sex' => config('lpf.sex'),
             'civil_status' => config('lpf.civil_status'),
             'emp_status' => config('lpf.emp_status'),
