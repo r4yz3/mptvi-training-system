@@ -63,6 +63,38 @@ class CashierTest extends TestCase
         $this->assertSame(0, $a->fresh()->balance());
     }
 
+    public function test_full_payment_auto_enrolls_a_registered_trainee_without_screening(): void
+    {
+        // A brand-new Registered trainee — never screened/qualified.
+        $a = Applicant::create([
+            'program_id' => Program::first()->id, // fee 1000
+            'status' => 'Registered', 'active' => true,
+            'last_name' => 'Reyes', 'first_name' => 'Ana', 'barangay' => 'Pob', 'contact' => '0918',
+        ]);
+
+        $this->actingAs($this->as('cashier'))->post("/cashier/{$a->id}/payments", [
+            'amount' => 1000, 'type' => 'Full Payment', 'method' => 'Cash', 'paid_at' => '2026-06-01',
+        ])->assertRedirect();
+
+        // Paying the full fee enrolls them (→ Paid) with no screening step.
+        $this->assertSame('Paid', $a->fresh()->status);
+    }
+
+    public function test_disqualified_trainee_is_not_auto_enrolled_by_paying(): void
+    {
+        $a = Applicant::create([
+            'program_id' => Program::first()->id,
+            'status' => 'Disqualified', 'active' => true,
+            'last_name' => 'Tan', 'first_name' => 'Bea', 'barangay' => 'Pob', 'contact' => '0919',
+        ]);
+
+        $this->actingAs($this->as('cashier'))->post("/cashier/{$a->id}/payments", [
+            'amount' => 1000, 'type' => 'Full Payment', 'method' => 'Cash', 'paid_at' => '2026-06-01',
+        ])->assertRedirect();
+
+        $this->assertSame('Disqualified', $a->fresh()->status);
+    }
+
     public function test_voiding_completing_payment_reverts_to_qualified(): void
     {
         $a = $this->qualified();
@@ -79,6 +111,30 @@ class CashierTest extends TestCase
 
         $this->assertNotNull($payment->fresh()->voided_at);
         $this->assertSame('Qualified', $a->fresh()->status);
+    }
+
+    public function test_voided_payment_keeps_its_control_number_and_it_is_never_reused(): void
+    {
+        $a = $this->qualified();
+        $cashier = $this->as('cashier');
+
+        // First collection → CN/OR-0001.
+        $this->actingAs($cashier)->post("/cashier/{$a->id}/payments", [
+            'amount' => 500, 'type' => 'Partial', 'method' => 'Cash', 'paid_at' => '2026-06-01',
+        ]);
+        $first = Payment::latest('id')->first();
+        $this->assertSame('OR-0001', $first->or_number);
+
+        // Void it — the control number stays assigned to the voided entry.
+        $this->actingAs($cashier)->put("/cashier/payments/{$first->id}/void", ['reason' => 'Wrong amount']);
+        $this->assertSame('OR-0001', $first->fresh()->or_number);
+        $this->assertNotNull($first->fresh()->voided_at);
+
+        // The next collection takes the NEXT number, never reusing the voided one.
+        $this->actingAs($cashier)->post("/cashier/{$a->id}/payments", [
+            'amount' => 500, 'type' => 'Partial', 'method' => 'Cash', 'paid_at' => '2026-06-02',
+        ]);
+        $this->assertSame('OR-0002', Payment::latest('id')->first()->or_number);
     }
 
     public function test_coordinator_cannot_record_payment(): void

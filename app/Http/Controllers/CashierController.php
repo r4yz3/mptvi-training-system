@@ -229,9 +229,12 @@ class CashierController extends Controller
         $payment->cashier_id = $request->user()->id;
         $payment->save();
 
-        // Pipeline advances Qualified → Paid only when the TRAINING FEE is fully paid.
+        // A fully-paid training fee enrolls the trainee outright — no separate
+        // screening/qualification step is required. Advance from either Registered
+        // (not yet screened) or Qualified; never from Disqualified or later stages.
         if ($payment->category === config('lpf.training_fee_category')
-            && $applicant->status === 'Qualified' && $applicant->balance() === 0) {
+            && in_array($applicant->status, ['Registered', 'Qualified'], true)
+            && $applicant->balance() === 0) {
             $applicant->update(['status' => 'Paid']);
         }
 
