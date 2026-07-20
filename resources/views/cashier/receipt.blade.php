@@ -31,7 +31,7 @@
     /* Large translucent diagonal COPY watermark on the file copy. */
     .watermark { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 5; }
     .watermark span { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%) rotate(-32deg);
-        font-size: 100px; font-weight: 800; letter-spacing: .1em; color: rgba(100,116,139,.5); white-space: nowrap; }
+        font-size: 100px; font-weight: 800; letter-spacing: .1em; color: rgba(100,116,139,.4); white-space: nowrap; }
 
     .lh { text-align: center; border-bottom: 2px solid #15366B; padding-bottom: 7px; }
     .lh img { width: 40px; height: 40px; object-fit: contain; }
@@ -52,7 +52,6 @@
     .chips .chip { background: #eef3fb; border: 1px solid #d6e1f3; border-radius: 4px; padding: 1px 7px; }
     .sign { margin-top: 26px; text-align: center; }
     .sign .ln { border-top: 1px solid #000; padding-top: 3px; font-size: 9px; }
-    .foot { margin-top: 10px; font-size: 7.5px; color: #94a3b8; text-align: center; }
     .void { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%) rotate(-28deg); font-size: 58px; font-weight: bold; color: rgba(225,29,72,.2); letter-spacing: .1em; z-index: 6; }
 </style>
 </head>
@@ -61,7 +60,7 @@
 
     @php
         $control = $p->or_number ?? ('AR-'.str_pad($p->id, 5, '0', STR_PAD_LEFT));
-        $orgLine = collect([$inst['office'] ?? null, $inst['address'] ?? null])->filter()->implode(' · ');
+        $orgLine = $inst['address'] ?? null;
         $contactLine = collect([$inst['contact'] ?? null, $inst['email'] ?? null])->filter()->implode(' · ');
         // First copy is the clean original (trainee); second carries the COPY watermark (file).
         $copies = [false, true];
@@ -105,8 +104,6 @@
                 <div class="sign">
                     <div class="ln"><b>{{ $p->cashier?->name ?? '' }}</b><br><span style="color:#64748b">Cashier — signature over printed name</span></div>
                 </div>
-
-                <div class="foot">This acknowledgement receipt confirms the amount received above. Not a BIR-registered official receipt.</div>
             </div>
         </div>
         @endforeach
