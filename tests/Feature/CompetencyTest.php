@@ -93,7 +93,7 @@ class CompetencyTest extends TestCase
         $a = $this->trainee($program);
         [$u1, $u2] = $program->competencyUnits()->get()->all();
 
-        $this->actingAs($this->as('coordinator'))->put("/training/{$a->id}/competency", [
+        $this->actingAs($this->as('coordinator'))->put("/applicants/{$a->id}/competency", [
             'rated_at' => '2026-07-01',
             'ratings' => [
                 ['unit_id' => $u1->id, 'result' => 'Competent'],
@@ -113,7 +113,7 @@ class CompetencyTest extends TestCase
         $a = $this->trainee($program);
         $units = $program->competencyUnits()->get();
 
-        $this->actingAs($this->as('coordinator'))->put("/training/{$a->id}/competency", [
+        $this->actingAs($this->as('coordinator'))->put("/applicants/{$a->id}/competency", [
             'rated_at' => '2026-07-01',
             'ratings' => $units->map(fn ($u) => ['unit_id' => $u->id, 'result' => 'Competent'])->all(),
         ])->assertRedirect();
@@ -131,7 +131,7 @@ class CompetencyTest extends TestCase
 
         CompetencyResult::create(['applicant_id' => $a->id, 'competency_unit_id' => $u1->id, 'result' => 'Competent', 'rated_at' => '2026-07-01']);
 
-        $this->actingAs($this->as('coordinator'))->put("/training/{$a->id}/competency", [
+        $this->actingAs($this->as('coordinator'))->put("/applicants/{$a->id}/competency", [
             'rated_at' => '2026-07-02',
             'ratings' => [['unit_id' => $u1->id, 'result' => null]],
         ])->assertRedirect();
@@ -145,7 +145,7 @@ class CompetencyTest extends TestCase
         $a = $this->trainee($program);
         $foreign = CompetencyUnit::create(['program_id' => Program::create(['title' => 'Other', 'fee' => 0])->id, 'title' => 'X', 'type' => 'Core']);
 
-        $this->actingAs($this->as('coordinator'))->put("/training/{$a->id}/competency", [
+        $this->actingAs($this->as('coordinator'))->put("/applicants/{$a->id}/competency", [
             'rated_at' => '2026-07-01',
             'ratings' => [['unit_id' => $foreign->id, 'result' => 'Competent']],
         ])->assertRedirect();
@@ -160,12 +160,12 @@ class CompetencyTest extends TestCase
         $u1 = $program->competencyUnits()->first();
 
         // cashier lacks the training module entirely
-        $this->actingAs($this->as('cashier'))->put("/training/{$a->id}/competency", [
+        $this->actingAs($this->as('cashier'))->put("/applicants/{$a->id}/competency", [
             'rated_at' => '2026-07-01', 'ratings' => [],
         ])->assertForbidden();
 
         // invalid result value rejected
-        $this->actingAs($this->as('coordinator'))->put("/training/{$a->id}/competency", [
+        $this->actingAs($this->as('coordinator'))->put("/applicants/{$a->id}/competency", [
             'rated_at' => '2026-07-01',
             'ratings' => [['unit_id' => $u1->id, 'result' => 'Maybe']],
         ])->assertSessionHasErrors('ratings.0.result');
@@ -183,24 +183,18 @@ class CompetencyTest extends TestCase
                 ->has('competencyInfo.units', 2));
     }
 
-    public function test_achievement_chart_and_record_render(): void
+    public function test_report_card_renders_for_a_trainee(): void
     {
         $program = $this->program();
         $a = $this->trainee($program);
         $u1 = $program->competencyUnits()->first();
         CompetencyResult::create(['applicant_id' => $a->id, 'competency_unit_id' => $u1->id, 'result' => 'Competent', 'rated_at' => '2026-07-01']);
 
-        // Achievement chart (batch-wide)
-        $this->actingAs($this->as('coordinator'))->get("/training/{$a->batch_id}/class-record")
-            ->assertOk()
-            ->assertSee('COMPETENCY ACHIEVEMENT CHART', false)
-            ->assertSee('Cruz, Juan');
-        $this->actingAs($this->as('cashier'))->get("/training/{$a->batch_id}/class-record")->assertForbidden();
-
-        // Competency Achievement Record (per trainee)
-        $this->actingAs($this->as('coordinator'))->get("/training/{$a->id}/report-card")
+        // Competency Achievement Record (per trainee) — moved off the batch module.
+        $this->actingAs($this->as('coordinator'))->get("/applicants/{$a->id}/report-card")
             ->assertOk()
             ->assertSee('COMPETENCY ACHIEVEMENT RECORD', false)
             ->assertSee('Juan Cruz');
+        $this->actingAs($this->as('cashier'))->get("/applicants/{$a->id}/report-card")->assertForbidden();
     }
 }

@@ -28,10 +28,11 @@ class DashboardController extends Controller
         $pipeline = null;
 
         if (in_array($role, ['admin', 'manager', 'registrar'], true)) {
+            // Paying enrols a trainee straight into training, so "Paid" is no longer
+            // a distinct pipeline stage.
             $pipeline = [
                 ['label' => 'Registered', 'value' => $stat('Registered')],
                 ['label' => 'Qualified', 'value' => $stat('Qualified')],
-                ['label' => 'Paid', 'value' => $stat('Paid')],
                 ['label' => 'In training', 'value' => $stat('In training')],
                 ['label' => 'For assessment', 'value' => $stat('For assessment')],
                 ['label' => 'Certified', 'value' => $stat('Certified')],
@@ -47,7 +48,7 @@ class DashboardController extends Controller
             }
         } elseif ($role === 'cashier') {
             // No ₱ totals — a payment worklist only. Count by actual balance, since
-            // enrolment (status Paid) can now happen on a partial payment.
+            // enrolment (→ In training) can now happen on a partial payment.
             $feePayers = Applicant::with('program:id,fee')->where('active', true)->where('status', '!=', 'Disqualified')->get()
                 ->filter(fn (Applicant $a) => $a->fee() > 0);
             $owing = $feePayers->filter(fn (Applicant $a) => $a->balance() > 0)->count();

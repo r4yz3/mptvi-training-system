@@ -1,4 +1,4 @@
-import { Fragment, ReactNode } from 'react';
+import { Fragment, ReactNode, useState } from 'react';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import {
     ArrowLeft, Pencil, Trash2, Lock, UserCircle2, Power, Printer, Check, XCircle,
@@ -11,7 +11,7 @@ import TraineeStatusBadge from '@/Components/TraineeStatusBadge';
 import DocumentChecklist from '@/Components/DocumentChecklist';
 import { PageProps } from '@/types';
 
-const STAGES = ['Registered', 'Qualified', 'Paid', 'In training', 'For assessment', 'Certified'];
+const STAGES = ['Registered', 'Qualified', 'In training', 'For assessment', 'Certified'];
 
 const SECTION_ICON: Record<string, LucideIcon> = {
     'Enrollment': GraduationCap,
@@ -54,7 +54,7 @@ interface FeeRow { category: string; expected: number; paid: number; balance: nu
 interface Fees { school_year: string | null; misc: FeeRow; extras: FeeRow[] }
 
 export default function ApplicantShow({
-    applicant, pii, documents, canVerifyDocs, customFields, traineeStatuses, eduLevels, competencyInfo, fees,
+    applicant, pii, documents, canVerifyDocs, customFields, traineeStatuses, eduLevels, competencyInfo, canGrade, fees,
 }: {
     applicant: Applicant;
     pii: boolean;
@@ -64,6 +64,7 @@ export default function ApplicantShow({
     traineeStatuses: string[];
     eduLevels: { key: string; label: string }[];
     competencyInfo: CompetencyInfo;
+    canGrade: boolean;
     fees: Fees | null;
 }) {
     const { auth } = usePage<PageProps>().props;
@@ -175,7 +176,7 @@ export default function ApplicantShow({
 
             {/* Training grades — job data, visible to pii and non-pii roles alike */}
             <div className="mt-6">
-                <CompetencyPanel info={competencyInfo} />
+                <CompetencyPanel info={competencyInfo} canGrade={canGrade} applicantId={applicant.id} />
             </div>
 
             {fees && (
@@ -428,12 +429,29 @@ const UNIT_TYPE_STYLE: Record<string, string> = {
     Core: 'bg-emerald-50 text-emerald-700',
 };
 
-function CompetencyPanel({ info }: { info: CompetencyInfo }) {
+function CompetencyPanel({ info, canGrade, applicantId }: { info: CompetencyInfo; canGrade: boolean; applicantId: number }) {
+    // Editable rating state (unit_id -> result), seeded from the current ratings.
+    const [editing, setEditing] = useState(false);
+    const [ratings, setRatings] = useState<Record<number, string>>(() =>
+        Object.fromEntries(info.units.map((u) => [u.unit_id, u.result ?? ''])));
+    const save = useForm({});
+
     if (info.total === 0) return null; // no units defined / not a trainee — keep the profile clean
+
+    const submit = () => {
+        save.transform(() => ({
+            rated_at: new Date().toISOString().slice(0, 10),
+            ratings: info.units.map((u) => ({ unit_id: u.unit_id, result: ratings[u.unit_id] || null })),
+        }));
+        save.put(`/applicants/${applicantId}/competency`, {
+            preserveScroll: true,
+            onSuccess: () => setEditing(false),
+        });
+    };
 
     return (
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-            <div className="flex items-center justify-between gap-2.5 border-b border-slate-100 bg-slate-50/60 px-5 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-slate-100 bg-slate-50/60 px-5 py-3">
                 <div className="flex items-center gap-2.5">
                     <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600"><GraduationCap className="h-4 w-4" /></span>
                     <h3 className="text-sm font-semibold text-slate-700">Competency achievement</h3>
@@ -443,6 +461,15 @@ function CompetencyPanel({ info }: { info: CompetencyInfo }) {
                     <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${info.complete ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
                         {info.complete ? 'Complete' : 'In progress'}
                     </span>
+                    <a href={`/applicants/${applicantId}/report-card`} target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50">
+                        <Printer className="h-3.5 w-3.5" /> Report card
+                    </a>
+                    {canGrade && !editing && (
+                        <button onClick={() => setEditing(true)} className="inline-flex items-center gap-1 rounded-md bg-brand-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-brand-700">
+                            <Pencil className="h-3.5 w-3.5" /> Rate
+                        </button>
+                    )}
                 </div>
             </div>
             <div className="divide-y divide-slate-50">
@@ -452,12 +479,30 @@ function CompetencyPanel({ info }: { info: CompetencyInfo }) {
                             <span className={`inline-flex shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${UNIT_TYPE_STYLE[u.type] ?? 'bg-slate-100 text-slate-500'}`}>{u.type}</span>
                             <span className="truncate text-sm text-slate-700">{u.title}</span>
                         </div>
-                        <span className={`shrink-0 text-xs font-semibold ${u.result === 'Competent' ? 'text-emerald-600' : u.result ? 'text-amber-600' : 'text-slate-300'}`}>
-                            {u.result === 'Competent' ? 'Competent' : u.result ? 'Not yet' : '—'}
-                        </span>
+                        {editing ? (
+                            <select
+                                className="input !w-40 shrink-0 py-1 text-xs"
+                                value={ratings[u.unit_id] ?? ''}
+                                onChange={(e) => setRatings((r) => ({ ...r, [u.unit_id]: e.target.value }))}
+                            >
+                                <option value="">— Not rated —</option>
+                                <option value="Competent">Competent</option>
+                                <option value="Not Yet Competent">Not Yet Competent</option>
+                            </select>
+                        ) : (
+                            <span className={`shrink-0 text-xs font-semibold ${u.result === 'Competent' ? 'text-emerald-600' : u.result ? 'text-amber-600' : 'text-slate-300'}`}>
+                                {u.result === 'Competent' ? 'Competent' : u.result ? 'Not yet' : '—'}
+                            </span>
+                        )}
                     </div>
                 ))}
             </div>
+            {editing && (
+                <div className="flex justify-end gap-2 border-t border-slate-100 bg-slate-50/40 px-5 py-3">
+                    <button onClick={() => setEditing(false)} className="btn-ghost">Cancel</button>
+                    <button onClick={submit} disabled={save.processing} className="btn-primary">Save ratings</button>
+                </div>
+            )}
         </div>
     );
 }

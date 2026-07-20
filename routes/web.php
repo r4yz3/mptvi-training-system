@@ -4,8 +4,8 @@ use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\ApplicantController;
 use App\Http\Controllers\AssessmentController;
 use App\Http\Controllers\BackupController;
-use App\Http\Controllers\BatchController;
 use App\Http\Controllers\CashierController;
+use App\Http\Controllers\CompetencyController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\DownloadController;
 use App\Http\Controllers\EventController;
@@ -16,7 +16,6 @@ use App\Http\Controllers\ProgramController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ScreeningController;
 use App\Http\Controllers\SettingsController;
-use App\Http\Controllers\TrainingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserController;
@@ -55,6 +54,11 @@ Route::middleware('auth')->group(function () {
         Route::put('/applicants/{applicant}/active', [ApplicantController::class, 'toggleActive'])->name('applicants.toggleActive');
         Route::put('/applicants/{applicant}/trainee-status', [ApplicantController::class, 'updateTraineeStatus'])->name('applicants.traineeStatus');
 
+        // Competency rating + printable report card (moved off the old Training
+        // module). The controller gates writing/printing behind the 'assess' cap.
+        Route::put('/applicants/{applicant}/competency', [CompetencyController::class, 'rate'])->name('applicants.competency');
+        Route::get('/applicants/{applicant}/report-card', [CompetencyController::class, 'reportCard'])->name('applicants.report-card');
+
         // Documents — note-only: a typed note + status per requirement (no uploads).
         // docs.verify gates writing; the checklist is pii.view-gated in the controller.
         Route::post('/applicants/{applicant}/documents', [DocumentController::class, 'save'])->name('documents.save');
@@ -67,18 +71,12 @@ Route::middleware('auth')->group(function () {
         Route::put('/screening/{applicant}/disqualify', [ScreeningController::class, 'disqualify'])->name('screening.disqualify');
     });
 
-    // Programs & batches (P5) — admin/secretary/coordinator; program.manage gates writes.
+    // Programs (P5) — admin/secretary/coordinator; program.manage gates writes.
     Route::middleware('module:programs')->group(function () {
         Route::get('/programs', [ProgramController::class, 'index'])->name('programs.index');
         Route::post('/programs', [ProgramController::class, 'store'])->name('programs.store');
         Route::put('/programs/{program}', [ProgramController::class, 'update'])->name('programs.update');
         Route::delete('/programs/{program}', [ProgramController::class, 'destroy'])->name('programs.destroy');
-        Route::post('/programs/{program}/learners', [ProgramController::class, 'assign'])->name('programs.assign');
-        Route::post('/batches', [BatchController::class, 'store'])->name('batches.store');
-        Route::put('/batches/{batch}', [BatchController::class, 'update'])->name('batches.update');
-        Route::delete('/batches/{batch}', [BatchController::class, 'destroy'])->name('batches.destroy');
-        Route::post('/batches/{batch}/learners', [BatchController::class, 'assign'])->name('batches.assign');
-        Route::delete('/batches/{batch}/learners/{applicant}', [BatchController::class, 'unassign'])->name('batches.unassign');
     });
 
     // Cashier (P6) — admin/cashier; payment.record / payment.void gate the actions.
@@ -93,16 +91,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/cashier/{applicant}/statement', [CashierController::class, 'statement'])->name('cashier.statement');
         Route::get('/cashier/payments/{payment}/receipt', [CashierController::class, 'receipt'])->name('cashier.receipt');
         Route::put('/cashier/payments/{payment}/void', [CashierController::class, 'void'])->name('cashier.void');
-    });
-
-    // Training & attendance (P7) — admin/secretary/coordinator; attendance cap gates marking.
-    Route::middleware('module:training')->group(function () {
-        Route::get('/training', [TrainingController::class, 'index'])->name('training.index');
-        Route::get('/training/{batch}', [TrainingController::class, 'show'])->name('training.show');
-        Route::get('/training/{batch}/class-record', [TrainingController::class, 'classRecord'])->name('training.class-record');
-        Route::post('/training/{applicant}/start', [TrainingController::class, 'startTraining'])->name('training.start');
-        Route::put('/training/{applicant}/competency', [TrainingController::class, 'rateCompetency'])->name('training.competency');
-        Route::get('/training/{applicant}/report-card', [TrainingController::class, 'reportCard'])->name('training.report-card');
     });
 
     // Assessment & certs (P8) — admin/secretary/coordinator; assess cap gates actions.

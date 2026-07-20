@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Applicant;
-use App\Models\Batch;
+use App\Models\Program;
 use App\Models\Setting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,21 +15,20 @@ class IdController extends Controller
     public function index(Request $request): Response
     {
         $search = $request->input('search');
-        $batch = $request->input('batch');
+        $program = $request->input('program');
 
         $applicants = Applicant::query()
-            ->with('program:id,title,level', 'batch:id,code')
+            ->with('program:id,title,level')
             ->when($search, fn ($q) => $q->where(fn ($q) => $q
                 ->where('first_name', 'like', "%{$search}%")
                 ->orWhere('last_name', 'like', "%{$search}%")))
-            ->when($batch, fn ($q) => $q->where('batch_id', $batch))
+            ->when($program, fn ($q) => $q->where('program_id', $program))
             ->orderBy('last_name')
             ->paginate(12)->withQueryString()
             ->through(fn (Applicant $a) => [
                 'id' => $a->id,
                 'name' => $a->display_name,
                 'program' => $a->program?->title,
-                'batch' => $a->batch?->code,
                 'status' => $a->status,
                 'issued' => $a->id_issued_at?->toDateString(),
             ]);
@@ -39,9 +38,9 @@ class IdController extends Controller
 
         return Inertia::render('Id/Index', [
             'applicants' => $applicants,
-            'filters' => ['search' => $search, 'batch' => $batch ? (string) $batch : ''],
-            'batches' => Batch::query()->with('program:id,title')->orderByDesc('id')->get()
-                ->map(fn (Batch $b) => ['id' => $b->id, 'code' => $b->code, 'program' => $b->program?->title]),
+            'filters' => ['search' => $search, 'program' => $program ? (string) $program : ''],
+            'programs' => Program::orderBy('title')->get(['id', 'title'])
+                ->map(fn (Program $p) => ['id' => $p->id, 'title' => $p->title]),
             'canIssue' => $request->user()->can('id.issue'),
             'stats' => ['total' => $total, 'issued' => $issued, 'pending' => $total - $issued],
         ]);
@@ -49,7 +48,7 @@ class IdController extends Controller
 
     public function card(Request $request, Applicant $applicant): Response
     {
-        $applicant->load('program', 'batch');
+        $applicant->load('program');
 
         return Inertia::render('Id/Card', [
             'applicant' => $this->cardData($applicant),
@@ -60,20 +59,20 @@ class IdController extends Controller
 
     /**
      * Bulk ID sheet — tiles many trainee cards on A4 (9 per page). Accepts either
-     * a whole `batch` or a comma-separated `ids` list (hand-picked on the ID list).
+     * a whole `program` or a comma-separated `ids` list (hand-picked on the ID list).
      */
     public function sheet(Request $request): Response
     {
-        $batchId = $request->input('batch');
+        $programId = $request->input('program');
         $ids = collect(explode(',', (string) $request->input('ids')))
             ->map(fn ($i) => (int) trim($i))->filter()->values();
 
         $query = Applicant::query()
-            ->with('program:id,title,level', 'batch:id,code')
+            ->with('program:id,title,level')
             ->orderBy('last_name')->orderBy('first_name');
 
-        if ($batchId) {
-            $query->where('batch_id', $batchId);
+        if ($programId) {
+            $query->where('program_id', $programId);
         } elseif ($ids->isNotEmpty()) {
             $query->whereIn('id', $ids);
         } else {
@@ -81,8 +80,8 @@ class IdController extends Controller
         }
 
         $applicants = $query->get()->map(fn (Applicant $a) => $this->cardData($a))->values();
-        $label = $batchId
-            ? 'Batch ' . (Batch::find($batchId)?->code ?? $batchId)
+        $label = $programId
+            ? (Program::find($programId)?->title ?? 'Program')
             : $applicants->count() . ' selected';
 
         return Inertia::render('Id/Sheet', [
@@ -101,7 +100,6 @@ class IdController extends Controller
             'photo_url' => $applicant->photo_url,
             'program' => $applicant->program?->title,
             'level' => $applicant->program?->level,
-            'batch' => $applicant->batch?->code,
             'barangay' => $applicant->barangay,
             'province' => $applicant->province,
             'contact' => $applicant->contact,

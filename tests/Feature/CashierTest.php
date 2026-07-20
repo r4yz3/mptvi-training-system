@@ -50,11 +50,11 @@ class CashierTest extends TestCase
         $a = $this->qualified();
         $cashier = $this->as('cashier');
 
-        // A partial payment already enrolls (→ Paid), while the balance still shows.
+        // A partial payment already enrolls (→ In training), while the balance still shows.
         $this->actingAs($cashier)->post("/cashier/{$a->id}/payments", [
             'amount' => 400, 'type' => 'Partial', 'method' => 'Cash', 'paid_at' => '2026-06-01',
         ])->assertRedirect();
-        $this->assertSame('Paid', $a->fresh()->status);
+        $this->assertSame('In training', $a->fresh()->status);
         $this->assertSame(600, $a->fresh()->balance());
         $this->assertSame('Partial', $a->fresh()->payStatus());
 
@@ -62,7 +62,7 @@ class CashierTest extends TestCase
         $this->actingAs($cashier)->post("/cashier/{$a->id}/payments", [
             'amount' => 600, 'type' => 'Full Payment', 'method' => 'GCash', 'paid_at' => '2026-06-05',
         ])->assertRedirect();
-        $this->assertSame('Paid', $a->fresh()->status);
+        $this->assertSame('In training', $a->fresh()->status);
         $this->assertSame(0, $a->fresh()->balance());
         $this->assertSame('Paid', $a->fresh()->payStatus());
     }
@@ -76,12 +76,12 @@ class CashierTest extends TestCase
             'last_name' => 'Reyes', 'first_name' => 'Ana', 'barangay' => 'Pob', 'contact' => '0918',
         ]);
 
-        // Even a partial down payment enrolls them (→ Paid) with no screening step.
+        // Even a partial down payment enrolls them (→ In training) with no screening step.
         $this->actingAs($this->as('cashier'))->post("/cashier/{$a->id}/payments", [
             'amount' => 300, 'type' => 'Partial', 'method' => 'Cash', 'paid_at' => '2026-06-01',
         ])->assertRedirect();
 
-        $this->assertSame('Paid', $a->fresh()->status);
+        $this->assertSame('In training', $a->fresh()->status);
         $this->assertSame(700, $a->fresh()->balance());
     }
 
@@ -108,7 +108,7 @@ class CashierTest extends TestCase
         $this->actingAs($cashier)->post("/cashier/{$a->id}/payments", [
             'amount' => 1000, 'type' => 'Full Payment', 'method' => 'Cash', 'paid_at' => '2026-06-01',
         ]);
-        $this->assertSame('Paid', $a->fresh()->status);
+        $this->assertSame('In training', $a->fresh()->status);
 
         $payment = Payment::first();
         $this->actingAs($cashier)->put("/cashier/payments/{$payment->id}/void", ['reason' => 'Bounced cheque'])

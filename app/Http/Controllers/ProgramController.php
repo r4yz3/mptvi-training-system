@@ -14,37 +14,40 @@ class ProgramController extends Controller
     public function index(): Response
     {
         $programs = Program::query()
-            ->withCount(['batches', 'applicants'])
-            ->with(['batches' => fn ($q) => $q->withCount('applicants')->orderByDesc('id')])
+            ->withCount('applicants')
+            ->with(['applicants' => fn ($q) => $q
+                ->orderBy('last_name')->orderBy('first_name')
+                ->get(['id', 'first_name', 'middle_name', 'last_name', 'ext_name', 'program_id', 'status', 'active'])])
             ->orderBy('title')
-            ->get();
-
-        // Assignable learners for the add-to-batch / add-to-program pickers.
-        $learners = Applicant::query()
-            ->where('active', true)->where('status', '!=', 'Disqualified')
-            ->orderBy('last_name')->orderBy('first_name')
-            ->get(['id', 'first_name', 'middle_name', 'last_name', 'ext_name', 'program_id', 'batch_id', 'class_session', 'status'])
-            ->map(fn (Applicant $a) => [
-                'id' => $a->id,
-                'name' => $a->display_name,
-                'program_id' => $a->program_id,
-                'batch_id' => $a->batch_id,
-                'session' => $a->class_session,
-                'status' => $a->status,
-            ])->all();
+            ->get()
+            ->map(fn (Program $p) => [
+                'id' => $p->id,
+                'title' => $p->title,
+                'qualification' => $p->qualification,
+                'training_type' => $p->training_type,
+                'level' => $p->level,
+                'hours' => $p->hours,
+                'fee' => $p->fee,
+                'slots' => $p->slots,
+                'active' => $p->active,
+                'applicants_count' => $p->applicants_count,
+                // The trainees enrolled in this program (what the institute wants to see).
+                'trainees' => $p->applicants->map(fn (Applicant $a) => [
+                    'id' => $a->id,
+                    'name' => $a->display_name,
+                    'status' => $a->status,
+                    'active' => $a->active,
+                ])->values(),
+            ]);
 
         return Inertia::render('Programs/Index', [
             'programs' => $programs,
-            'learners' => $learners,
             'options' => [
                 'training_types' => [
                     ['value' => Program::SCHOOL_BASED, 'label' => 'School-Based (fee, months-long)'],
                     ['value' => Program::COMMUNITY_BASED, 'label' => 'Community-Based (free soft-skills)'],
                 ],
                 'levels' => ['NC I', 'NC II', 'NC III', 'NC IV', 'Non-NC'],
-                'class_sessions' => ['Morning', 'Afternoon', 'Whole-day'],
-                'class_days' => ['Mon–Fri', 'MWF', 'Tue-Thu', 'Mon-Sat', 'Sat'],
-                'batch_statuses' => ['Planned', 'Open', 'Ongoing', 'Closed', 'Completed'],
             ],
         ]);
     }
@@ -64,29 +67,6 @@ class ProgramController extends Controller
         $program->update($this->validateProgram($request));
 
         return back()->with('success', "Program “{$program->title}” updated.");
-    }
-
-    /** Move an existing learner into this program (unassigns any batch from the old program). */
-    public function assign(Request $request, Program $program): RedirectResponse
-    {
-        abort_unless($request->user()->can('program.manage'), 403);
-
-        $data = $request->validate([
-            'applicant_id' => ['required', 'integer', 'exists:applicants,id'],
-        ]);
-        $applicant = Applicant::findOrFail($data['applicant_id']);
-
-        if (! $applicant->active || $applicant->status === 'Disqualified') {
-            return back()->with('error', 'Only active, non-disqualified learners can be moved to a program.');
-        }
-        if ($applicant->program_id === $program->id) {
-            return back()->with('error', "“{$applicant->display_name}” is already in {$program->title}.");
-        }
-
-        // A batch belongs to one program, so a program move always clears the old batch.
-        $applicant->update(['program_id' => $program->id, 'batch_id' => null]);
-
-        return back()->with('success', "“{$applicant->display_name}” moved to {$program->title}.");
     }
 
     public function destroy(Request $request, Program $program): RedirectResponse

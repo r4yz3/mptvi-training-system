@@ -38,7 +38,7 @@ export default function SettingsIndex({ stats, system }: { stats: Stats; system:
                 { href: '/settings/competencies', icon: Award, title: 'Competency Standards', desc: 'Each qualification’s TESDA Units of Competency (Basic / Common / Core).', meta: 'Achievement chart' },
                 { href: '/settings/fees', icon: Banknote, title: 'Fees (uniform, assessment)', desc: 'Extra-fee amounts per program, per school year, so the cashier can track who still owes them.', meta: 'Per school year' },
                 { href: '/settings/lists', icon: List, title: 'Reference Lists', desc: 'The dropdown option lists used across the registration form.', meta: 'Form options' },
-                { href: '/programs', icon: GraduationCap, title: 'Programs & Batches', desc: 'TESDA programs, fees, training hours and class batches.', meta: `${stats.programs} program${stats.programs === 1 ? '' : 's'}` },
+                { href: '/programs', icon: GraduationCap, title: 'Programs', desc: 'TESDA programs — level, fees, training hours and enrolled trainees.', meta: `${stats.programs} program${stats.programs === 1 ? '' : 's'}` },
             ],
         },
         {

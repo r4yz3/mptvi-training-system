@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\Batch;
 use App\Models\Program;
 use App\Models\User;
 use Database\Seeders\ProgramSeeder;
@@ -63,29 +62,6 @@ class ProgramTest extends TestCase
                 'title' => 'Bogus', 'training_type' => 'nonsense', 'hours' => 10, 'fee' => 0, 'slots' => 10,
             ])
             ->assertSessionHasErrors('training_type');
-    }
-
-    public function test_batch_end_date_is_auto_computed(): void
-    {
-        $program = Program::where('hours', '>', 0)->first(); // e.g. 268h
-        $this->actingAs($this->as('coordinator'))
-            ->post('/batches', [
-                'program_id' => $program->id, 'code' => '2026-B', 'class_session' => 'Whole-day',
-                'class_days' => 'Mon–Fri', 'capacity' => 20, 'start_date' => '2026-06-15', 'status' => 'Planned',
-            ])
-            ->assertRedirect();
-
-        $batch = Batch::where('code', '2026-B')->first();
-        $this->assertNotNull($batch->end_date);
-        // Whole-day (8h) finishes sooner than the start date + a few weeks.
-        $this->assertTrue($batch->end_date->gt($batch->start_date));
-    }
-
-    public function test_whole_day_finishes_before_morning(): void
-    {
-        $morning = Batch::computeEndDate('2026-06-15', 160, 'Morning', 'Mon–Fri');
-        $wholeDay = Batch::computeEndDate('2026-06-15', 160, 'Whole-day', 'Mon–Fri');
-        $this->assertTrue($wholeDay < $morning);
     }
 
     public function test_cannot_delete_program_with_applicants(): void

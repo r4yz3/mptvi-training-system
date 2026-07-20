@@ -3,7 +3,7 @@ import { UserCircle2 } from 'lucide-react';
 
 export interface IdCardData {
     id: number; name: string; photo_url: string | null;
-    program: string | null; level: string | null; batch: string | null;
+    program: string | null; level: string | null;
     barangay: string | null; province: string | null; contact: string | null;
     emergency_name: string | null; emergency_contact: string | null;
     school_year: string | null; issued: string | null;
@@ -57,7 +57,6 @@ export function IdCardFront({ a, signatory }: { a: IdCardData; signatory: Signat
 
                 <div className="flex w-full items-end justify-between">
                     <div className="space-y-px text-[6px] text-slate-900">
-                        <div><span className="text-slate-900">Batch</span> <span className="font-semibold text-slate-900">{a.batch ?? '—'}</span></div>
                         <div><span className="text-slate-900">S.Y.</span> <span className="font-semibold text-slate-900">{a.school_year ?? '—'}</span></div>
                         <div><span className="text-slate-900">Issued</span> <span className="font-semibold text-slate-900">{issued ?? '—'}</span></div>
                     </div>

@@ -27,8 +27,8 @@ export default function Competencies({ programs, types }: { programs: Program[];
                 <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-brand-100 bg-brand-50/50 px-4 py-3 text-sm text-brand-800">
                     <ListChecks className="mt-0.5 h-4 w-4 shrink-0" />
                     <p>
-                        Define each qualification's <b>Units of Competency</b> (TESDA: Basic, Common, Core). During training, each trainee is rated
-                        <b> Competent / Not Yet Competent</b> per unit (Training → batch roster → Competency) — this forms the Achievement Chart. A
+                        Define each qualification's <b>Units of Competency</b> (TESDA: Basic, Common, Core). Each trainee is then rated
+                        <b> Competent / Not Yet Competent</b> per unit on their profile (Applicants → trainee → Competency achievement) — this forms the Achievement Chart. A
                         trainee is institutionally complete once <b>every</b> unit is Competent.
                     </p>
                 </div>

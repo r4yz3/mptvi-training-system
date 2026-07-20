@@ -50,7 +50,6 @@ class ReportController extends Controller
 
         $rows = Applicant::query()
             ->with('program:id,title,level')
-            ->when($full, fn (Builder $q) => $q->with('batch:id,code'))
             ->when($request->input('status'), fn (Builder $q, $s) => $q->where('status', $s))
             ->when($request->input('program'), fn (Builder $q, $p) => $q->where('program_id', $p))
             ->when($request->input('barangay'), fn (Builder $q, $b) => $q->where('barangay', $b))
@@ -221,7 +220,6 @@ class ReportController extends Controller
             'Medical' => fn (Applicant $a) => $a->medical,
             'Program' => fn (Applicant $a) => $a->program?->title,
             'Level' => fn (Applicant $a) => $a->program?->level,
-            'Batch' => fn (Applicant $a) => $a->batch?->code,
             'Class session' => fn (Applicant $a) => $a->class_session,
             'School year' => fn (Applicant $a) => $a->school_year,
             'Status' => fn (Applicant $a) => $a->status,

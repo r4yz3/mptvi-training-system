@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Applicant;
-use App\Models\Batch;
 use App\Models\Program;
 use App\Models\User;
 use Database\Seeders\ProgramSeeder;
@@ -82,16 +81,16 @@ class IdSystemTest extends TestCase
             ->assertInertia(fn ($p) => $p->component('Id/Sheet')->has('applicants', 2));
     }
 
-    public function test_bulk_sheet_by_batch(): void
+    public function test_bulk_sheet_by_program(): void
     {
-        $batch = Batch::create(['program_id' => Program::first()->id, 'code' => 'ID-B', 'class_session' => 'Morning',
-            'class_days' => 'Mon–Fri', 'capacity' => 20, 'status' => 'Ongoing']);
-        $a = $this->makeLearner();
-        $a->update(['batch_id' => $batch->id]);
-        // a learner in no batch must NOT appear in the batch sheet
-        $this->makeLearner();
+        $program = Program::first();
+        $this->makeLearner(); // program #1
+        // a learner in a different program must NOT appear in this program's sheet
+        $other = Program::orderBy('id')->skip(1)->first();
+        Applicant::create(['program_id' => $other->id, 'status' => 'Paid', 'active' => true,
+            'last_name' => 'Lim', 'first_name' => 'Bo', 'barangay' => 'Z', 'contact' => '0']);
 
-        $this->actingAs($this->as('registrar'))->get("/idsystem/sheet?batch={$batch->id}")
+        $this->actingAs($this->as('registrar'))->get("/idsystem/sheet?program={$program->id}")
             ->assertOk()
             ->assertInertia(fn ($p) => $p->component('Id/Sheet')->has('applicants', 1));
     }

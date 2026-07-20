@@ -256,6 +256,7 @@ class ApplicantController extends Controller
                 'key' => $l['key'], 'label' => $l['label'],
             ])->values(),
             'competencyInfo' => $applicant->competencySummary(),
+            'canGrade' => $request->user()->can('assess'),
             'fees' => $canPii ? [
                 'school_year' => $applicant->school_year,
                 'misc' => [

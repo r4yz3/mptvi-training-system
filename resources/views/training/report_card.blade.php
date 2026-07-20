@@ -60,7 +60,7 @@
             <div class="row"><span class="k">Qualification</span> {{ $a->program?->title ?? '—' }}{{ $a->program?->level ? ' ('.$a->program->level.')' : '' }}</div>
         </div>
         <div style="text-align:right">
-            <div class="row"><span class="k">Batch</span> <b>{{ $a->batch?->code ?? '—' }}</b></div>
+            <div class="row"><span class="k">School year</span> <b>{{ $a->school_year ?? '—' }}</b></div>
             <div class="row"><span class="k">Generated</span> {{ now()->format('M j, Y') }}</div>
         </div>
     </div>

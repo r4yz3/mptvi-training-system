@@ -64,7 +64,7 @@ class CashierPaymentTypesTest extends TestCase
         $this->assertSame(1000, $a->otherCollected());
     }
 
-    public function test_training_fee_payment_still_advances_pipeline(): void
+    public function test_training_fee_payment_enrolls_into_training(): void
     {
         $a = $this->qualified();
         $this->actingAs($this->as('cashier'))->post("/cashier/{$a->id}/payments", [
@@ -73,7 +73,7 @@ class CashierPaymentTypesTest extends TestCase
 
         $a->refresh();
         $this->assertSame(0, $a->balance());
-        $this->assertSame('Paid', $a->status);
+        $this->assertSame('In training', $a->status);
     }
 
     public function test_invalid_category_is_rejected(): void

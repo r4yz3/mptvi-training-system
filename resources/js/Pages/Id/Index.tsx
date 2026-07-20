@@ -4,10 +4,10 @@ import { Search, IdCard, CheckCircle2, Clock, Users, Printer, Layers } from 'luc
 import AppShell from '@/Layouts/AppShell';
 import Pagination from '@/Components/Pagination';
 
-interface Row { id: number; name: string; program: string | null; batch: string | null; status: string; issued: string | null }
+interface Row { id: number; name: string; program: string | null; status: string; issued: string | null }
 interface Paginated { data: Row[]; links: { url: string | null; label: string; active: boolean }[]; from: number | null; to: number | null; total: number }
 interface Stats { total: number; issued: number; pending: number }
-interface BatchOpt { id: number; code: string; program: string | null }
+interface ProgramOpt { id: number; title: string }
 
 function initials(name: string) {
     const p = name.trim().split(/\s+/);
@@ -19,12 +19,12 @@ function fmtDate(d: string | null) {
     return isNaN(dt.getTime()) ? d : dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-export default function IdIndex({ applicants, filters, batches, canIssue, stats }: { applicants: Paginated; filters: { search?: string; batch?: string }; batches: BatchOpt[]; canIssue: boolean; stats: Stats }) {
+export default function IdIndex({ applicants, filters, programs, canIssue, stats }: { applicants: Paginated; filters: { search?: string; program?: string }; programs: ProgramOpt[]; canIssue: boolean; stats: Stats }) {
     const [search, setSearch] = useState(filters.search ?? '');
     const [selected, setSelected] = useState<Set<number>>(new Set()); // persists across pages (Pagination preserves state)
 
     const go = (patch: Record<string, string>) =>
-        router.get('/idsystem', { search, batch: filters.batch ?? '', ...patch }, { preserveState: true, preserveScroll: true, replace: true });
+        router.get('/idsystem', { search, program: filters.program ?? '', ...patch }, { preserveState: true, preserveScroll: true, replace: true });
     const submit = (e: FormEvent) => { e.preventDefault(); go({ search }); };
 
     const toggle = (id: number) => setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -37,7 +37,7 @@ export default function IdIndex({ applicants, filters, batches, canIssue, stats 
     });
 
     const printSelected = () => selected.size && window.open(`/idsystem/sheet?ids=${[...selected].join(',')}`, '_blank', 'noopener');
-    const printBatch = () => filters.batch && window.open(`/idsystem/sheet?batch=${filters.batch}`, '_blank', 'noopener');
+    const printProgram = () => filters.program && window.open(`/idsystem/sheet?program=${filters.program}`, '_blank', 'noopener');
 
     const tiles = [
         { label: 'Learners', value: stats.total, icon: Users, tile: 'bg-brand-50 text-brand-600' },
@@ -69,17 +69,17 @@ export default function IdIndex({ applicants, filters, batches, canIssue, stats 
                     </form>
                     <select
                         className="input w-auto"
-                        value={filters.batch ?? ''}
-                        onChange={(e) => go({ batch: e.target.value })}
+                        value={filters.program ?? ''}
+                        onChange={(e) => go({ program: e.target.value })}
                     >
-                        <option value="">All batches</option>
-                        {batches.map((b) => <option key={b.id} value={String(b.id)}>{b.code}{b.program ? ` — ${b.program}` : ''}</option>)}
+                        <option value="">All programs</option>
+                        {programs.map((p) => <option key={p.id} value={String(p.id)}>{p.title}</option>)}
                     </select>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                    {filters.batch && (
-                        <button onClick={printBatch} className="btn-ghost">
-                            <Layers className="h-4 w-4" /> Print batch IDs ({applicants.total})
+                    {filters.program && (
+                        <button onClick={printProgram} className="btn-ghost">
+                            <Layers className="h-4 w-4" /> Print program IDs ({applicants.total})
                         </button>
                     )}
                     <button onClick={printSelected} disabled={selected.size === 0} className="btn-primary disabled:opacity-40">
@@ -98,7 +98,6 @@ export default function IdIndex({ applicants, filters, batches, canIssue, stats 
                                 </th>
                                 <th className="px-4 py-3">Learner</th>
                                 <th className="px-4 py-3">Program</th>
-                                <th className="px-4 py-3">Batch</th>
                                 <th className="px-4 py-3">ID status</th>
                                 <th className="px-4 py-3 text-right">Action</th>
                             </tr>
@@ -116,7 +115,6 @@ export default function IdIndex({ applicants, filters, batches, canIssue, stats 
                                         </div>
                                     </td>
                                     <td className="px-4 py-3 text-slate-600">{a.program ?? '—'}</td>
-                                    <td className="px-4 py-3 text-slate-500">{a.batch ?? '—'}</td>
                                     <td className="px-4 py-3">
                                         {a.issued
                                             ? <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700"><CheckCircle2 className="h-3.5 w-3.5" /> Issued {fmtDate(a.issued)}</span>
@@ -130,9 +128,9 @@ export default function IdIndex({ applicants, filters, batches, canIssue, stats 
                                 </tr>
                             ))}
                             {applicants.data.length === 0 && (
-                                <tr><td colSpan={6} className="px-4 py-14 text-center text-sm text-slate-400">
+                                <tr><td colSpan={5} className="px-4 py-14 text-center text-sm text-slate-400">
                                     <IdCard className="mx-auto mb-2 h-8 w-8 text-slate-300" />
-                                    {filters.search || filters.batch ? 'No learners match your filters.' : 'No learners yet.'}
+                                    {filters.search || filters.program ? 'No learners match your filters.' : 'No learners yet.'}
                                 </td></tr>
                             )}
                         </tbody>

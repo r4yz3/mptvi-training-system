@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Applicant;
-use App\Models\Batch;
 use App\Models\Program;
 use App\Models\User;
 use Database\Seeders\ProgramSeeder;
@@ -63,41 +62,6 @@ class ScreeningTest extends TestCase
             ->assertRedirect();
         $this->assertSame('Qualified', $a->fresh()->status);
         $this->assertNotNull($a->fresh()->screened_at);
-    }
-
-    private function batch(int $programId, array $o = []): Batch
-    {
-        return Batch::create(array_merge([
-            'program_id' => $programId, 'code' => '2026-A', 'class_session' => 'Morning',
-            'class_days' => 'Mon–Fri', 'capacity' => 25, 'status' => 'Open',
-        ], $o));
-    }
-
-    public function test_qualify_assigns_the_chosen_batch(): void
-    {
-        $a = $this->registered();
-        $batch = $this->batch($a->program_id);
-
-        $this->actingAs($this->as('registrar'))
-            ->put("/screening/{$a->id}/qualify", ['batch_id' => $batch->id])
-            ->assertRedirect();
-
-        $a->refresh();
-        $this->assertSame('Qualified', $a->status);
-        $this->assertSame($batch->id, $a->batch_id);
-    }
-
-    public function test_qualify_rejects_a_batch_from_another_program(): void
-    {
-        $a = $this->registered(); // program #1
-        $otherProgram = Program::orderBy('id')->skip(1)->first();
-        $batch = $this->batch($otherProgram->id);
-
-        $this->actingAs($this->as('registrar'))
-            ->put("/screening/{$a->id}/qualify", ['batch_id' => $batch->id])
-            ->assertStatus(422);
-
-        $this->assertNull($a->fresh()->batch_id);
     }
 
     public function test_disqualify_requires_reason_and_stores_it(): void

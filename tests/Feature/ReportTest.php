@@ -43,7 +43,7 @@ class ReportTest extends TestCase
 
         // admin dashboard has the pipeline
         $this->actingAs($this->as('admin'))->get('/dashboard')
-            ->assertInertia(fn (Assert $p) => $p->has('pipeline', 6));
+            ->assertInertia(fn (Assert $p) => $p->has('pipeline', 5));
     }
 
     public function test_applicants_csv_downloads(): void
