@@ -21,7 +21,7 @@ class BatchSeeder extends Seeder
                 [
                     'class_session' => $sessions[$i],
                     'class_days' => 'Mon–Fri',
-                    'school_year' => '2026–2027',
+                    'school_year' => '2026',
                     'capacity' => $program->slots,
                     'trainer' => 'TESDA Trainer',
                     'venue' => 'MPTVI Campus',

@@ -52,7 +52,7 @@ class ProgramSeeder extends Seeder
      */
     private function seedExtraFees(): void
     {
-        $sy = '2026–2027';
+        $sy = '2026';
         foreach (Program::where('training_type', Program::SCHOOL_BASED)->get() as $program) {
             foreach (['School uniform' => 500, 'Assessment fee' => 1000] as $category => $amount) {
                 \App\Models\FeeItem::firstOrCreate(

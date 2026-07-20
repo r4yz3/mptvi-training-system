@@ -129,7 +129,7 @@ export default function ApplicantForm({
         program_id: (applicant?.program_id as number) ?? options.programs[0]?.id ?? '',
         scholarship: s('scholarship', 'None'),
         class_session: s('class_session'),
-        school_year: s('school_year', '2026–2027'),
+        school_year: s('school_year', String(new Date().getFullYear())),
         classifications: (applicant?.classifications as string[]) ?? [],
         classification_other: s('classification_other'),
         disability_type: s('disability_type'),
@@ -367,6 +367,25 @@ function FieldRenderer({
             {field.label} {field.required && <span className="text-rose-500">*</span>}
         </span>
     );
+
+    // School year is a single calendar year (trainees graduate every 6 months),
+    // so offer a year dropdown from 2026 to next year.
+    if (field.key === 'school_year') {
+        const now = new Date().getFullYear();
+        const years: string[] = [];
+        for (let y = 2026; y <= now + 1; y++) years.push(String(y));
+        const cur = (val as string) ?? '';
+        if (cur && !years.includes(cur)) years.unshift(cur); // keep an existing/edited value visible
+        return (
+            <label className={`block ${span}`}>
+                {labelEl}
+                <select className="input" value={cur} onChange={(e) => set(e.target.value)}>
+                    {years.map((y) => <option key={y} value={y}>{y}</option>)}
+                </select>
+                {err && <span className="mt-1 block text-xs text-rose-600">{err}</span>}
+            </label>
+        );
+    }
 
     switch (field.widget) {
         case 'photo':

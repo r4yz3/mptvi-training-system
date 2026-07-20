@@ -29,7 +29,7 @@ class FeeScheduleTest extends TestCase
     }
 
     // A school year with no seeded fee amounts, so tests control the schedule fully.
-    private function trainee(string $sy = '2030–2031'): Applicant
+    private function trainee(string $sy = '2030'): Applicant
     {
         return Applicant::create([
             'program_id' => Program::first()->id,
@@ -50,17 +50,17 @@ class FeeScheduleTest extends TestCase
         $program = Program::first();
 
         $this->actingAs($this->as('admin'))->put('/settings/fees', [
-            'school_year' => '2026–2027',
+            'school_year' => '2026',
             'amounts' => [
                 $program->id => ['School uniform' => 500, 'Assessment fee' => 1000],
             ],
         ])->assertRedirect();
 
         $this->assertDatabaseHas('fee_items', [
-            'program_id' => $program->id, 'school_year' => '2026–2027', 'category' => 'School uniform', 'amount' => 500,
+            'program_id' => $program->id, 'school_year' => '2026', 'category' => 'School uniform', 'amount' => 500,
         ]);
         $this->assertDatabaseHas('fee_items', [
-            'program_id' => $program->id, 'school_year' => '2026–2027', 'category' => 'Assessment fee', 'amount' => 1000,
+            'program_id' => $program->id, 'school_year' => '2026', 'category' => 'Assessment fee', 'amount' => 1000,
         ]);
     }
 

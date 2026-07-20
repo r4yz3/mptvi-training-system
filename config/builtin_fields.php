@@ -90,7 +90,7 @@ return [
         ['key' => 'program_id',    'label' => 'Course / qualification', 'section' => 'sec-course', 'widget' => 'program', 'colspan' => 2, 'locked' => true],
         ['key' => 'scholarship',   'label' => 'Scholarship package',    'section' => 'sec-course', 'widget' => 'select', 'source' => 'scholarship'],
         ['key' => 'class_session', 'label' => 'Class session',          'section' => 'sec-course', 'widget' => 'select', 'source' => 'class_session', 'blank' => true],
-        ['key' => 'school_year',   'label' => 'School year',            'section' => 'sec-course', 'widget' => 'text', 'placeholder' => '2026–2027'],
+        ['key' => 'school_year',   'label' => 'School year',            'section' => 'sec-course', 'widget' => 'text', 'placeholder' => '2026'],
 
         // ── Classification ───────────────────────────────────────────────
         ['key' => 'classifications',      'label' => 'Learner / Trainee classification', 'section' => 'sec-classification', 'widget' => 'classifications', 'colspan' => 'full'],

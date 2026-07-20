@@ -83,7 +83,7 @@ class ApplicantSeeder extends Seeder
                     'age' => $age,
                     'education' => $educ[$idx % count($educ)],
                     'class_session' => $idx % 2 === 0 ? 'Morning' : 'Afternoon',
-                    'school_year' => '2026–2027',
+                    'school_year' => '2026',
                     'classifications' => $voter ? ['4Ps Beneficiary'] : [],
                     'privacy_consent' => true,
                 ],

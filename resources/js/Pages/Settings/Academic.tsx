@@ -30,7 +30,7 @@ export default function Academic({ values, sessions }: { values: Values; session
                     </header>
                     <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
                         <label className="block"><span className="mb-1 block text-xs font-medium text-slate-600">Current school year</span>
-                            <input className="input" placeholder="2026-2027" value={data.school_year} onChange={(e) => setData('school_year', e.target.value)} />
+                            <input className="input" placeholder="2026" value={data.school_year} onChange={(e) => setData('school_year', e.target.value)} />
                         </label>
                         <label className="block"><span className="mb-1 block text-xs font-medium text-slate-600">Default class session</span>
                             <select className="input" value={data.default_session} onChange={(e) => setData('default_session', e.target.value)}>

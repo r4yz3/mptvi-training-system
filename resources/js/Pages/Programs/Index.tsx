@@ -421,7 +421,7 @@ function BatchModal({ programId, batch, options, onClose }: { programId: number;
     const isEdit = !!batch;
     const { data, setData, post, put, processing, errors } = useForm({
         program_id: programId, code: batch?.code ?? '2026-A', class_session: batch?.class_session ?? 'Morning',
-        class_days: batch?.class_days ?? 'Mon–Fri', school_year: batch?.school_year ?? '2026–2027',
+        class_days: batch?.class_days ?? 'Mon–Fri', school_year: batch?.school_year ?? String(new Date().getFullYear()),
         capacity: batch?.capacity ?? 25, trainer: batch?.trainer ?? '', venue: batch?.venue ?? '',
         start_date: batch?.start_date ? batch.start_date.slice(0, 10) : '', status: batch?.status ?? 'Planned',
     });
