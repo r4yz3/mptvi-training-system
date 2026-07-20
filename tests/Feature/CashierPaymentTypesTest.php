@@ -42,7 +42,7 @@ class CashierPaymentTypesTest extends TestCase
         $a = $this->qualified();
         $this->actingAs($this->as('cashier'))->post("/cashier/{$a->id}/payments", [
             'amount' => 350, 'category' => 'School uniform', 'description' => '1 set, size M',
-            'type' => 'Full', 'method' => 'Cash', 'paid_at' => '2026-06-10',
+            'type' => 'Full Payment', 'method' => 'Cash', 'paid_at' => '2026-06-10',
         ])->assertRedirect();
 
         $p = Payment::where('applicant_id', $a->id)->firstOrFail();
@@ -54,7 +54,7 @@ class CashierPaymentTypesTest extends TestCase
     {
         $a = $this->qualified();
         $this->actingAs($this->as('cashier'))->post("/cashier/{$a->id}/payments", [
-            'amount' => 1000, 'category' => 'School uniform', 'type' => 'Full', 'method' => 'Cash', 'paid_at' => '2026-06-10',
+            'amount' => 1000, 'category' => 'School uniform', 'type' => 'Full Payment', 'method' => 'Cash', 'paid_at' => '2026-06-10',
         ])->assertRedirect();
 
         $a->refresh();
@@ -68,7 +68,7 @@ class CashierPaymentTypesTest extends TestCase
     {
         $a = $this->qualified();
         $this->actingAs($this->as('cashier'))->post("/cashier/{$a->id}/payments", [
-            'amount' => 1000, 'category' => 'Miscellaneous fee', 'type' => 'Full', 'method' => 'Cash', 'paid_at' => '2026-06-10',
+            'amount' => 1000, 'category' => 'Miscellaneous fee', 'type' => 'Full Payment', 'method' => 'Cash', 'paid_at' => '2026-06-10',
         ])->assertRedirect();
 
         $a->refresh();
@@ -80,7 +80,7 @@ class CashierPaymentTypesTest extends TestCase
     {
         $a = $this->qualified();
         $this->actingAs($this->as('cashier'))->post("/cashier/{$a->id}/payments", [
-            'amount' => 100, 'category' => 'Bribe', 'type' => 'Full', 'method' => 'Cash', 'paid_at' => '2026-06-10',
+            'amount' => 100, 'category' => 'Bribe', 'type' => 'Full Payment', 'method' => 'Cash', 'paid_at' => '2026-06-10',
         ])->assertSessionHasErrors('category');
     }
 
@@ -89,13 +89,13 @@ class CashierPaymentTypesTest extends TestCase
         $a = $this->qualified();
         // No description → rejected.
         $this->actingAs($this->as('cashier'))->post("/cashier/{$a->id}/payments", [
-            'amount' => 100, 'category' => 'Others', 'type' => 'Full', 'method' => 'Cash', 'paid_at' => '2026-06-10',
+            'amount' => 100, 'category' => 'Others', 'type' => 'Full Payment', 'method' => 'Cash', 'paid_at' => '2026-06-10',
         ])->assertSessionHasErrors('description');
 
         // With a description → accepted.
         $this->actingAs($this->as('cashier'))->post("/cashier/{$a->id}/payments", [
             'amount' => 100, 'category' => 'Others', 'description' => 'Graduation photo',
-            'type' => 'Full', 'method' => 'Cash', 'paid_at' => '2026-06-10',
+            'type' => 'Full Payment', 'method' => 'Cash', 'paid_at' => '2026-06-10',
         ])->assertRedirect();
 
         $this->assertDatabaseHas('payments', ['applicant_id' => $a->id, 'category' => 'Others', 'description' => 'Graduation photo']);
@@ -118,7 +118,7 @@ class CashierPaymentTypesTest extends TestCase
         $a = $this->qualified();
         $p = Payment::create([
             'applicant_id' => $a->id, 'amount' => 350, 'category' => 'School uniform',
-            'description' => 'size M', 'type' => 'Full', 'method' => 'Cash', 'paid_at' => '2026-06-10',
+            'description' => 'size M', 'type' => 'Full Payment', 'method' => 'Cash', 'paid_at' => '2026-06-10',
             'or_number' => 'OR-0777',
         ]);
 
@@ -146,6 +146,18 @@ class CashierPaymentTypesTest extends TestCase
         $res->assertSee('Poblacion, Magsaysay, Davao del Sur');
     }
 
+    public function test_payment_type_is_limited_to_full_payment_and_partial(): void
+    {
+        $a = $this->qualified();
+        // Retired types are no longer accepted.
+        $this->actingAs($this->as('cashier'))->post("/cashier/{$a->id}/payments", [
+            'amount' => 100, 'category' => 'Miscellaneous fee', 'type' => 'Down', 'method' => 'Cash', 'paid_at' => '2026-06-10',
+        ])->assertSessionHasErrors('type');
+
+        $this->actingAs($this->as('cashier'))->get('/cashier')
+            ->assertInertia(fn ($p) => $p->where('types', ['Full Payment', 'Partial']));
+    }
+
     public function test_cashier_index_exposes_categories_and_learners(): void
     {
         $this->qualified();
@@ -162,10 +174,10 @@ class CashierPaymentTypesTest extends TestCase
         $cashier = $this->as('cashier');
 
         $this->actingAs($cashier)->post("/cashier/{$a->id}/payments", [
-            'amount' => 100, 'category' => 'School uniform', 'type' => 'Full', 'method' => 'Cash', 'paid_at' => '2026-06-10',
+            'amount' => 100, 'category' => 'School uniform', 'type' => 'Full Payment', 'method' => 'Cash', 'paid_at' => '2026-06-10',
         ]);
         $this->actingAs($cashier)->post("/cashier/{$a->id}/payments", [
-            'amount' => 200, 'category' => 'Assessment fee', 'type' => 'Full', 'method' => 'Cash', 'paid_at' => '2026-06-10',
+            'amount' => 200, 'category' => 'Assessment fee', 'type' => 'Full Payment', 'method' => 'Cash', 'paid_at' => '2026-06-10',
         ]);
 
         $ors = Payment::orderBy('id')->pluck('or_number')->all();
@@ -176,10 +188,10 @@ class CashierPaymentTypesTest extends TestCase
     {
         $a = $this->qualified();
         Payment::create(['applicant_id' => $a->id, 'amount' => 50, 'category' => 'School uniform',
-            'type' => 'Full', 'method' => 'Cash', 'or_number' => 'OR-0042', 'paid_at' => '2026-06-01']);
+            'type' => 'Full Payment', 'method' => 'Cash', 'or_number' => 'OR-0042', 'paid_at' => '2026-06-01']);
 
         $this->actingAs($this->as('cashier'))->post("/cashier/{$a->id}/payments", [
-            'amount' => 100, 'category' => 'School uniform', 'type' => 'Full', 'method' => 'Cash', 'paid_at' => '2026-06-10',
+            'amount' => 100, 'category' => 'School uniform', 'type' => 'Full Payment', 'method' => 'Cash', 'paid_at' => '2026-06-10',
         ]);
 
         $this->assertSame('OR-0043', Payment::latest('id')->first()->or_number);

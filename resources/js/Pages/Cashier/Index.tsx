@@ -533,12 +533,22 @@ function PaymentModal({
     otherCategory: string;
     onClose: () => void;
 }) {
+    // For a fee payment that clears the outstanding balance, the type is "Full
+    // Payment"; anything less is "Partial". Non-fee one-off items default to Full.
+    const typeFor = (amount: number | '', category: string, l?: Learner) => {
+        const amt = amount === '' ? 0 : Number(amount);
+        if (category === trainingFeeCategory && l && l.balance > 0) {
+            return amt >= l.balance ? 'Full Payment' : 'Partial';
+        }
+        return 'Full Payment';
+    };
+
     const { data, setData, post, processing, errors } = useForm({
         learner_id: fixedLearner ? String(fixedLearner.id) : '',
         category: trainingFeeCategory,
         description: '',
         amount: fixedLearner && fixedLearner.balance > 0 ? fixedLearner.balance : ('' as number | ''),
-        type: 'Partial',
+        type: typeFor(fixedLearner && fixedLearner.balance > 0 ? fixedLearner.balance : '', trainingFeeCategory, fixedLearner),
         method: 'Cash',
         paid_at: new Date().toISOString().slice(0, 10),
     });
@@ -553,14 +563,25 @@ function PaymentModal({
         .filter((l) => l.name.toLowerCase().includes(q) || (l.program ?? '').toLowerCase().includes(q))
         .slice(0, 8);
 
+    // The amount drives the type; recompute it on every amount edit.
+    const setAmount = (amount: number | '') => {
+        setData((d) => ({ ...d, amount, type: typeFor(amount, d.category, learner) }));
+    };
+
     // Picking a learner for a training-fee payment pre-fills the outstanding balance.
     const pickLearner = (id: string) => {
         const l = learners.find((x) => String(x.id) === id);
-        setData((d) => ({ ...d, learner_id: id, amount: isFee && l && l.balance > 0 ? l.balance : d.amount }));
+        setData((d) => {
+            const amount = isFee && l && l.balance > 0 ? l.balance : d.amount;
+            return { ...d, learner_id: id, amount, type: typeFor(amount, d.category, l) };
+        });
         setSearch('');
     };
     const pickCategory = (cat: string) => {
-        setData((d) => ({ ...d, category: cat, amount: cat === trainingFeeCategory && learner && learner.balance > 0 ? learner.balance : d.amount }));
+        setData((d) => {
+            const amount = cat === trainingFeeCategory && learner && learner.balance > 0 ? learner.balance : d.amount;
+            return { ...d, category: cat, amount, type: typeFor(amount, cat, learner) };
+        });
     };
 
     const submit = (e: React.FormEvent) => {
@@ -630,7 +651,7 @@ function PaymentModal({
                             {errors.category && <span className="text-xs text-rose-600">{errors.category}</span>}
                         </label>
                         <label className="block"><span className="mb-1 block text-xs font-medium text-slate-600">Amount (₱)</span>
-                            <input type="number" inputMode="decimal" min="0" className="input" value={data.amount} onChange={(e) => setData('amount', e.target.value === '' ? '' : Number(e.target.value))} />
+                            <input type="number" inputMode="decimal" min="0" className="input" value={data.amount} onChange={(e) => setAmount(e.target.value === '' ? '' : Number(e.target.value))} />
                             {errors.amount && <span className="text-xs text-rose-600">{errors.amount}</span>}
                         </label>
                         <label className="col-span-2 block">

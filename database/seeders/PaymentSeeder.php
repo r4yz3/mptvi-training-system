@@ -24,7 +24,7 @@ class PaymentSeeder extends Seeder
                 Payment::firstOrCreate(
                     ['applicant_id' => $a->id, 'or_number' => 'OR-' . (20400 + $a->id)],
                     [
-                        'amount' => $fee, 'category' => config('lpf.training_fee_category'), 'type' => 'Full', 'method' => 'Cash',
+                        'amount' => $fee, 'category' => config('lpf.training_fee_category'), 'type' => 'Full Payment', 'method' => 'Cash',
                         'paid_at' => now()->subDays(40 - ($i % 30))->toDateString(),
                         'cashier_id' => $cashier?->id,
                     ],
@@ -33,7 +33,7 @@ class PaymentSeeder extends Seeder
                 Payment::firstOrCreate(
                     ['applicant_id' => $a->id, 'or_number' => 'OR-' . (20600 + $a->id)],
                     [
-                        'amount' => intdiv($fee, 2), 'category' => config('lpf.training_fee_category'), 'type' => 'Down', 'method' => 'GCash',
+                        'amount' => intdiv($fee, 2), 'category' => config('lpf.training_fee_category'), 'type' => 'Partial', 'method' => 'GCash',
                         'paid_at' => now()->subDays(10)->toDateString(),
                         'cashier_id' => $cashier?->id,
                     ],

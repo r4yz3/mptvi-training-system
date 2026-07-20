@@ -57,7 +57,7 @@ class CashierTest extends TestCase
         $this->assertSame(600, $a->fresh()->balance());
 
         $this->actingAs($cashier)->post("/cashier/{$a->id}/payments", [
-            'amount' => 600, 'type' => 'Full', 'method' => 'GCash', 'paid_at' => '2026-06-05',
+            'amount' => 600, 'type' => 'Full Payment', 'method' => 'GCash', 'paid_at' => '2026-06-05',
         ])->assertRedirect();
         $this->assertSame('Paid', $a->fresh()->status);
         $this->assertSame(0, $a->fresh()->balance());
@@ -69,7 +69,7 @@ class CashierTest extends TestCase
         $cashier = $this->as('cashier');
 
         $this->actingAs($cashier)->post("/cashier/{$a->id}/payments", [
-            'amount' => 1000, 'type' => 'Full', 'method' => 'Cash', 'paid_at' => '2026-06-01',
+            'amount' => 1000, 'type' => 'Full Payment', 'method' => 'Cash', 'paid_at' => '2026-06-01',
         ]);
         $this->assertSame('Paid', $a->fresh()->status);
 

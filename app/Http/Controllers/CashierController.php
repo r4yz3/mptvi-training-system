@@ -82,7 +82,7 @@ class CashierController extends Controller
             'canRecord' => $canRecord,
             'canVoid' => $request->user()->can('payment.void'),
             'methods' => ['Cash', 'Check', 'GCash', 'Bank'],
-            'types' => ['Full', 'Partial', 'Down', 'Reservation'],
+            'types' => ['Full Payment', 'Partial'],
             'categories' => config('lpf.payment_categories'),
             'trainingFeeCategory' => config('lpf.training_fee_category'),
             'otherCategory' => config('lpf.other_category'),
@@ -212,7 +212,7 @@ class CashierController extends Controller
             'category' => ['nullable', Rule::in(config('lpf.payment_categories'))],
             // "Others" requires the cashier to specify what the collection is for.
             'description' => ['nullable', 'string', 'max:160', Rule::requiredIf(fn () => $request->input('category') === $otherCategory)],
-            'type' => ['required', Rule::in(['Full', 'Partial', 'Down', 'Reservation'])],
+            'type' => ['required', Rule::in(['Full Payment', 'Partial'])],
             'method' => ['required', Rule::in(['Cash', 'Check', 'GCash', 'Bank'])],
             'or_number' => ['nullable', 'string', 'max:60'],
             'paid_at' => ['required', 'date'],
