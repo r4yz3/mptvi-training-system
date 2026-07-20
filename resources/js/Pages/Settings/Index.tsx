@@ -1,7 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
 import {
     SlidersHorizontal, UserCog, GraduationCap, Stamp, Building2, ShieldCheck, Palette,
-    ListChecks, List, BookOpen, DatabaseBackup, ChevronRight, Users2, ShieldAlert, Award, Wand2,
+    ListChecks, List, BookOpen, DatabaseBackup, ChevronRight, Users2, ShieldAlert, Award, Wand2, Banknote,
 } from 'lucide-react';
 import AppShell from '@/Layouts/AppShell';
 import SystemHealthPanel from '@/Components/SystemHealthPanel';
@@ -36,6 +36,7 @@ export default function SettingsIndex({ stats, system }: { stats: Stats; system:
                 { href: '/settings/requirements', icon: ListChecks, title: 'Document Requirements', desc: 'The documentary-requirements checklist recorded for each applicant.', meta: 'Required documents' },
                 { href: '/settings/education', icon: GraduationCap, title: 'Education Grid', desc: 'Levels and status options in the Educational Attainment table.', meta: 'Registration form' },
                 { href: '/settings/competencies', icon: Award, title: 'Competency Standards', desc: 'Each qualification’s TESDA Units of Competency (Basic / Common / Core).', meta: 'Achievement chart' },
+                { href: '/settings/fees', icon: Banknote, title: 'Fees (uniform, assessment)', desc: 'Extra-fee amounts per program, per school year, so the cashier can track who still owes them.', meta: 'Per school year' },
                 { href: '/settings/lists', icon: List, title: 'Reference Lists', desc: 'The dropdown option lists used across the registration form.', meta: 'Form options' },
                 { href: '/programs', icon: GraduationCap, title: 'Programs & Batches', desc: 'TESDA programs, fees, training hours and class batches.', meta: `${stats.programs} program${stats.programs === 1 ? '' : 's'}` },
             ],

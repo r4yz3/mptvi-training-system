@@ -134,6 +134,57 @@ class Applicant extends Model
         return max(0, $this->fee() - $this->paidTotal());
     }
 
+    /**
+     * Scheduled extra fees (School uniform, Assessment fee, …) for THIS trainee,
+     * based on their program + school year. Each row carries the expected amount,
+     * what they have paid in that category, the remaining balance and a status —
+     * so the cashier can see exactly which fees a trainee still owes.
+     *
+     * @return array<int, array{category:string,expected:int,paid:int,balance:int,status:string}>
+     */
+    public function scheduledFees(): array
+    {
+        if (! $this->program_id || ! $this->school_year) {
+            return [];
+        }
+
+        $amounts = FeeItem::query()
+            ->where('program_id', $this->program_id)
+            ->where('school_year', $this->school_year)
+            ->where('amount', '>', 0)
+            ->pluck('amount', 'category');
+
+        // Paid-per-category, computed from the already-loaded payments when
+        // available (avoids extra queries in list views) else queried.
+        $paidByCat = $this->relationLoaded('payments')
+            ? $this->payments->whereNull('voided_at')->groupBy('category')->map->sum('amount')
+            : $this->payments()->valid()->selectRaw('category, SUM(amount) as total')->groupBy('category')->pluck('total', 'category');
+
+        $rows = [];
+        foreach (config('lpf.scheduled_fee_categories') as $cat) {
+            $expected = (int) ($amounts[$cat] ?? 0);
+            if ($expected <= 0) {
+                continue; // not charged for this program/year
+            }
+            $paid = (int) ($paidByCat[$cat] ?? 0);
+            $rows[] = [
+                'category' => $cat,
+                'expected' => $expected,
+                'paid' => $paid,
+                'balance' => max(0, $expected - $paid),
+                'status' => $paid <= 0 ? 'Unpaid' : ($paid >= $expected ? 'Paid' : 'Partial'),
+            ];
+        }
+
+        return $rows;
+    }
+
+    /** Total still owed across all scheduled extra fees. */
+    public function scheduledFeesBalance(): int
+    {
+        return array_sum(array_column($this->scheduledFees(), 'balance'));
+    }
+
     /** Unpaid | Partial | Paid | Free (no fee). */
     public function payStatus(): string
     {

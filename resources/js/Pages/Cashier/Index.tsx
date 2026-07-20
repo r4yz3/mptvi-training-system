@@ -23,6 +23,8 @@ function MethodBadge({ method }: { method: string }) {
 interface WorkItem {
     id: number; name: string; program: string | null;
     fee: number; paid: number; balance: number; pay_status: string; status: string;
+    extras: { category: string; expected: number; paid: number; balance: number; status: string }[];
+    extras_balance: number;
 }
 interface LedgerItem {
     id: number; applicant: string | null; amount: number; category: string; description: string | null;
@@ -173,7 +175,7 @@ export default function CashierIndex(props: Props) {
                                     <p className="truncate font-medium text-slate-800">{w.name}</p>
                                     <p className="truncate text-xs text-slate-500">{w.program ?? '—'}</p>
                                 </div>
-                                <span className="inline-flex shrink-0 rounded-full bg-amber-50 px-2.5 py-1 text-sm font-semibold text-amber-700">{peso(w.balance)}</span>
+                                <span className="inline-flex shrink-0 rounded-full bg-amber-50 px-2.5 py-1 text-sm font-semibold text-amber-700">{peso(w.balance + w.extras_balance)}</span>
                             </div>
                             <div className="mt-2.5 flex items-center gap-3 text-xs text-slate-500">
                                 <span>Fee {peso(w.fee)}</span>
@@ -181,13 +183,22 @@ export default function CashierIndex(props: Props) {
                                 <span>Paid {peso(w.paid)}</span>
                                 {w.pay_status === 'Partial' && <span className="rounded bg-sky-50 px-1.5 py-0.5 text-[10px] font-medium text-sky-600">Partial</span>}
                             </div>
+                            {w.extras.length > 0 && (
+                                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                                    {w.extras.map((x) => (
+                                        <span key={x.category} className="rounded bg-violet-50 px-1.5 py-0.5 text-[10px] font-medium text-violet-700">
+                                            {x.category} {peso(x.balance)} due{x.status === 'Partial' ? ' (partial)' : ''}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
                             <div className="mt-3 flex items-center gap-2">
                                 {canRecord && (
                                     <button
                                         onClick={() => setPay({ learner: { id: w.id, name: w.name, program: w.program, balance: w.balance } })}
                                         className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white active:scale-[0.98]"
                                     >
-                                        <Banknote className="h-4 w-4" /> Collect {peso(w.balance)}
+                                        <Banknote className="h-4 w-4" /> {w.balance > 0 ? `Collect ${peso(w.balance)}` : 'Record fee'}
                                     </button>
                                 )}
                                 <a
@@ -233,7 +244,10 @@ export default function CashierIndex(props: Props) {
                                             {w.pay_status === 'Partial' && <span className="ml-1 rounded bg-sky-50 px-1 py-0.5 text-[10px] font-medium text-sky-600">Partial</span>}
                                         </td>
                                         <td className="px-4 py-3 text-right">
-                                            <span className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-sm font-semibold text-amber-700">{peso(w.balance)}</span>
+                                            {w.balance > 0 && <span className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-sm font-semibold text-amber-700">{peso(w.balance)}</span>}
+                                            {w.extras.map((x) => (
+                                                <div key={x.category} className="mt-1 text-[11px] text-violet-700">{x.category}: {peso(x.balance)} due</div>
+                                            ))}
                                         </td>
                                         <td className="px-4 py-3 text-right">
                                             <div className="flex items-center justify-end gap-1.5">

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Applicant;
 use App\Models\CompetencyUnit;
 use App\Models\CustomField;
+use App\Models\FeeItem;
 use App\Models\FormSection;
 use App\Models\Program;
 use App\Models\SecurityEvent;
@@ -296,6 +297,78 @@ class SettingsController extends Controller
         $program->competencyUnits()->whereNotIn('id', $keptIds)->delete();
 
         return back()->with('success', "Competency standards saved for {$program->title}.");
+    }
+
+    /* --------------------------- Extra fee schedule ---------------------------- */
+
+    /** Per-program, per-school-year amounts for the trackable extra fees. */
+    public function fees(Request $request): Response
+    {
+        abort_unless($request->user()->can('settings'), 403);
+
+        $categories = config('lpf.scheduled_fee_categories');
+
+        $years = Applicant::query()->distinct()->whereNotNull('school_year')->pluck('school_year')
+            ->merge(FeeItem::query()->distinct()->pluck('school_year'))
+            ->push((string) config('academic.school_year', ''))
+            ->filter()->unique()->sortDesc()->values();
+
+        $year = trim((string) $request->query('year', ''));
+        if ($year === '') {
+            $year = (string) ($years->first() ?? config('academic.school_year', ''));
+        }
+
+        $lookup = FeeItem::where('school_year', $year)->get()
+            ->groupBy('program_id')
+            ->map(fn ($rows) => $rows->pluck('amount', 'category'));
+
+        $programs = Program::orderBy('title')->get(['id', 'title', 'level', 'fee'])
+            ->map(fn (Program $p) => [
+                'id' => $p->id,
+                'title' => $p->title,
+                'level' => $p->level,
+                'misc_fee' => (int) $p->fee,
+                'amounts' => collect($categories)
+                    ->mapWithKeys(fn ($c) => [$c => (int) ($lookup[$p->id][$c] ?? 0)]),
+            ]);
+
+        return Inertia::render('Settings/Fees', [
+            'categories' => $categories,
+            'miscFeeCategory' => config('lpf.training_fee_category'),
+            'years' => $years,
+            'year' => $year,
+            'programs' => $programs,
+        ]);
+    }
+
+    /** Save the extra-fee amounts for one school year (upsert per program+category). */
+    public function updateFees(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->can('settings'), 403);
+
+        $data = $request->validate([
+            'school_year' => ['required', 'string', 'max:20'],
+            'amounts' => ['present', 'array'],           // amounts[program_id][category] = pesos
+            'amounts.*' => ['array'],
+            'amounts.*.*' => ['nullable', 'integer', 'min:0', 'max:1000000'],
+        ]);
+
+        $categories = config('lpf.scheduled_fee_categories');
+        $programIds = Program::pluck('id')->flip();
+
+        foreach ($data['amounts'] as $programId => $cats) {
+            if (! $programIds->has((int) $programId)) {
+                continue;
+            }
+            foreach ($categories as $cat) {
+                FeeItem::updateOrCreate(
+                    ['program_id' => (int) $programId, 'school_year' => $data['school_year'], 'category' => $cat],
+                    ['amount' => max(0, (int) ($cats[$cat] ?? 0))],
+                );
+            }
+        }
+
+        return back()->with('success', "Fees saved for {$data['school_year']}.");
     }
 
     /* ----------------------------- Reference lists ----------------------------- */

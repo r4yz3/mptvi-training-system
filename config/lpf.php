@@ -33,6 +33,10 @@ return [
     'payment_categories' => ['Miscellaneous fee', 'School uniform', 'Assessment fee', 'Others'],
     'training_fee_category' => 'Miscellaneous fee',
     'other_category' => 'Others',
+    // Extra fees that carry an expected amount set per program + school year
+    // (Settings → Fees), so the cashier can track who still owes them. The
+    // Miscellaneous fee lives on the program; "Others" is ad-hoc (no amount).
+    'scheduled_fee_categories' => ['School uniform', 'Assessment fee'],
 
     'sex' => ['Male', 'Female'],
 

@@ -3,7 +3,7 @@ import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import {
     ArrowLeft, Pencil, Trash2, Lock, UserCircle2, Power, Printer, Check, XCircle,
     CalendarDays, MapPin, Phone, User, IdCard, HeartPulse, Users2, Landmark,
-    GraduationCap, ListChecks, LifeBuoy, FileSignature, Sparkles, FileText, type LucideIcon,
+    GraduationCap, ListChecks, LifeBuoy, FileSignature, Sparkles, FileText, Banknote, type LucideIcon,
 } from 'lucide-react';
 import AppShell from '@/Layouts/AppShell';
 import StatusBadge from '@/Components/StatusBadge';
@@ -50,8 +50,11 @@ interface CustomFieldDef { key: string; label: string; type: string; section: st
 interface UnitResult { unit_id: number; code: string | null; title: string; type: string; result: string | null; rated_at: string | null; remarks: string | null }
 interface CompetencyInfo { units: UnitResult[]; total: number; competent: number; complete: boolean }
 
+interface FeeRow { category: string; expected: number; paid: number; balance: number; status: string }
+interface Fees { school_year: string | null; misc: FeeRow; extras: FeeRow[] }
+
 export default function ApplicantShow({
-    applicant, pii, documents, canVerifyDocs, customFields, traineeStatuses, eduLevels, competencyInfo,
+    applicant, pii, documents, canVerifyDocs, customFields, traineeStatuses, eduLevels, competencyInfo, fees,
 }: {
     applicant: Applicant;
     pii: boolean;
@@ -61,6 +64,7 @@ export default function ApplicantShow({
     traineeStatuses: string[];
     eduLevels: { key: string; label: string }[];
     competencyInfo: CompetencyInfo;
+    fees: Fees | null;
 }) {
     const { auth } = usePage<PageProps>().props;
     const toggle = useForm({});
@@ -173,6 +177,12 @@ export default function ApplicantShow({
             <div className="mt-6">
                 <CompetencyPanel info={competencyInfo} />
             </div>
+
+            {fees && (
+                <div className="mt-6">
+                    <FeesPanel fees={fees} />
+                </div>
+            )}
 
             {pii ? (
                 <>
@@ -447,6 +457,60 @@ function CompetencyPanel({ info }: { info: CompetencyInfo }) {
                         </span>
                     </div>
                 ))}
+            </div>
+        </div>
+    );
+}
+
+function FeesPanel({ fees }: { fees: Fees }) {
+    const peso = (n: number) => '₱' + n.toLocaleString();
+    const badge = (status: string) => {
+        const map: Record<string, string> = {
+            Paid: 'bg-emerald-50 text-emerald-700', Partial: 'bg-sky-50 text-sky-700',
+            Unpaid: 'bg-amber-50 text-amber-700', Free: 'bg-slate-100 text-slate-500',
+        };
+        return map[status] ?? 'bg-slate-100 text-slate-500';
+    };
+    const rows: FeeRow[] = [fees.misc, ...fees.extras];
+    const totalDue = rows.reduce((s, r) => s + r.balance, 0);
+
+    return (
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div className="flex items-center justify-between gap-2.5 border-b border-slate-100 bg-slate-50/60 px-5 py-3">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600"><Banknote className="h-4 w-4" /></span>
+                    <h3 className="text-sm font-semibold text-slate-700">Fees &amp; payments{fees.school_year ? <span className="ml-1 font-normal text-slate-400">· {fees.school_year}</span> : null}</h3>
+                </div>
+                <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${totalDue > 0 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                    {totalDue > 0 ? `${peso(totalDue)} due` : 'Fully paid'}
+                </span>
+            </div>
+            <div className="overflow-x-auto">
+                <table className="w-full min-w-[420px] text-sm">
+                    <thead>
+                        <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-500">
+                            <th className="px-5 py-2 font-medium">Fee</th>
+                            <th className="px-3 py-2 text-right font-medium">Due</th>
+                            <th className="px-3 py-2 text-right font-medium">Paid</th>
+                            <th className="px-3 py-2 text-right font-medium">Balance</th>
+                            <th className="px-5 py-2 font-medium">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                        {rows.map((r) => (
+                            <tr key={r.category}>
+                                <td className="px-5 py-2 text-slate-700">{r.category}</td>
+                                <td className="px-3 py-2 text-right text-slate-500">{peso(r.expected)}</td>
+                                <td className="px-3 py-2 text-right text-slate-500">{peso(r.paid)}</td>
+                                <td className="px-3 py-2 text-right font-medium text-slate-800">{peso(r.balance)}</td>
+                                <td className="px-5 py-2"><span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${badge(r.status)}`}>{r.status}</span></td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            <div className="border-t border-slate-100 bg-slate-50/40 px-5 py-2 text-xs text-slate-400">
+                Extra fee amounts are set in Settings → Fees (per program, per school year). “Others” is collected ad-hoc and not tracked here.
             </div>
         </div>
     );

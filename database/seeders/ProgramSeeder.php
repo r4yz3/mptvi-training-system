@@ -41,7 +41,26 @@ class ProgramSeeder extends Seeder
             );
         }
 
+        $this->seedExtraFees();
         $this->seedCompetencies();
+    }
+
+    /**
+     * Starter extra-fee amounts (per program, per school year) so the cashier can
+     * track uniform / assessment fees out of the box. Admins edit these at
+     * Settings → Fees. Community-based (free) programs charge no extras.
+     */
+    private function seedExtraFees(): void
+    {
+        $sy = '2026–2027';
+        foreach (Program::where('training_type', Program::SCHOOL_BASED)->get() as $program) {
+            foreach (['School uniform' => 500, 'Assessment fee' => 1000] as $category => $amount) {
+                \App\Models\FeeItem::firstOrCreate(
+                    ['program_id' => $program->id, 'school_year' => $sy, 'category' => $category],
+                    ['amount' => $amount],
+                );
+            }
+        }
     }
 
     /**

@@ -166,6 +166,8 @@ Route::middleware('auth')->group(function () {
         Route::put('/settings/education', [SettingsController::class, 'updateEducation'])->name('settings.education.update');
         Route::get('/settings/competencies', [SettingsController::class, 'competencies'])->name('settings.competencies');
         Route::put('/settings/competencies/{program}', [SettingsController::class, 'updateCompetencies'])->name('settings.competencies.update');
+        Route::get('/settings/fees', [SettingsController::class, 'fees'])->name('settings.fees');
+        Route::put('/settings/fees', [SettingsController::class, 'updateFees'])->name('settings.fees.update');
         Route::get('/settings/lists', [SettingsController::class, 'lists'])->name('settings.lists');
         Route::put('/settings/lists', [SettingsController::class, 'updateLists'])->name('settings.lists.update');
         Route::get('/settings/academic', [SettingsController::class, 'academic'])->name('settings.academic');

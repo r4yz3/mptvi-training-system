@@ -17,13 +17,13 @@ class CashierController extends Controller
     {
         $canFinance = $request->user()->can('finance.view');
 
-        // Worklist — learners who still owe (fee > 0, balance > 0), not disqualified.
+        // Worklist — learners who still owe anything (the misc fee OR a scheduled
+        // extra fee like uniform / assessment), not disqualified.
         $worklist = Applicant::query()
-            ->with('program:id,title,fee')
+            ->with(['program:id,title,fee', 'payments'])
             ->where('active', true)
             ->where('status', '!=', 'Disqualified')
             ->get()
-            ->filter(fn (Applicant $a) => $a->fee() > 0 && $a->balance() > 0)
             ->map(fn (Applicant $a) => [
                 'id' => $a->id,
                 'name' => $a->display_name,
@@ -33,8 +33,12 @@ class CashierController extends Controller
                 'balance' => $a->balance(),
                 'pay_status' => $a->payStatus(),
                 'status' => $a->status,
+                // Scheduled extra fees still owed (empty when all paid / none set).
+                'extras' => collect($a->scheduledFees())->where('balance', '>', 0)->values()->all(),
+                'extras_balance' => $a->scheduledFeesBalance(),
             ])
-            ->sortByDesc('balance')
+            ->filter(fn ($r) => $r['balance'] > 0 || $r['extras_balance'] > 0)
+            ->sortByDesc(fn ($r) => $r['balance'] + $r['extras_balance'])
             ->values();
 
         // Ledger — admin sees all; a cashier sees only their own entries.
@@ -301,6 +305,7 @@ class CashierController extends Controller
             'balance' => $applicant->balance(),
             'other' => $applicant->otherCollected(),
             'payStatus' => $applicant->payStatus(),
+            'extras' => $applicant->scheduledFees(),
             'user' => $request->user(),
         ]);
     }

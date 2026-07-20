@@ -105,6 +105,37 @@
         </tfoot>
     </table>
 
+    @if(!empty($extras))
+    <div class="sec">Other fees ({{ $a->school_year ?: 'this school year' }})</div>
+    <table>
+        <thead>
+            <tr>
+                <th>Fee</th><th class="r">Amount due</th><th class="r">Paid</th><th class="r">Balance</th><th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($extras as $x)
+                <tr>
+                    <td>{{ $x['category'] }}</td>
+                    <td class="r">&#8369;{{ number_format($x['expected']) }}</td>
+                    <td class="r">&#8369;{{ number_format($x['paid']) }}</td>
+                    <td class="r">&#8369;{{ number_format($x['balance']) }}</td>
+                    <td>{{ $x['status'] }}</td>
+                </tr>
+            @endforeach
+        </tbody>
+        <tfoot>
+            <tr>
+                <td>Total other fees</td>
+                <td class="r">&#8369;{{ number_format(array_sum(array_column($extras, 'expected'))) }}</td>
+                <td class="r">&#8369;{{ number_format(array_sum(array_column($extras, 'paid'))) }}</td>
+                <td class="r">&#8369;{{ number_format(array_sum(array_column($extras, 'balance'))) }}</td>
+                <td></td>
+            </tr>
+        </tfoot>
+    </table>
+    @endif
+
     <div class="sign">
         <div class="ln">Cashier / Collecting Officer</div>
         <div class="ln">Learner's signature</div>

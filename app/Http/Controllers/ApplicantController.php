@@ -256,6 +256,17 @@ class ApplicantController extends Controller
                 'key' => $l['key'], 'label' => $l['label'],
             ])->values(),
             'competencyInfo' => $applicant->competencySummary(),
+            'fees' => $canPii ? [
+                'school_year' => $applicant->school_year,
+                'misc' => [
+                    'category' => config('lpf.training_fee_category'),
+                    'expected' => $applicant->fee(),
+                    'paid' => $applicant->paidTotal(),
+                    'balance' => $applicant->balance(),
+                    'status' => $applicant->payStatus(),
+                ],
+                'extras' => $applicant->scheduledFees(),
+            ] : null,
         ]);
     }
 
