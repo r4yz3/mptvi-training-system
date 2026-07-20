@@ -27,10 +27,12 @@ return [
     ],
     'education_statuses' => ['Graduate', 'Undergraduate', 'Ongoing'],
 
-    // Cashier payment categories. Only the training fee counts toward the
+    // Cashier payment categories. Only the miscellaneous fee counts toward the
     // program-fee balance + pipeline; the rest are extra collections.
-    'payment_categories' => ['Training fee', 'Uniform', 'ID card', 'Assessment fee', 'Learning materials', 'Insurance', 'Other'],
-    'training_fee_category' => 'Training fee',
+    // "Others" requires a description (the cashier specifies what it is for).
+    'payment_categories' => ['Miscellaneous fee', 'School uniform', 'Assessment fee', 'Others'],
+    'training_fee_category' => 'Miscellaneous fee',
+    'other_category' => 'Others',
 
     'sex' => ['Male', 'Female'],
 

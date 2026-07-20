@@ -85,6 +85,7 @@ class CashierController extends Controller
             'types' => ['Full', 'Partial', 'Down', 'Reservation'],
             'categories' => config('lpf.payment_categories'),
             'trainingFeeCategory' => config('lpf.training_fee_category'),
+            'otherCategory' => config('lpf.other_category'),
         ];
 
         // Aggregates — admin / finance.view only.
@@ -205,14 +206,18 @@ class CashierController extends Controller
     {
         abort_unless($request->user()->can('payment.record'), 403);
 
+        $otherCategory = config('lpf.other_category');
         $data = $request->validate([
             'amount' => ['required', 'integer', 'min:1', 'max:1000000'],
             'category' => ['nullable', Rule::in(config('lpf.payment_categories'))],
-            'description' => ['nullable', 'string', 'max:160'],
+            // "Others" requires the cashier to specify what the collection is for.
+            'description' => ['nullable', 'string', 'max:160', Rule::requiredIf(fn () => $request->input('category') === $otherCategory)],
             'type' => ['required', Rule::in(['Full', 'Partial', 'Down', 'Reservation'])],
             'method' => ['required', Rule::in(['Cash', 'Check', 'GCash', 'Bank'])],
             'or_number' => ['nullable', 'string', 'max:60'],
             'paid_at' => ['required', 'date'],
+        ], [
+            'description.required' => 'Please specify what the “Others” collection is for.',
         ]);
         // Default to the training fee when no category is supplied (legacy behavior).
         $data['category'] = $data['category'] ?? config('lpf.training_fee_category');

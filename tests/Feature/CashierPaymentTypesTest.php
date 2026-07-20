@@ -41,12 +41,12 @@ class CashierPaymentTypesTest extends TestCase
     {
         $a = $this->qualified();
         $this->actingAs($this->as('cashier'))->post("/cashier/{$a->id}/payments", [
-            'amount' => 350, 'category' => 'Uniform', 'description' => '1 set, size M',
+            'amount' => 350, 'category' => 'School uniform', 'description' => '1 set, size M',
             'type' => 'Full', 'method' => 'Cash', 'paid_at' => '2026-06-10',
         ])->assertRedirect();
 
         $p = Payment::where('applicant_id', $a->id)->firstOrFail();
-        $this->assertSame('Uniform', $p->category);
+        $this->assertSame('School uniform', $p->category);
         $this->assertSame('1 set, size M', $p->description);
     }
 
@@ -54,7 +54,7 @@ class CashierPaymentTypesTest extends TestCase
     {
         $a = $this->qualified();
         $this->actingAs($this->as('cashier'))->post("/cashier/{$a->id}/payments", [
-            'amount' => 1000, 'category' => 'Uniform', 'type' => 'Full', 'method' => 'Cash', 'paid_at' => '2026-06-10',
+            'amount' => 1000, 'category' => 'School uniform', 'type' => 'Full', 'method' => 'Cash', 'paid_at' => '2026-06-10',
         ])->assertRedirect();
 
         $a->refresh();
@@ -68,7 +68,7 @@ class CashierPaymentTypesTest extends TestCase
     {
         $a = $this->qualified();
         $this->actingAs($this->as('cashier'))->post("/cashier/{$a->id}/payments", [
-            'amount' => 1000, 'category' => 'Training fee', 'type' => 'Full', 'method' => 'Cash', 'paid_at' => '2026-06-10',
+            'amount' => 1000, 'category' => 'Miscellaneous fee', 'type' => 'Full', 'method' => 'Cash', 'paid_at' => '2026-06-10',
         ])->assertRedirect();
 
         $a->refresh();
@@ -84,6 +84,23 @@ class CashierPaymentTypesTest extends TestCase
         ])->assertSessionHasErrors('category');
     }
 
+    public function test_others_category_requires_a_description(): void
+    {
+        $a = $this->qualified();
+        // No description → rejected.
+        $this->actingAs($this->as('cashier'))->post("/cashier/{$a->id}/payments", [
+            'amount' => 100, 'category' => 'Others', 'type' => 'Full', 'method' => 'Cash', 'paid_at' => '2026-06-10',
+        ])->assertSessionHasErrors('description');
+
+        // With a description → accepted.
+        $this->actingAs($this->as('cashier'))->post("/cashier/{$a->id}/payments", [
+            'amount' => 100, 'category' => 'Others', 'description' => 'Graduation photo',
+            'type' => 'Full', 'method' => 'Cash', 'paid_at' => '2026-06-10',
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('payments', ['applicant_id' => $a->id, 'category' => 'Others', 'description' => 'Graduation photo']);
+    }
+
     public function test_legacy_payment_without_category_defaults_to_training_fee(): void
     {
         $a = $this->qualified();
@@ -92,7 +109,7 @@ class CashierPaymentTypesTest extends TestCase
         ])->assertRedirect();
 
         $p = Payment::where('applicant_id', $a->id)->firstOrFail();
-        $this->assertSame('Training fee', $p->category);
+        $this->assertSame('Miscellaneous fee', $p->category);
         $this->assertSame(500, $a->fresh()->paidTotal());
     }
 
@@ -100,14 +117,14 @@ class CashierPaymentTypesTest extends TestCase
     {
         $a = $this->qualified();
         $p = Payment::create([
-            'applicant_id' => $a->id, 'amount' => 350, 'category' => 'Uniform',
+            'applicant_id' => $a->id, 'amount' => 350, 'category' => 'School uniform',
             'description' => 'size M', 'type' => 'Full', 'method' => 'Cash', 'paid_at' => '2026-06-10',
         ]);
 
         $res = $this->actingAs($this->as('cashier'))->get("/cashier/payments/{$p->id}/receipt");
         $res->assertOk();
         $res->assertSee('ACKNOWLEDGEMENT RECEIPT');
-        $res->assertSee('Uniform');
+        $res->assertSee('School uniform');
         $res->assertSee('Three Hundred Fifty Pesos');
     }
 
@@ -116,7 +133,7 @@ class CashierPaymentTypesTest extends TestCase
         $this->qualified();
         $this->actingAs($this->as('cashier'))->get('/cashier')
             ->assertInertia(fn ($p) => $p
-                ->where('trainingFeeCategory', 'Training fee')
+                ->where('trainingFeeCategory', 'Miscellaneous fee')
                 ->has('categories')
                 ->has('learners', 1));
     }
@@ -127,10 +144,10 @@ class CashierPaymentTypesTest extends TestCase
         $cashier = $this->as('cashier');
 
         $this->actingAs($cashier)->post("/cashier/{$a->id}/payments", [
-            'amount' => 100, 'category' => 'Uniform', 'type' => 'Full', 'method' => 'Cash', 'paid_at' => '2026-06-10',
+            'amount' => 100, 'category' => 'School uniform', 'type' => 'Full', 'method' => 'Cash', 'paid_at' => '2026-06-10',
         ]);
         $this->actingAs($cashier)->post("/cashier/{$a->id}/payments", [
-            'amount' => 200, 'category' => 'ID card', 'type' => 'Full', 'method' => 'Cash', 'paid_at' => '2026-06-10',
+            'amount' => 200, 'category' => 'Assessment fee', 'type' => 'Full', 'method' => 'Cash', 'paid_at' => '2026-06-10',
         ]);
 
         $ors = Payment::orderBy('id')->pluck('or_number')->all();
@@ -140,11 +157,11 @@ class CashierPaymentTypesTest extends TestCase
     public function test_or_number_continues_from_existing_max(): void
     {
         $a = $this->qualified();
-        Payment::create(['applicant_id' => $a->id, 'amount' => 50, 'category' => 'Uniform',
+        Payment::create(['applicant_id' => $a->id, 'amount' => 50, 'category' => 'School uniform',
             'type' => 'Full', 'method' => 'Cash', 'or_number' => 'OR-0042', 'paid_at' => '2026-06-01']);
 
         $this->actingAs($this->as('cashier'))->post("/cashier/{$a->id}/payments", [
-            'amount' => 100, 'category' => 'Uniform', 'type' => 'Full', 'method' => 'Cash', 'paid_at' => '2026-06-10',
+            'amount' => 100, 'category' => 'School uniform', 'type' => 'Full', 'method' => 'Cash', 'paid_at' => '2026-06-10',
         ]);
 
         $this->assertSame('OR-0043', Payment::latest('id')->first()->or_number);

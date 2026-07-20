@@ -39,7 +39,7 @@ interface Aggregates {
 interface Props {
     worklist: WorkItem[]; ledger: LedgerItem[]; learners: Learner[];
     canFinance: boolean; canRecord: boolean; canVoid: boolean;
-    methods: string[]; types: string[]; categories: string[]; trainingFeeCategory: string;
+    methods: string[]; types: string[]; categories: string[]; trainingFeeCategory: string; otherCategory: string;
     aggregates?: Aggregates;
     programs?: { id: number; title: string }[];
 }
@@ -116,7 +116,7 @@ export default function CashierIndex(props: Props) {
             {canFinance && aggregates && (
                 <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
                     <Stat icon={<Wallet className="h-5 w-5" />} label="Total collected" value={peso(aggregates.collected)} tone="emerald" />
-                    <Stat icon={<Banknote className="h-5 w-5" />} label="Training fees" value={peso(aggregates.fee_collected)} tone="brand" />
+                    <Stat icon={<Banknote className="h-5 w-5" />} label="Miscellaneous fees" value={peso(aggregates.fee_collected)} tone="brand" />
                     <Stat icon={<Tags className="h-5 w-5" />} label="Other collections" value={peso(aggregates.other_collected)} tone="violet" />
                     <Stat icon={<TrendingUp className="h-5 w-5" />} label="Fee outstanding" value={peso(aggregates.outstanding)} tone="amber" />
                 </div>
@@ -410,6 +410,7 @@ export default function CashierIndex(props: Props) {
                     types={props.types}
                     categories={props.categories}
                     trainingFeeCategory={props.trainingFeeCategory}
+                    otherCategory={props.otherCategory}
                     onClose={() => setPay(null)}
                 />
             )}
@@ -521,7 +522,7 @@ function Stat({ icon, label, value, tone }: { icon: React.ReactNode; label: stri
 }
 
 function PaymentModal({
-    fixedLearner, learners, methods, types, categories, trainingFeeCategory, onClose,
+    fixedLearner, learners, methods, types, categories, trainingFeeCategory, otherCategory, onClose,
 }: {
     fixedLearner?: Learner;
     learners: Learner[];
@@ -529,6 +530,7 @@ function PaymentModal({
     types: string[];
     categories: string[];
     trainingFeeCategory: string;
+    otherCategory: string;
     onClose: () => void;
 }) {
     const { data, setData, post, processing, errors } = useForm({
@@ -544,6 +546,7 @@ function PaymentModal({
 
     const learner = fixedLearner ?? learners.find((l) => String(l.id) === data.learner_id);
     const isFee = data.category === trainingFeeCategory;
+    const isOther = data.category === otherCategory;
 
     const q = search.trim().toLowerCase();
     const matches = q === '' ? [] : learners
@@ -630,8 +633,13 @@ function PaymentModal({
                             <input type="number" inputMode="decimal" min="0" className="input" value={data.amount} onChange={(e) => setData('amount', e.target.value === '' ? '' : Number(e.target.value))} />
                             {errors.amount && <span className="text-xs text-rose-600">{errors.amount}</span>}
                         </label>
-                        <label className="col-span-2 block"><span className="mb-1 block text-xs font-medium text-slate-600">Description <span className="text-slate-400">(optional)</span></span>
-                            <input className="input" value={data.description} onChange={(e) => setData('description', e.target.value)} placeholder={isFee ? 'e.g. 2nd installment' : 'e.g. 1 set uniform, size M'} />
+                        <label className="col-span-2 block">
+                            <span className="mb-1 block text-xs font-medium text-slate-600">
+                                {isOther ? <>Specify <span className="text-rose-500">*</span></> : <>Description <span className="text-slate-400">(optional)</span></>}
+                            </span>
+                            <input className="input" value={data.description} onChange={(e) => setData('description', e.target.value)}
+                                placeholder={isOther ? 'What is this collection for?' : isFee ? 'e.g. 2nd installment' : 'e.g. 1 set uniform, size M'} />
+                            {errors.description && <span className="text-xs text-rose-600">{errors.description}</span>}
                         </label>
                         <label className="block"><span className="mb-1 block text-xs font-medium text-slate-600">Type</span>
                             <select className="input" value={data.type} onChange={(e) => setData('type', e.target.value)}>{types.map((t) => <option key={t}>{t}</option>)}</select>
