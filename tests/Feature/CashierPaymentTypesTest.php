@@ -131,9 +131,12 @@ class CashierPaymentTypesTest extends TestCase
         // Relabelled OR No. → Control No.
         $res->assertSee('Control No.');
         $res->assertDontSee('OR No.');
-        // Two copies on one A4: Trainee's + File.
-        $res->assertSee('FILE COPY');
-        $res->assertSeeText('Trainee', false);
+        // Two quarter-page copies; the file copy carries a COPY watermark, and the
+        // old "Trainee's Copy / File Copy" tags are gone.
+        $res->assertSee('watermark');
+        $res->assertSee('>COPY<', false);
+        $res->assertDontSee('TRAINEE');
+        $res->assertDontSee('FILE COPY');
         // The PESO (Magsaysay municipal) logo is removed; institute logo stays.
         $res->assertDontSee('magsaysay-logo.png');
         $res->assertSee('mptvi-logo.png');
