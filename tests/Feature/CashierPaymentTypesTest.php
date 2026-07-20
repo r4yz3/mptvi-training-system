@@ -119,6 +119,7 @@ class CashierPaymentTypesTest extends TestCase
         $p = Payment::create([
             'applicant_id' => $a->id, 'amount' => 350, 'category' => 'School uniform',
             'description' => 'size M', 'type' => 'Full', 'method' => 'Cash', 'paid_at' => '2026-06-10',
+            'or_number' => 'OR-0777',
         ]);
 
         \App\Models\Setting::put('org_address', 'Poblacion, Magsaysay, Davao del Sur');
@@ -128,9 +129,10 @@ class CashierPaymentTypesTest extends TestCase
         $res->assertSee('ACKNOWLEDGEMENT RECEIPT');
         $res->assertSee('School uniform');
         $res->assertSee('Three Hundred Fifty Pesos');
-        // Relabelled OR No. → Control No.
+        // Relabelled OR No. → Control No., and the OR- prefix reads CN- on the receipt.
         $res->assertSee('Control No.');
         $res->assertDontSee('OR No.');
+        $res->assertSee('CN-');
         // Two quarter-page copies; the file copy carries a COPY watermark, and the
         // old "Trainee's Copy / File Copy" tags are gone.
         $res->assertSee('watermark');

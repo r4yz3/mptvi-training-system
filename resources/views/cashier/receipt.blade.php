@@ -60,6 +60,8 @@
 
     @php
         $control = $p->or_number ?? ('AR-'.str_pad($p->id, 5, '0', STR_PAD_LEFT));
+        // Control-number prefix on the receipt: OR- becomes CN-.
+        $control = preg_replace('/^OR-/', 'CN-', $control);
         $orgLine = $inst['address'] ?? null;
         $contactLine = collect([$inst['contact'] ?? null, $inst['email'] ?? null])->filter()->implode(' · ');
         // First copy is the clean original (trainee); second carries the COPY watermark (file).
@@ -87,7 +89,7 @@
                 <div class="rno">Control No. <b>{{ $control }}</b> &nbsp;·&nbsp; {{ $p->paid_at?->format('F j, Y') }}</div>
 
                 <div class="row"><span class="k">Received from</span><span class="v">{{ $a?->display_name ?? '—' }}</span></div>
-                <div class="row"><span class="k">Program</span><span class="v">{{ $a?->program?->title ?? '—' }}{{ $a?->program?->level ? ' ('.$a->program->level.')' : '' }}</span></div>
+                <div class="row"><span class="k">Program</span><span class="v">{{ $a?->program?->title ?? '—' }}</span></div>
                 <div class="row"><span class="k">Particulars</span><span class="v">{{ $p->category }}{{ $p->description ? ' — '.$p->description : '' }}</span></div>
 
                 <div class="amt">
