@@ -12,10 +12,13 @@ use App\Models\User;
  */
 class SecurityPosture
 {
-    /** Seeded demo logins that must be removed before go-live. */
+    /** Seeded demo logins that must be removed before go-live (any past domain). */
     private const DEMO_EMAILS = [
-        'admin@peso.com', 'secretary@peso.com', 'registrar@peso.com',
-        'cashier@peso.com', 'coordinator@peso.com',
+        'admin@mptvi.com', 'secretary@mptvi.com', 'registrar@mptvi.com',
+        'cashier@mptvi.com', 'coordinator@mptvi.com',
+        // Legacy domains from earlier seeds — still flag them for removal.
+        'admin@peso.com', 'secretary@peso.com', 'registrar@peso.com', 'cashier@peso.com', 'coordinator@peso.com',
+        'admin@mptvi.test', 'secretary@mptvi.test', 'registrar@mptvi.test', 'cashier@mptvi.test', 'coordinator@mptvi.test',
     ];
 
     public function report(): array

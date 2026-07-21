@@ -5,7 +5,7 @@ browser over the office network. No internet required.
 
 - **Stack on the server:** Windows + Laragon (Apache + PHP 8.3) + SQLite
 - **Other PCs need:** just a web browser + a one-time `client-hostname.bat` run
-- **Address staff use:** `http://peso.com/` (a local name pointed at the server PC)
+- **Address staff use:** `http://mptvi.com/` (a local name pointed at the server PC)
 
 ---
 
@@ -62,11 +62,11 @@ npm ci && npm run build
 In the app folder, run **`deploy\local\setup.bat`** (double-click, or from the Laragon
 Terminal — run it **as administrator** to get the extras). It finishes in **one run** —
 no editing needed: it creates `.env` from the template (`APP_URL` is already
-`http://peso.com`), **auto-generates the app key and a strong `BACKUP_PASSWORD`**
+`http://mptvi.com`), **auto-generates the app key and a strong `BACKUP_PASSWORD`**
 (saved to `BACKUP-PASSWORD-KEEP-SAFE.txt` — move that file off this PC, then delete it),
 then does composer install, npm build, database create + migrate + **seed/sync
 roles & permissions** (and the Programs catalog on a fresh DB), storage link, optimize,
-installs the Apache vhost, maps `peso.com` on this PC, sets **Laragon to auto-start on
+installs the Apache vhost, maps `mptvi.com` on this PC, sets **Laragon to auto-start on
 boot**, and adds the firewall rule. Then skip to **step 4**. (Static IP and the backup
 task are still manual — steps 6 and 8.)
 
@@ -83,7 +83,7 @@ copy deploy\local\env.local.example .env
 ```
 
 Edit `.env`:
-- Leave **`APP_URL`** as `http://peso.com` (the local name pointed at this PC — see steps 5–7)
+- Leave **`APP_URL`** as `http://mptvi.com` (the local name pointed at this PC — see steps 5–7)
 - Set **`BACKUP_PASSWORD`** to a long random secret (and store it somewhere off this PC)
 
 Then:
@@ -102,19 +102,19 @@ php artisan optimize
 > (the real qualifications). Do **not** run the full `DatabaseSeeder` — it adds
 > demo applicants/payments.
 
-Confirm it works on the server itself: open `http://peso.com/` (or `http://localhost/`) → you should see the login page.
+Confirm it works on the server itself: open `http://mptvi.com/` (or `http://localhost/`) → you should see the login page.
 
-> **About the `peso.com` name:** it isn't real DNS — each PC resolves it locally via its
-> Windows `hosts` file. `setup.bat` adds `127.0.0.1  peso.com` on the server; each other
-> PC gets `<server-ip>  peso.com` from `client-hostname.bat` (step 7). The hosts file
-> wins over the public internet, so the real peso.com on the web is never reached.
+> **About the `mptvi.com` name:** it isn't real DNS — each PC resolves it locally via its
+> Windows `hosts` file. `setup.bat` adds `127.0.0.1  mptvi.com` on the server; each other
+> PC gets `<server-ip>  mptvi.com` from `client-hostname.bat` (step 7). The hosts file
+> wins over the public internet, so the real mptvi.com on the web is never reached.
 
 ## 4. First login & lock-down (do this immediately)
 
-Log in with `admin@peso.com` / `password`, then:
+Log in with `admin@mptvi.com` / `password`, then:
 1. **Users** → create the real staff accounts with strong passwords.
 2. Change the admin account's email + password (or make a new admin and delete the seeded one).
-3. Delete the other seeded demo accounts (`secretary@/registrar@/cashier@/coordinator@peso.com`).
+3. Delete the other seeded demo accounts (`secretary@/registrar@/cashier@/coordinator@mptvi.com`).
 4. **Settings → Institution Profile / Branding / Signatories** → set the real names, logos and assessor.
 
 ## 5. Make it reachable from other PCs (firewall)
@@ -136,17 +136,17 @@ So the URL never changes:
 
 Find the current IP with: `ipconfig` (look at *IPv4 Address*).
 
-`APP_URL` stays `http://peso.com` regardless of the IP — the static IP just keeps the
+`APP_URL` stays `http://mptvi.com` regardless of the IP — the static IP just keeps the
 name pointing at the same machine.
 
 ## 7. Tell the office the URL
 
 On **every other PC** on the network, run `deploy\local\client-hostname.bat` **as
 administrator** once and enter the server's static IP when prompted. That maps
-`peso.com → <server-ip>` on that PC. Then open:
+`mptvi.com → <server-ip>` on that PC. Then open:
 
 ```
-http://peso.com/
+http://mptvi.com/
 ```
 
 and bookmark it on every staff PC. (If the server's IP ever changes, re-run
@@ -182,7 +182,7 @@ visible/downloadable in **Settings → Backups**. Old ones auto-prune (14 daily 
   fully unattended reboot, also enable **Windows auto-login** for the server account
   (the Startup item runs after sign-in). As a belt-and-braces check, Laragon → Menu →
   Preferences → "Run Laragon when Windows starts" + "Start all services automatically".
-- After a Windows restart, confirm `http://peso.com/` loads.
+- After a Windows restart, confirm `http://mptvi.com/` loads.
 
 ---
 
@@ -196,7 +196,7 @@ visible/downloadable in **Settings → Backups**. Old ones auto-prune (14 daily 
 
 ## Quick troubleshooting
 
-- **Other PCs can't connect:** firewall rule (step 5), server static IP (step 6), `client-hostname.bat` run on that PC (step 7), and all PCs on the same network/router. Test `http://localhost/` on the server first; if `peso.com` fails but the raw `http://<server-ip>/` works, the hosts entry is missing — re-run `client-hostname.bat`.
+- **Other PCs can't connect:** firewall rule (step 5), server static IP (step 6), `client-hostname.bat` run on that PC (step 7), and all PCs on the same network/router. Test `http://localhost/` on the server first; if `mptvi.com` fails but the raw `http://<server-ip>/` works, the hosts entry is missing — re-run `client-hostname.bat`.
 - **"419 Page Expired" on login:** make sure `APP_URL` matches the address staff actually type, then `php artisan optimize`.
 - **Redirects to https and fails:** `APP_ENV` must be `local` (not `production`) in `.env`.
 - **Blank page / 500:** check `storage\logs\laravel.log`; ensure `storage\` and `bootstrap\cache\` are writable.

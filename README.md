@@ -87,7 +87,7 @@ virtual host, Windows firewall rule, static IP, the office URL, automatic backup
 
 ### First login & lock-down
 
-`RbacSeeder` creates a bootstrap admin: **admin@peso.com** / **password**.
+`RbacSeeder` creates a bootstrap admin: **admin@mptvi.com** / **password**.
 **Immediately** create the real staff accounts, change the admin password, and delete
 the seeded demo accounts (Settings → Users).
 

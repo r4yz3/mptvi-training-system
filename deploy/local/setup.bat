@@ -103,18 +103,18 @@ if exist "%VHOST%\" (
 set "ADMIN=0"
 net session >nul 2>&1 && set "ADMIN=1"
 
-REM --- Make http://peso.com resolve on THIS (server) PC ---
+REM --- Make http://mptvi.com resolve on THIS (server) PC ---
 set "HOSTS=%SystemRoot%\System32\drivers\etc\hosts"
-findstr /i /c:"peso.com" "%HOSTS%" >nul 2>&1
+findstr /i /c:"mptvi.com" "%HOSTS%" >nul 2>&1
 if "%errorlevel%"=="0" (
-    echo   - Hosts: peso.com already mapped.
+    echo   - Hosts: mptvi.com already mapped.
 ) else if "%ADMIN%"=="1" (
-    >>"%HOSTS%" echo 127.0.0.1    peso.com
+    >>"%HOSTS%" echo 127.0.0.1    mptvi.com
     ipconfig /flushdns >nul 2>&1
-    echo   - Hosts: mapped peso.com -^> 127.0.0.1 on this PC.
+    echo   - Hosts: mapped mptvi.com -^> 127.0.0.1 on this PC.
 ) else (
-    echo   - Hosts NOT set ^(needs admin^). To use http://peso.com here, run once in an
-    echo     ADMIN terminal:  echo 127.0.0.1    peso.com ^>^> "%HOSTS%"
+    echo   - Hosts NOT set ^(needs admin^). To use http://mptvi.com here, run once in an
+    echo     ADMIN terminal:  echo 127.0.0.1    mptvi.com ^>^> "%HOSTS%"
 )
 
 REM --- Start Laragon (Apache + the app) automatically when the PC boots ---
@@ -135,13 +135,13 @@ echo.
 echo ============================================================
 echo   SETUP COMPLETE
 echo.
-echo   Open on this PC:   http://peso.com/   ^(or http://localhost/^)
-echo   Log in:            admin@peso.com  /  password
+echo   Open on this PC:   http://mptvi.com/   ^(or http://localhost/^)
+echo   Log in:            admin@mptvi.com  /  password
 echo.
 if defined NEWDB (
     echo   FIRST-TIME to-do ^(see deploy\local\INSTALL-LOCAL.md^):
     echo     1. Reload Apache in Laragon if the vhost was just installed
-    echo     2. Give this PC a STATIC IP so peso.com stays put
+    echo     2. Give this PC a STATIC IP so mptvi.com stays put
     echo     3. On every OTHER office PC, run deploy\local\client-hostname.bat as admin
     echo     4. Right-click deploy\local\install-backup-task.bat - Run as administrator
     echo     5. Log in, create real staff, then DELETE the demo accounts

@@ -35,11 +35,11 @@ class RbacSeeder extends Seeder
 
         // 3. One staff account per role (idempotent)
         $accounts = [
-            ['admin',       'Eleonil Epracse', 'admin@peso.com'],
-            ['manager',     'Jane Doe',        'secretary@peso.com'],
-            ['registrar',   'Juan dela Cruz',  'registrar@peso.com'],
-            ['cashier',     'Jane Smith',      'cashier@peso.com'],
-            ['coordinator', 'Jhon Doe',        'coordinator@peso.com'],
+            ['admin',       'Eleonil Epracse', 'admin@mptvi.com'],
+            ['manager',     'Jane Doe',        'secretary@mptvi.com'],
+            ['registrar',   'Juan dela Cruz',  'registrar@mptvi.com'],
+            ['cashier',     'Jane Smith',      'cashier@mptvi.com'],
+            ['coordinator', 'Jhon Doe',        'coordinator@mptvi.com'],
         ];
 
         foreach ($accounts as [$role, $name, $email]) {
