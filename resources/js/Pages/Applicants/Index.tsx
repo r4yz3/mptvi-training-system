@@ -16,7 +16,10 @@ interface Row {
     education: string | null;
     program: string | null;
     level: string | null;
+    school_year: string | null;
+    class_session: string | null;
     status: string;
+    pay_status: string;
     active: boolean;
     photo_url: string | null;
     custom?: Record<string, string | number | boolean | null>;
@@ -189,9 +192,12 @@ export default function ApplicantsIndex({
                             <tr>
                                 <Th label="Applicant" sortKey="name" sort={filters.sort} dir={filters.dir} onSort={sortBy} />
                                 <Th label="Program" sortKey="program" sort={filters.sort} dir={filters.dir} onSort={sortBy} />
+                                <th className="px-4 py-3">Contact</th>
                                 <Th label="Barangay" sortKey="barangay" sort={filters.sort} dir={filters.dir} onSort={sortBy} />
+                                <th className="px-4 py-3">S.Y.</th>
                                 {listCustom.map((cf) => <th key={cf.key} className="px-4 py-3">{cf.label}</th>)}
                                 <Th label="Status" sortKey="status" sort={filters.sort} dir={filters.dir} onSort={sortBy} />
+                                <th className="px-4 py-3">Payment</th>
                                 <Th label="Active" sortKey="active" sort={filters.sort} dir={filters.dir} onSort={sortBy} />
                             </tr>
                         </thead>
@@ -218,16 +224,19 @@ export default function ApplicantsIndex({
                                         </div>
                                     </td>
                                     <td className="px-4 py-3 text-slate-600">
-                                        {a.program ? (
-                                            <span>{a.program} <span className="text-slate-400">{a.level}</span></span>
-                                        ) : '—'}
+                                        {a.program
+                                            ? <span>{a.program}{a.level && !a.program.includes(a.level) ? <span className="text-slate-400"> {a.level}</span> : ''}</span>
+                                            : '—'}
                                     </td>
+                                    <td className="px-4 py-3 text-slate-600">{a.contact ?? '—'}</td>
                                     <td className="px-4 py-3 text-slate-600">{a.barangay}</td>
+                                    <td className="px-4 py-3 text-slate-500">{a.school_year ?? '—'}</td>
                                     {listCustom.map((cf) => {
                                         const v = a.custom?.[cf.key];
                                         return <td key={cf.key} className="px-4 py-3 text-slate-600">{typeof v === 'boolean' ? (v ? 'Yes' : 'No') : (v == null || v === '' ? '—' : String(v))}</td>;
                                     })}
                                     <td className="px-4 py-3"><StatusBadge status={a.status} /></td>
+                                    <td className="px-4 py-3"><PayBadge status={a.pay_status} /></td>
                                     <td className="px-4 py-3">
                                         {a.active ? (
                                             <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
@@ -243,7 +252,7 @@ export default function ApplicantsIndex({
                             ))}
                             {applicants.data.length === 0 && (
                                 <tr>
-                                    <td colSpan={6 + listCustom.length} className="px-4 py-12 text-center text-sm text-slate-400">
+                                    <td colSpan={9 + listCustom.length} className="px-4 py-12 text-center text-sm text-slate-400">
                                         No applicants match your filters.
                                     </td>
                                 </tr>
@@ -265,6 +274,16 @@ export default function ApplicantsIndex({
             )}
         </AppShell>
     );
+}
+
+function PayBadge({ status }: { status: string }) {
+    const map: Record<string, string> = {
+        Paid: 'bg-emerald-50 text-emerald-700',
+        Partial: 'bg-sky-50 text-sky-700',
+        Unpaid: 'bg-amber-50 text-amber-700',
+        Free: 'bg-slate-100 text-slate-500',
+    };
+    return <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${map[status] ?? 'bg-slate-100 text-slate-500'}`}>{status}</span>;
 }
 
 function Th({ label, sortKey, sort, dir, onSort }: {

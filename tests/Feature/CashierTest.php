@@ -32,7 +32,7 @@ class CashierTest extends TestCase
     {
         return Applicant::create([
             'program_id' => Program::first()->id, // fee 1000
-            'status' => 'Qualified', 'active' => true,
+            'status' => 'Enrolled', 'active' => true,
             'last_name' => 'Cruz', 'first_name' => 'Juan', 'barangay' => 'Poblacion', 'contact' => '0917',
         ]);
     }
@@ -115,7 +115,7 @@ class CashierTest extends TestCase
             ->assertRedirect();
 
         $this->assertNotNull($payment->fresh()->voided_at);
-        $this->assertSame('Qualified', $a->fresh()->status);
+        $this->assertSame('Enrolled', $a->fresh()->status);
     }
 
     public function test_voided_payment_keeps_its_control_number_and_it_is_never_reused(): void
@@ -204,7 +204,7 @@ class CashierTest extends TestCase
         $this->actingAs($this->as('coordinator'))->get('/cashier/daily')->assertForbidden();
     }
 
-    public function test_cashier_has_the_full_finance_view(): void
+    public function test_cashier_has_no_finance_analytics_and_only_own_ledger(): void
     {
         $a = $this->qualified();
         $cashier = $this->as('cashier');
@@ -216,10 +216,11 @@ class CashierTest extends TestCase
         Payment::create(['applicant_id' => $a->id, 'amount' => 100, 'type' => 'Partial', 'method' => 'Cash',
             'paid_at' => '2026-06-02', 'cashier_id' => $this->as('admin')->id]);
 
-        // Cashier now has finance.view: sees aggregates + the full ledger, like admin.
+        // Finance privacy: cashier sees NO aggregates + only their OWN ledger entry.
         $this->actingAs($cashier)->get('/cashier')
-            ->assertInertia(fn (Assert $p) => $p->where('canFinance', true)->has('ledger', 2)->has('aggregates'));
+            ->assertInertia(fn (Assert $p) => $p->where('canFinance', false)->has('ledger', 1)->missing('aggregates'));
 
+        // Admin still sees the aggregates + both ledger entries.
         $this->actingAs($this->as('admin'))->get('/cashier')
             ->assertInertia(fn (Assert $p) => $p->where('canFinance', true)->has('ledger', 2)->has('aggregates'));
     }

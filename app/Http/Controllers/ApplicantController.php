@@ -37,7 +37,10 @@ class ApplicantController extends Controller
                 'education' => $a->education,
                 'program' => $a->program?->title,
                 'level' => $a->program?->level,
+                'school_year' => $a->school_year,
+                'class_session' => $a->class_session,
                 'status' => $a->status,
+                'pay_status' => $a->payStatus(),
                 'active' => $a->active,
                 'photo_url' => $a->photo_url,
                 'custom' => collect($listCustom)->mapWithKeys(fn ($cf) => [
@@ -79,7 +82,7 @@ class ApplicantController extends Controller
         }
 
         $query = Applicant::query()
-            ->with('program:id,title,level')
+            ->with('program:id,title,level,fee')
             ->when($filters['search'] ?? null, function ($q, $search) use ($filterCustom) {
                 $q->where(function ($q) use ($search, $filterCustom) {
                     $q->where('first_name', 'like', "%{$search}%")

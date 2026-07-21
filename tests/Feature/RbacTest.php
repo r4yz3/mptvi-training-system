@@ -58,7 +58,9 @@ class RbacTest extends TestCase
         $this->assertFalse($cashier->can('pii.view'));
         $this->assertFalse($coordinator->can('pii.view'));
 
-        // finance.view = admin + cashier + registrar (NOT manager)
+        // finance.view = admin + registrar only (NOT cashier — finance privacy — NOT manager)
+        $this->assertTrue($registrar->can('finance.view'));
+        $this->assertFalse($cashier->can('finance.view'));
         $this->assertFalse($manager->can('finance.view'));
 
         // coordinator = attendance/assess/program.manage

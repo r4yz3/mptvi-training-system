@@ -23,46 +23,46 @@ class DashboardController extends Controller
 
         $stat = fn (string $s) => (int) ($byStatus[$s] ?? 0);
 
-        // Cards shown depend on role (least-privilege — cashier sees no ₱ totals).
+        // Assessment outcome counts (the manual Competent / Not Yet Competent result).
+        $byResult = Applicant::query()->whereNotNull('assessment_result')
+            ->selectRaw('assessment_result, count(*) as c')->groupBy('assessment_result')->pluck('c', 'assessment_result');
+        $competent = (int) ($byResult['Competent'] ?? 0);
+        $notYet = (int) ($byResult['Not Yet Competent'] ?? 0);
+
+        // Cards shown depend on role (least-privilege).
         $cards = [];
         $pipeline = null;
 
         if (in_array($role, ['admin', 'manager', 'registrar'], true)) {
-            // Paying enrols a trainee straight into training, so "Paid" is no longer
-            // a distinct pipeline stage.
+            // Registered → Enrolled (screened) → In training (paid). Assessment
+            // (Competent / Not Yet) is a separate result, shown in the cards.
             $pipeline = [
                 ['label' => 'Registered', 'value' => $stat('Registered')],
-                ['label' => 'Qualified', 'value' => $stat('Qualified')],
+                ['label' => 'Enrolled', 'value' => $stat('Enrolled')],
                 ['label' => 'In training', 'value' => $stat('In training')],
-                ['label' => 'For assessment', 'value' => $stat('For assessment')],
-                ['label' => 'Certified', 'value' => $stat('Certified')],
             ];
             $cards = [
                 ['label' => 'Total applicants', 'value' => (int) Applicant::count(), 'tone' => 'brand'],
                 ['label' => 'Awaiting screening', 'value' => $stat('Registered'), 'tone' => 'amber'],
                 ['label' => 'In training', 'value' => $stat('In training'), 'tone' => 'indigo'],
-                ['label' => 'Certified', 'value' => $stat('Certified'), 'tone' => 'emerald'],
+                ['label' => 'Competent', 'value' => $competent, 'tone' => 'emerald'],
             ];
             if ($user->can('finance.view')) {
                 $cards[] = ['label' => 'Total collected', 'value' => '₱' . number_format((int) Payment::valid()->sum('amount')), 'tone' => 'emerald'];
             }
         } elseif ($role === 'cashier') {
-            // No ₱ totals — a payment worklist only. Count by actual balance, since
-            // enrolment (→ In training) can now happen on a partial payment.
-            $feePayers = Applicant::with('program:id,fee')->where('active', true)->where('status', '!=', 'Disqualified')->get()
-                ->filter(fn (Applicant $a) => $a->fee() > 0);
-            $owing = $feePayers->filter(fn (Applicant $a) => $a->balance() > 0)->count();
-            $fullyPaid = $feePayers->filter(fn (Applicant $a) => $a->balance() === 0)->count();
+            // Operational worklist only — NO finance analytics (finance privacy).
+            $owing = Applicant::with('program:id,fee')->where('active', true)->where('status', '!=', 'Disqualified')->get()
+                ->filter(fn (Applicant $a) => $a->fee() > 0 && $a->balance() > 0)->count();
             $cards = [
                 ['label' => 'Accounts to collect', 'value' => $owing, 'tone' => 'amber'],
-                ['label' => 'Fully paid', 'value' => $fullyPaid, 'tone' => 'emerald'],
                 ['label' => 'My payments today', 'value' => (int) Payment::where('cashier_id', $user->id)->whereDate('paid_at', now())->count(), 'tone' => 'brand'],
             ];
         } elseif ($role === 'coordinator') {
             $cards = [
                 ['label' => 'In training', 'value' => $stat('In training'), 'tone' => 'indigo'],
-                ['label' => 'For assessment', 'value' => $stat('For assessment'), 'tone' => 'amber'],
-                ['label' => 'Certified', 'value' => $stat('Certified'), 'tone' => 'emerald'],
+                ['label' => 'Competent', 'value' => $competent, 'tone' => 'emerald'],
+                ['label' => 'Not yet competent', 'value' => $notYet, 'tone' => 'amber'],
             ];
         }
 

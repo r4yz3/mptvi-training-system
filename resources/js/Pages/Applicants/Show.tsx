@@ -11,7 +11,7 @@ import TraineeStatusBadge from '@/Components/TraineeStatusBadge';
 import DocumentChecklist from '@/Components/DocumentChecklist';
 import { PageProps } from '@/types';
 
-const STAGES = ['Registered', 'Qualified', 'In training', 'For assessment', 'Certified'];
+const STAGES = ['Registered', 'Enrolled', 'In training'];
 
 const SECTION_ICON: Record<string, LucideIcon> = {
     'Enrollment': GraduationCap,

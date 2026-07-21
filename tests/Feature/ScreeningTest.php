@@ -43,7 +43,7 @@ class ScreeningTest extends TestCase
     public function test_pending_queue_shows_only_registered(): void
     {
         $this->registered();
-        $this->registered(['first_name' => 'Ana', 'status' => 'Qualified']);
+        $this->registered(['first_name' => 'Ana', 'status' => 'Enrolled']);
 
         $this->actingAs($this->as('registrar'))
             ->get('/screening')
@@ -51,7 +51,7 @@ class ScreeningTest extends TestCase
                 ->where('tab', 'pending')
                 ->has('applicants.data', 1)
                 ->where('counts.pending', 1)
-                ->where('counts.qualified', 1));
+                ->where('counts.enrolled', 1));
     }
 
     public function test_registrar_can_qualify(): void
@@ -60,7 +60,7 @@ class ScreeningTest extends TestCase
         $this->actingAs($this->as('registrar'))
             ->put("/screening/{$a->id}/qualify")
             ->assertRedirect();
-        $this->assertSame('Qualified', $a->fresh()->status);
+        $this->assertSame('Enrolled', $a->fresh()->status);
         $this->assertNotNull($a->fresh()->screened_at);
     }
 

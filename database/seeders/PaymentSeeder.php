@@ -12,7 +12,7 @@ class PaymentSeeder extends Seeder
     public function run(): void
     {
         $cashier = User::role('cashier')->first();
-        // Learners at Paid+ stages are fully paid; a few Qualified made partial payments.
+        // Learners at Paid+ stages are fully paid; a few Enrolled made partial payments.
         $fullyPaid = ['Paid', 'In training', 'For assessment', 'Certified'];
 
         foreach (Applicant::with('program')->get() as $i => $a) {
@@ -29,7 +29,7 @@ class PaymentSeeder extends Seeder
                         'cashier_id' => $cashier?->id,
                     ],
                 );
-            } elseif ($a->status === 'Qualified' && $i % 3 === 0) {
+            } elseif ($a->status === 'Enrolled' && $i % 3 === 0) {
                 Payment::firstOrCreate(
                     ['applicant_id' => $a->id, 'or_number' => 'OR-' . (20600 + $a->id)],
                     [

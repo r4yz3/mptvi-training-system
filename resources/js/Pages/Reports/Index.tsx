@@ -22,7 +22,7 @@ interface Props {
 }
 
 const STATUS_COLOR: Record<string, string> = {
-    Registered: 'bg-slate-400', Qualified: 'bg-sky-500', Paid: 'bg-emerald-500',
+    Registered: 'bg-slate-400', Enrolled: 'bg-sky-500',
     'In training': 'bg-indigo-500', 'For assessment': 'bg-amber-500', Certified: 'bg-brand-600', Disqualified: 'bg-rose-500',
 };
 

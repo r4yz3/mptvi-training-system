@@ -19,8 +19,8 @@ class ScreeningController extends Controller
 
         if ($tab === 'pending') {
             $query->where('status', 'Registered');
-        } elseif ($tab === 'qualified') {
-            $query->where('status', 'Qualified');
+        } elseif ($tab === 'enrolled') {
+            $query->where('status', 'Enrolled');
         } elseif ($tab === 'disqualified') {
             $query->where('status', 'Disqualified');
         }
@@ -45,7 +45,7 @@ class ScreeningController extends Controller
             'tab' => $tab,
             'counts' => [
                 'pending' => Applicant::where('status', 'Registered')->count(),
-                'qualified' => Applicant::where('status', 'Qualified')->count(),
+                'enrolled' => Applicant::where('status', 'Enrolled')->count(),
                 'disqualified' => Applicant::where('status', 'Disqualified')->count(),
             ],
         ]);
@@ -56,17 +56,17 @@ class ScreeningController extends Controller
         abort_unless($request->user()->can('screen'), 403);
 
         if (! in_array($applicant->status, ['Registered', 'Disqualified'], true)) {
-            return back()->with('error', 'Only registered or disqualified applicants can be qualified.');
+            return back()->with('error', 'Only registered or disqualified applicants can be enrolled.');
         }
 
         $applicant->update([
-            'status' => 'Qualified',
+            'status' => 'Enrolled',
             'screened_at' => now(),
             'screened_by' => $request->user()->id,
             'disqualify_reason' => null,
         ]);
 
-        return back()->with('success', "“{$applicant->display_name}” marked Qualified.");
+        return back()->with('success', "“{$applicant->display_name}” marked Enrolled.");
     }
 
     public function disqualify(Request $request, Applicant $applicant): RedirectResponse

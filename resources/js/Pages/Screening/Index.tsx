@@ -39,7 +39,7 @@ export default function ScreeningIndex({
 }: {
     applicants: Paginated;
     tab: string;
-    counts: { pending: number; qualified: number; disqualified: number };
+    counts: { pending: number; enrolled: number; disqualified: number };
 }) {
     const { auth } = usePage<PageProps>().props;
     const canScreen = auth.can['screen'];
@@ -49,12 +49,12 @@ export default function ScreeningIndex({
     const go = (t: string) =>
         router.get('/screening', { tab: t }, { preserveScroll: true, preserveState: true, replace: true });
 
-    // Mark the applicant Qualified. (Enrolment itself now happens on payment.)
+    // Mark the applicant Enrolled. (Paying then advances them to In training.)
     const qualify = (a: Row) => router.put(`/screening/${a.id}/qualify`, {}, { preserveScroll: true });
 
     const tabs: { key: string; label: string; count: number; icon: LucideIcon; tone: string }[] = [
         { key: 'pending', label: 'Awaiting screening', count: counts.pending, icon: Clock, tone: 'amber' },
-        { key: 'qualified', label: 'Qualified', count: counts.qualified, icon: CheckCircle2, tone: 'emerald' },
+        { key: 'enrolled', label: 'Enrolled', count: counts.enrolled, icon: CheckCircle2, tone: 'emerald' },
         { key: 'disqualified', label: 'Disqualified', count: counts.disqualified, icon: XCircle, tone: 'rose' },
     ];
     const TONE: Record<string, { icon: string; ring: string }> = {
@@ -67,7 +67,7 @@ export default function ScreeningIndex({
         <AppShell title="Screening & eligibility">
             <Head title="Screening" />
 
-            <p className="mb-4 text-sm text-slate-500">Review newly-registered applicants against the eligibility checklist, then Qualify or Disqualify.</p>
+            <p className="mb-4 text-sm text-slate-500">Review newly-registered applicants against the eligibility checklist, then Enroll or Disqualify.</p>
 
             {/* Stat-card tabs */}
             <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -149,11 +149,11 @@ export default function ScreeningIndex({
                                                         {a.disqualify_reason}
                                                     </span>
                                                 )}
-                                                {a.status !== 'Qualified' ? (
+                                                {a.status !== 'Enrolled' ? (
                                                     canScreen ? (
                                                         <>
                                                             <button onClick={() => qualify(a)} className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-emerald-700">
-                                                                <CheckCircle2 className="h-3.5 w-3.5" /> Qualify
+                                                                <CheckCircle2 className="h-3.5 w-3.5" /> Enroll
                                                             </button>
                                                             {a.status !== 'Disqualified' && (
                                                                 <button onClick={() => setDq(a)} className="inline-flex items-center gap-1 rounded-md border border-rose-200 px-2.5 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50">
@@ -163,7 +163,7 @@ export default function ScreeningIndex({
                                                         </>
                                                     ) : <span className="text-xs text-slate-400">View only</span>
                                                 ) : (
-                                                    <StatusBadge status="Qualified" />
+                                                    <StatusBadge status="Enrolled" />
                                                 )}
                                             </div>
                                         </td>

@@ -11,7 +11,7 @@
 return [
 
     'statuses' => [
-        'Registered', 'Qualified', 'Paid', 'In training', 'For assessment', 'Certified', 'Disqualified',
+        'Registered', 'Enrolled', 'In training', 'For assessment', 'Certified', 'Disqualified',
     ],
 
     // Trainee training status — independent of the pipeline + the app-wide active flag.

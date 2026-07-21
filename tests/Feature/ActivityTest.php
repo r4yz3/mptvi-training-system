@@ -60,7 +60,7 @@ class ActivityTest extends TestCase
         $a->touch(); // only updated_at — should NOT log
         $this->assertSame(0, Activity::where('subject_id', $a->id)->where('event', 'updated')->count());
 
-        $a->update(['status' => 'Qualified']); // real change — should log exactly one update
+        $a->update(['status' => 'Enrolled']); // real change — should log exactly one update
         $this->assertSame(1, Activity::where('subject_id', $a->id)->where('event', 'updated')->count());
     }
 }

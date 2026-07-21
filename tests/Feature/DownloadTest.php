@@ -25,10 +25,10 @@ class DownloadTest extends TestCase
         return User::role($role)->firstOrFail();
     }
 
-    public function test_cashier_now_has_finance_view_but_not_approval(): void
+    public function test_cashier_has_no_finance_view_but_can_request_downloads(): void
     {
         $cashier = $this->as('cashier');
-        $this->assertTrue($cashier->can('finance.view'));
+        $this->assertFalse($cashier->can('finance.view'));   // finance privacy — admin only
         $this->assertTrue($cashier->can('download.request'));
         $this->assertFalse($cashier->can('download.approve'));
     }
@@ -39,15 +39,26 @@ class DownloadTest extends TestCase
         $this->actingAs($this->as('admin'))->get('/cashier/export.csv')->assertOk();
     }
 
-    public function test_cashier_request_creates_a_pending_record(): void
+    public function test_cashier_cannot_request_the_finance_csv(): void
     {
-        $cashier = $this->as('cashier');
-        $this->actingAs($cashier)
-            ->post('/downloads', ['type' => 'cashier_csv', 'params' => ['status' => 'valid']])
+        // Finance privacy: the cashier no longer holds finance.view, so it cannot
+        // request the cashier/payments collections export.
+        $this->actingAs($this->as('cashier'))
+            ->post('/downloads', ['type' => 'cashier_csv'])
+            ->assertForbidden();
+    }
+
+    public function test_requester_creates_a_pending_record(): void
+    {
+        // The manager holds download.request + pii.view (but not download.approve),
+        // so an applicants export goes to the admin approval queue.
+        $manager = $this->as('manager');
+        $this->actingAs($manager)
+            ->post('/downloads', ['type' => 'reports_applicants_csv', 'params' => ['status' => 'Registered']])
             ->assertRedirect();
 
         $this->assertDatabaseHas('download_requests', [
-            'user_id' => $cashier->id, 'type' => 'cashier_csv', 'status' => 'pending',
+            'user_id' => $manager->id, 'type' => 'reports_applicants_csv', 'status' => 'pending',
         ]);
     }
 
@@ -61,19 +72,19 @@ class DownloadTest extends TestCase
 
     public function test_pending_file_is_blocked_until_an_admin_approves(): void
     {
-        $cashier = $this->as('cashier');
-        $this->actingAs($cashier)->post('/downloads', ['type' => 'cashier_csv']);
-        $dr = DownloadRequest::where('user_id', $cashier->id)->firstOrFail();
+        $manager = $this->as('manager');
+        $this->actingAs($manager)->post('/downloads', ['type' => 'reports_applicants_csv']);
+        $dr = DownloadRequest::where('user_id', $manager->id)->firstOrFail();
 
         // Not yet approved → blocked.
-        $this->actingAs($cashier)->get("/downloads/{$dr->id}/file")->assertForbidden();
+        $this->actingAs($manager)->get("/downloads/{$dr->id}/file")->assertForbidden();
 
         // Admin approves.
         $this->actingAs($this->as('admin'))->put("/downloads/{$dr->id}/approve")->assertRedirect();
         $this->assertSame('approved', $dr->fresh()->status);
 
         // Now the requester can download, and it's marked downloaded.
-        $this->actingAs($cashier)->get("/downloads/{$dr->id}/file")->assertOk();
+        $this->actingAs($manager)->get("/downloads/{$dr->id}/file")->assertOk();
         $this->assertSame('downloaded', $dr->fresh()->status);
     }
 
@@ -89,9 +100,9 @@ class DownloadTest extends TestCase
 
     public function test_reject_records_a_reason_and_blocks_download(): void
     {
-        $cashier = $this->as('cashier');
-        $this->actingAs($cashier)->post('/downloads', ['type' => 'cashier_csv']);
-        $dr = DownloadRequest::where('user_id', $cashier->id)->firstOrFail();
+        $manager = $this->as('manager');
+        $this->actingAs($manager)->post('/downloads', ['type' => 'reports_applicants_csv']);
+        $dr = DownloadRequest::where('user_id', $manager->id)->firstOrFail();
 
         $this->actingAs($this->as('admin'))
             ->put("/downloads/{$dr->id}/reject", ['reason' => 'Not needed this period'])
@@ -100,14 +111,14 @@ class DownloadTest extends TestCase
         $dr->refresh();
         $this->assertSame('rejected', $dr->status);
         $this->assertSame('Not needed this period', $dr->reason);
-        $this->actingAs($cashier)->get("/downloads/{$dr->id}/file")->assertForbidden();
+        $this->actingAs($manager)->get("/downloads/{$dr->id}/file")->assertForbidden();
     }
 
     public function test_non_admin_cannot_approve(): void
     {
-        $cashier = $this->as('cashier');
-        $this->actingAs($cashier)->post('/downloads', ['type' => 'cashier_csv']);
-        $dr = DownloadRequest::where('user_id', $cashier->id)->firstOrFail();
+        $manager = $this->as('manager');
+        $this->actingAs($manager)->post('/downloads', ['type' => 'reports_applicants_csv']);
+        $dr = DownloadRequest::where('user_id', $manager->id)->firstOrFail();
 
         $this->actingAs($this->as('coordinator'))->put("/downloads/{$dr->id}/approve")->assertForbidden();
         $this->assertSame('pending', $dr->fresh()->status);
@@ -115,12 +126,12 @@ class DownloadTest extends TestCase
 
     public function test_a_requester_cannot_download_someone_elses_request(): void
     {
-        $cashier = $this->as('cashier');
-        $this->actingAs($cashier)->post('/downloads', ['type' => 'cashier_csv']);
-        $dr = DownloadRequest::where('user_id', $cashier->id)->firstOrFail();
+        $manager = $this->as('manager');
+        $this->actingAs($manager)->post('/downloads', ['type' => 'reports_applicants_csv']);
+        $dr = DownloadRequest::where('user_id', $manager->id)->firstOrFail();
         $this->actingAs($this->as('admin'))->put("/downloads/{$dr->id}/approve");
 
-        // A different non-approver (coordinator) must not fetch the cashier's file.
+        // A different non-approver (coordinator) must not fetch the manager's file.
         $this->actingAs($this->as('coordinator'))->get("/downloads/{$dr->id}/file")->assertForbidden();
     }
 

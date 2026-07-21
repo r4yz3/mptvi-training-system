@@ -39,7 +39,7 @@ return [
         'program.manage',
         'event.manage',
         'pii.view',
-        'finance.view',     // ₱ aggregates (admin + cashier)
+        'finance.view',     // ₱ aggregates + collections charts (admin only)
         'export',
         'download.request', // request a report/CSV export (queued for admin approval)
         'download.approve', // approve/reject export requests + download directly (admin)
@@ -59,9 +59,10 @@ return [
         ],
         'cashier' => [
             'payment.record', 'payment.void',
-            // Cashier now sees the finance aggregates + collections chart, but every
-            // report/CSV export must be approved by an admin (see the Downloads module).
-            'finance.view', 'download.request',
+            // Finance privacy: the cashier records/voids payments and sees their OWN
+            // ledger + collection worklist, but NOT the ₱ aggregates / collections
+            // charts / other cashiers' ledgers (finance.view is admin-only).
+            'download.request',
         ],
         'coordinator' => [
             'attendance', 'trainee.status', 'assess', 'cert.assessor', 'program.manage',

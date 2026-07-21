@@ -32,7 +32,7 @@ class CashierPaymentTypesTest extends TestCase
     {
         return Applicant::create([
             'program_id' => Program::first()->id, // fee 1000
-            'status' => 'Qualified', 'active' => true,
+            'status' => 'Enrolled', 'active' => true,
             'last_name' => 'Cruz', 'first_name' => 'Juan', 'barangay' => 'Pob', 'contact' => '0917',
         ]);
     }
@@ -60,7 +60,7 @@ class CashierPaymentTypesTest extends TestCase
         $a->refresh();
         $this->assertSame(0, $a->paidTotal());        // fee paid still 0
         $this->assertSame(1000, $a->balance());       // full fee still outstanding
-        $this->assertSame('Qualified', $a->status);   // pipeline unchanged
+        $this->assertSame('Enrolled', $a->status);   // pipeline unchanged
         $this->assertSame(1000, $a->otherCollected());
     }
 
