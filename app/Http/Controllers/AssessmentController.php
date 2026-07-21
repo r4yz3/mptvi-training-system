@@ -18,7 +18,7 @@ class AssessmentController extends Controller
         $priority = ['In training' => 0, 'For assessment' => 1, 'Certified' => 2];
 
         $applicants = Applicant::query()
-            ->with('program:id,title,level')
+            ->with(['program:id,title,level', 'program.subjects', 'subjectGrades'])
             ->whereIn('status', ['In training', 'For assessment', 'Certified'])
             ->orderBy('last_name')
             ->get()
@@ -31,7 +31,7 @@ class AssessmentController extends Controller
                 'level' => $a->program?->level,
                 'status' => $a->status,
                 'result' => $a->assessment_result,
-                'competency' => $a->competencySummary(),
+                'grades' => $a->gradeSummary(),
             ]);
 
         return Inertia::render('Assessment/Index', [

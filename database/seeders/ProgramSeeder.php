@@ -42,7 +42,7 @@ class ProgramSeeder extends Seeder
         }
 
         $this->seedExtraFees();
-        $this->seedCompetencies();
+        $this->seedSubjects();
     }
 
     /**
@@ -64,38 +64,40 @@ class ProgramSeeder extends Seeder
     }
 
     /**
-     * TESDA Units of Competency for a couple of flagship qualifications so the
-     * Achievement Chart works out of the box. Basic + Common are largely shared
-     * across TESDA NC II qualifications; Core are qualification-specific.
+     * Starter Major/Minor subjects (with units) for a couple of flagship programs
+     * so grading works out of the box. Admins edit these at Settings → Subjects.
+     * [title, category, units]
      */
-    private function seedCompetencies(): void
+    private function seedSubjects(): void
     {
         $sets = [
             'Shielded Metal Arc Welding (SMAW) NC II' => [
-                'Basic' => ['Participate in workplace communication', 'Work in a team environment', 'Practice occupational safety and health policies and procedures'],
-                'Common' => ['Apply safety practices', 'Interpret drawings and sketches', 'Use hand tools'],
-                'Core' => ['Weld carbon steel plates using SMAW', 'Weld carbon steel pipes using SMAW'],
+                ['Welding Fundamentals & Safety', 'Major', 3],
+                ['Shielded Metal Arc Welding — Plates', 'Major', 5],
+                ['Shielded Metal Arc Welding — Pipes', 'Major', 5],
+                ['Blueprint Reading & Interpretation', 'Major', 3],
+                ['Workplace Communication', 'Minor', 2],
+                ['Occupational Safety & Health', 'Minor', 2],
             ],
             'Housekeeping NC II' => [
-                'Basic' => ['Participate in workplace communication', 'Work in a team environment', 'Practice occupational safety and health policies and procedures'],
-                'Common' => ['Develop and update industry knowledge', 'Observe workplace hygiene procedures', 'Perform computer operations'],
-                'Core' => ['Provide housekeeping services to guests', 'Prepare rooms for guests', 'Clean public areas, facilities and equipment', 'Laundry linen and guest clothes'],
+                ['Guest Room Servicing', 'Major', 5],
+                ['Public Area Maintenance', 'Major', 4],
+                ['Laundry & Linen Services', 'Major', 3],
+                ['Industry Knowledge & Hygiene', 'Minor', 2],
+                ['Workplace Communication', 'Minor', 2],
             ],
         ];
 
-        foreach ($sets as $title => $groups) {
+        foreach ($sets as $title => $subjects) {
             $program = Program::where('title', $title)->first();
             if (! $program) {
                 continue;
             }
-            $sort = 0;
-            foreach ($groups as $type => $units) {
-                foreach ($units as $unitTitle) {
-                    $program->competencyUnits()->firstOrCreate(
-                        ['title' => $unitTitle],
-                        ['type' => $type, 'sort' => $sort++],
-                    );
-                }
+            foreach (array_values($subjects) as $sort => [$subjectTitle, $category, $units]) {
+                $program->subjects()->firstOrCreate(
+                    ['title' => $subjectTitle],
+                    ['category' => $category, 'units' => $units, 'sort' => $sort],
+                );
             }
         }
     }

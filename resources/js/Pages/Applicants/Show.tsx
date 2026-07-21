@@ -47,14 +47,14 @@ interface DocItem {
 }
 interface CustomFieldDef { key: string; label: string; type: string; section: string }
 
-interface UnitResult { unit_id: number; code: string | null; title: string; type: string; result: string | null; rated_at: string | null; remarks: string | null }
-interface CompetencyInfo { units: UnitResult[]; total: number; competent: number; complete: boolean }
+interface SubjectRow { subject_id: number; code: string | null; title: string; category: string; units: number; grade: number | null; remark: string | null; graded_at: string | null }
+interface GradeInfo { subjects: SubjectRow[]; total: number; graded: number; major_gwa: number | null; minor_gwa: number | null; gwa: number | null; complete: boolean; remark: string }
 
 interface FeeRow { category: string; expected: number; paid: number; balance: number; status: string }
 interface Fees { school_year: string | null; misc: FeeRow; extras: FeeRow[] }
 
 export default function ApplicantShow({
-    applicant, pii, documents, canVerifyDocs, customFields, traineeStatuses, eduLevels, competencyInfo, canGrade, assessmentResult, fees,
+    applicant, pii, documents, canVerifyDocs, customFields, traineeStatuses, eduLevels, gradeInfo, canGrade, assessmentResult, fees,
 }: {
     applicant: Applicant;
     pii: boolean;
@@ -63,7 +63,7 @@ export default function ApplicantShow({
     customFields: CustomFieldDef[] | null;
     traineeStatuses: string[];
     eduLevels: { key: string; label: string }[];
-    competencyInfo: CompetencyInfo;
+    gradeInfo: GradeInfo;
     canGrade: boolean;
     assessmentResult: string | null;
     fees: Fees | null;
@@ -182,7 +182,7 @@ export default function ApplicantShow({
 
             {/* Training grades — job data, visible to pii and non-pii roles alike */}
             <div className="mt-6">
-                <CompetencyPanel info={competencyInfo} canGrade={canGrade} applicantId={applicant.id} />
+                <GradesPanel info={gradeInfo} canGrade={canGrade} applicantId={applicant.id} />
             </div>
 
             {fees && (
@@ -429,10 +429,9 @@ const EDU_STATUS_STYLE: Record<string, string> = {
     Ongoing: 'bg-sky-50 text-sky-700',
 };
 
-const UNIT_TYPE_STYLE: Record<string, string> = {
-    Basic: 'bg-sky-50 text-sky-700',
-    Common: 'bg-violet-50 text-violet-700',
-    Core: 'bg-emerald-50 text-emerald-700',
+const CAT_STYLE: Record<string, string> = {
+    Major: 'bg-indigo-50 text-indigo-700',
+    Minor: 'bg-sky-50 text-sky-700',
 };
 
 function AssessmentControl({ applicantId, result, canAssess }: { applicantId: number; result: string | null; canAssess: boolean }) {
@@ -481,24 +480,24 @@ function AssessmentControl({ applicantId, result, canAssess }: { applicantId: nu
     );
 }
 
-function CompetencyPanel({ info, canGrade, applicantId }: { info: CompetencyInfo; canGrade: boolean; applicantId: number }) {
-    // Editable rating state (unit_id -> result), seeded from the current ratings.
+function GradesPanel({ info, canGrade, applicantId }: { info: GradeInfo; canGrade: boolean; applicantId: number }) {
     const [editing, setEditing] = useState(false);
-    const [ratings, setRatings] = useState<Record<number, string>>(() =>
-        Object.fromEntries(info.units.map((u) => [u.unit_id, u.result ?? ''])));
+    const [grades, setGrades] = useState<Record<number, string>>(() =>
+        Object.fromEntries(info.subjects.map((s) => [s.subject_id, s.grade !== null ? s.grade.toFixed(2) : ''])));
     const save = useForm({});
 
-    if (info.total === 0) return null; // no units defined / not a trainee — keep the profile clean
+    if (info.total === 0) return null; // no subjects defined / not a trainee — keep the profile clean
+
+    const fmt = (g: number | null) => (g === null ? '—' : g.toFixed(2));
+    const remarkTone = info.remark === 'Passed' ? 'bg-emerald-50 text-emerald-700'
+        : info.remark === 'Failed' ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-500';
 
     const submit = () => {
         save.transform(() => ({
-            rated_at: new Date().toISOString().slice(0, 10),
-            ratings: info.units.map((u) => ({ unit_id: u.unit_id, result: ratings[u.unit_id] || null })),
+            graded_at: new Date().toISOString().slice(0, 10),
+            grades: info.subjects.map((s) => ({ subject_id: s.subject_id, grade: grades[s.subject_id] || null })),
         }));
-        save.put(`/applicants/${applicantId}/competency`, {
-            preserveScroll: true,
-            onSuccess: () => setEditing(false),
-        });
+        save.put(`/applicants/${applicantId}/grades`, { preserveScroll: true, onSuccess: () => setEditing(false) });
     };
 
     return (
@@ -506,53 +505,53 @@ function CompetencyPanel({ info, canGrade, applicantId }: { info: CompetencyInfo
             <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-slate-100 bg-slate-50/60 px-5 py-3">
                 <div className="flex items-center gap-2.5">
                     <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600"><GraduationCap className="h-4 w-4" /></span>
-                    <h3 className="text-sm font-semibold text-slate-700">Competency achievement</h3>
+                    <h3 className="text-sm font-semibold text-slate-700">Grades <span className="font-normal text-slate-400">· GWA {fmt(info.gwa)}</span></h3>
                 </div>
                 <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-slate-600">{info.competent}/{info.total} Competent</span>
-                    <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${info.complete ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
-                        {info.complete ? 'Complete' : 'In progress'}
-                    </span>
-                    <a href={`/applicants/${applicantId}/report-card`} target="_blank" rel="noopener noreferrer"
+                    <span className="text-xs text-slate-500">Major {fmt(info.major_gwa)} · Minor {fmt(info.minor_gwa)}</span>
+                    <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${remarkTone}`}>{info.remark}</span>
+                    <a href={`/applicants/${applicantId}/grade-slip`} target="_blank" rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50">
-                        <Printer className="h-3.5 w-3.5" /> Report card
+                        <Printer className="h-3.5 w-3.5" /> Grade slip
                     </a>
                     {canGrade && !editing && (
                         <button onClick={() => setEditing(true)} className="inline-flex items-center gap-1 rounded-md bg-brand-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-brand-700">
-                            <Pencil className="h-3.5 w-3.5" /> Rate
+                            <Pencil className="h-3.5 w-3.5" /> Enter grades
                         </button>
                     )}
                 </div>
             </div>
             <div className="divide-y divide-slate-50">
-                {info.units.map((u) => (
-                    <div key={u.unit_id} className="flex items-center justify-between gap-3 px-5 py-2.5">
+                {info.subjects.map((s) => (
+                    <div key={s.subject_id} className="flex items-center justify-between gap-3 px-5 py-2.5">
                         <div className="flex min-w-0 items-center gap-2">
-                            <span className={`inline-flex shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${UNIT_TYPE_STYLE[u.type] ?? 'bg-slate-100 text-slate-500'}`}>{u.type}</span>
-                            <span className="truncate text-sm text-slate-700">{u.title}</span>
+                            <span className={`inline-flex shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${CAT_STYLE[s.category] ?? 'bg-slate-100 text-slate-500'}`}>{s.category}</span>
+                            <span className="truncate text-sm text-slate-700">{s.title}</span>
+                            <span className="shrink-0 text-[10px] text-slate-400">{s.units}u</span>
                         </div>
                         {editing ? (
-                            <select
-                                className="input !w-40 shrink-0 py-1 text-xs"
-                                value={ratings[u.unit_id] ?? ''}
-                                onChange={(e) => setRatings((r) => ({ ...r, [u.unit_id]: e.target.value }))}
-                            >
-                                <option value="">— Not rated —</option>
-                                <option value="Competent">Competent</option>
-                                <option value="Not Yet Competent">Not Yet Competent</option>
-                            </select>
+                            <input
+                                type="number" step="0.25" min="1" max="5" inputMode="decimal"
+                                className="input !w-24 shrink-0 py-1 text-center text-xs"
+                                placeholder="—"
+                                value={grades[s.subject_id] ?? ''}
+                                onChange={(e) => setGrades((g) => ({ ...g, [s.subject_id]: e.target.value }))}
+                            />
                         ) : (
-                            <span className={`shrink-0 text-xs font-semibold ${u.result === 'Competent' ? 'text-emerald-600' : u.result ? 'text-amber-600' : 'text-slate-300'}`}>
-                                {u.result === 'Competent' ? 'Competent' : u.result ? 'Not yet' : '—'}
+                            <span className={`shrink-0 text-xs font-semibold ${s.remark === 'Passed' ? 'text-emerald-600' : s.remark === 'Failed' ? 'text-rose-600' : 'text-slate-300'}`}>
+                                {s.grade !== null ? s.grade.toFixed(2) : '—'}
                             </span>
                         )}
                     </div>
                 ))}
             </div>
             {editing && (
-                <div className="flex justify-end gap-2 border-t border-slate-100 bg-slate-50/40 px-5 py-3">
-                    <button onClick={() => setEditing(false)} className="btn-ghost">Cancel</button>
-                    <button onClick={submit} disabled={save.processing} className="btn-primary">Save ratings</button>
+                <div className="flex items-center justify-between gap-2 border-t border-slate-100 bg-slate-50/40 px-5 py-3">
+                    <span className="text-xs text-slate-400">1.00 highest · 3.00 passing · 5.00 fail. Leave blank to clear.</span>
+                    <div className="flex gap-2">
+                        <button onClick={() => setEditing(false)} className="btn-ghost">Cancel</button>
+                        <button onClick={submit} disabled={save.processing} className="btn-primary">Save grades</button>
+                    </div>
                 </div>
             )}
         </div>

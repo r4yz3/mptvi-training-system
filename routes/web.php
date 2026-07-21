@@ -5,7 +5,7 @@ use App\Http\Controllers\ApplicantController;
 use App\Http\Controllers\AssessmentController;
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\CashierController;
-use App\Http\Controllers\CompetencyController;
+use App\Http\Controllers\GradesController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\DownloadController;
 use App\Http\Controllers\EventController;
@@ -56,10 +56,10 @@ Route::middleware('auth')->group(function () {
         // Manual assessment result (Competent / Not Yet Competent) — gated by 'assess'.
         Route::put('/applicants/{applicant}/assessment', [ApplicantController::class, 'updateAssessment'])->name('applicants.assessment');
 
-        // Competency rating + printable report card (moved off the old Training
-        // module). The controller gates writing/printing behind the 'assess' cap.
-        Route::put('/applicants/{applicant}/competency', [CompetencyController::class, 'rate'])->name('applicants.competency');
-        Route::get('/applicants/{applicant}/report-card', [CompetencyController::class, 'reportCard'])->name('applicants.report-card');
+        // Major/Minor grades + printable Report of Grades, entered by the
+        // registrar. The controller gates writing/printing behind the 'assess' cap.
+        Route::put('/applicants/{applicant}/grades', [GradesController::class, 'save'])->name('applicants.grades');
+        Route::get('/applicants/{applicant}/grade-slip', [GradesController::class, 'slip'])->name('applicants.grade-slip');
 
         // Documents — note-only: a typed note + status per requirement (no uploads).
         // docs.verify gates writing; the checklist is pii.view-gated in the controller.
@@ -150,8 +150,8 @@ Route::middleware('auth')->group(function () {
         Route::put('/settings/requirements', [SettingsController::class, 'updateRequirements'])->name('settings.requirements.update');
         Route::get('/settings/education', [SettingsController::class, 'education'])->name('settings.education');
         Route::put('/settings/education', [SettingsController::class, 'updateEducation'])->name('settings.education.update');
-        Route::get('/settings/competencies', [SettingsController::class, 'competencies'])->name('settings.competencies');
-        Route::put('/settings/competencies/{program}', [SettingsController::class, 'updateCompetencies'])->name('settings.competencies.update');
+        Route::get('/settings/subjects', [SettingsController::class, 'subjects'])->name('settings.subjects');
+        Route::put('/settings/subjects/{program}', [SettingsController::class, 'updateSubjects'])->name('settings.subjects.update');
         Route::get('/settings/fees', [SettingsController::class, 'fees'])->name('settings.fees');
         Route::put('/settings/fees', [SettingsController::class, 'updateFees'])->name('settings.fees.update');
         Route::get('/settings/lists', [SettingsController::class, 'lists'])->name('settings.lists');

@@ -64,45 +64,63 @@ class Applicant extends Model
         return $this->hasMany(Assessment::class)->latest('id');
     }
 
-    public function competencyResults(): HasMany
+    public function subjectGrades(): HasMany
     {
-        return $this->hasMany(CompetencyResult::class);
+        return $this->hasMany(SubjectGrade::class);
     }
 
     /**
-     * TESDA competency-based summary. Lists every Unit of Competency of the
-     * trainee's program with this trainee's rating (Competent / Not Yet
-     * Competent / null = not yet rated). "complete" is true only when every
-     * unit is Competent — the institutional-completion rule that qualifies a
-     * trainee to be endorsed for national assessment.
+     * Major/Minor grade summary. Lists every subject of the trainee's program
+     * with this trainee's numeric grade (1.00 highest → 5.00 fail; ≤3.00 passes)
+     * and computes the unit-weighted GWA for Major, Minor and overall. "complete"
+     * is true only when every subject has a grade.
      */
-    public function competencySummary(): array
+    public function gradeSummary(): array
     {
-        $units = $this->program?->competencyUnits ?? collect();
-        $byUnit = $this->competencyResults->keyBy('competency_unit_id');
+        $subjects = $this->program?->subjects ?? collect();
+        $byId = $this->subjectGrades->keyBy('subject_id');
 
-        $rows = $units->map(function (CompetencyUnit $u) use ($byUnit) {
-            $r = $byUnit->get($u->id);
+        $rows = $subjects->map(function (Subject $s) use ($byId) {
+            $g = $byId->get($s->id);
+            $grade = $g ? (float) $g->grade : null;
 
             return [
-                'unit_id' => $u->id,
-                'code' => $u->code,
-                'title' => $u->title,
-                'type' => $u->type,
-                'result' => $r?->result,
-                'rated_at' => $r?->rated_at?->toDateString(),
-                'remarks' => $r?->remarks,
+                'subject_id' => $s->id,
+                'code' => $s->code,
+                'title' => $s->title,
+                'category' => $s->category,
+                'units' => $s->units,
+                'grade' => $grade,
+                'remark' => $grade === null ? null : ($grade <= SubjectGrade::PASSING ? 'Passed' : 'Failed'),
+                'graded_at' => $g?->graded_at?->toDateString(),
             ];
         })->values();
 
+        // Unit-weighted average over graded subjects: Σ(grade×units) / Σ(units).
+        $gwa = function ($filter) use ($rows) {
+            $graded = $rows->filter(fn ($r) => $r['grade'] !== null && $filter($r));
+            $units = $graded->sum('units');
+
+            return $units > 0
+                ? round($graded->sum(fn ($r) => $r['grade'] * $r['units']) / $units, 2)
+                : null;
+        };
+
         $total = $rows->count();
-        $competent = $rows->where('result', CompetencyResult::COMPETENT)->count();
+        $graded = $rows->whereNotNull('grade')->count();
+        $failed = $rows->where('remark', 'Failed')->count();
 
         return [
-            'units' => $rows,
+            'subjects' => $rows,
             'total' => $total,
-            'competent' => $competent,
-            'complete' => $total > 0 && $competent === $total,
+            'graded' => $graded,
+            'major_gwa' => $gwa(fn ($r) => $r['category'] === 'Major'),
+            'minor_gwa' => $gwa(fn ($r) => $r['category'] === 'Minor'),
+            'gwa' => $gwa(fn ($r) => true),
+            'complete' => $total > 0 && $graded === $total,
+            'remark' => $total > 0 && $graded === $total
+                ? ($failed === 0 ? 'Passed' : 'Failed')
+                : 'In progress',
         ];
     }
 

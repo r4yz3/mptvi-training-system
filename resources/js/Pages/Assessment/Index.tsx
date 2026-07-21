@@ -3,10 +3,10 @@ import { ClipboardList, GraduationCap, BadgeCheck, ChevronRight, ChevronRight as
 import AppShell from '@/Layouts/AppShell';
 import StatusBadge from '@/Components/StatusBadge';
 
-interface Competency { total: number; competent: number; complete: boolean }
+interface Grades { total: number; graded: number; gwa: number | null; remark: string }
 interface Row {
     id: number; name: string; program: string | null; level: string | null;
-    status: string; result: string | null; competency: Competency;
+    status: string; result: string | null; grades: Grades;
 }
 
 const STAGES = [
@@ -64,7 +64,7 @@ export default function AssessmentIndex({ applicants }: { applicants: Row[] }) {
                                 <th className="px-4 py-3">Trainee</th>
                                 <th className="px-4 py-3">Program</th>
                                 <th className="px-4 py-3">Stage</th>
-                                <th className="px-4 py-3">Competency</th>
+                                <th className="px-4 py-3">GWA</th>
                                 <th className="px-4 py-3">Assessment result</th>
                                 <th className="px-4 py-3 text-right" />
                             </tr>
@@ -81,9 +81,11 @@ export default function AssessmentIndex({ applicants }: { applicants: Row[] }) {
                                     <td className="px-4 py-3 text-slate-600">{a.program ?? '—'}{a.level ? ` (${a.level})` : ''}</td>
                                     <td className="px-4 py-3"><StatusBadge status={a.status} /></td>
                                     <td className="px-4 py-3 text-slate-500">
-                                        {a.competency.total > 0
-                                            ? <span className={a.competency.complete ? 'font-medium text-emerald-600' : ''}>{a.competency.competent}/{a.competency.total} competent</span>
-                                            : <span className="text-slate-300">— no units —</span>}
+                                        {a.grades.total > 0
+                                            ? <span className={a.grades.remark === 'Passed' ? 'font-medium text-emerald-600' : a.grades.remark === 'Failed' ? 'font-medium text-rose-600' : ''}>
+                                                {a.grades.gwa !== null ? a.grades.gwa.toFixed(2) : '—'} <span className="text-slate-400">({a.grades.graded}/{a.grades.total})</span>
+                                            </span>
+                                            : <span className="text-slate-300">— no subjects —</span>}
                                     </td>
                                     <td className="px-4 py-3">
                                         <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${resultBadge(a.result)}`}>{a.result ?? 'Not yet assessed'}</span>

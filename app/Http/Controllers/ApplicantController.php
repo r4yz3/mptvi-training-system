@@ -242,7 +242,7 @@ class ApplicantController extends Controller
 
     public function show(Request $request, Applicant $applicant): Response
     {
-        $applicant->load('program.competencyUnits', 'documents', 'competencyResults');
+        $applicant->load('program.subjects', 'documents', 'subjectGrades');
         $canPii = $request->user()->can('pii.view');
 
         return Inertia::render('Applicants/Show', [
@@ -255,7 +255,7 @@ class ApplicantController extends Controller
             'eduLevels' => collect(config('lpf.education_levels'))->map(fn ($l) => [
                 'key' => $l['key'], 'label' => $l['label'],
             ])->values(),
-            'competencyInfo' => $applicant->competencySummary(),
+            'gradeInfo' => $applicant->gradeSummary(),
             'canGrade' => $request->user()->can('assess'),
             'assessmentResult' => $applicant->assessment_result,
             'fees' => $canPii ? [

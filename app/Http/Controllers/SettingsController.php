@@ -3,13 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Applicant;
-use App\Models\CompetencyUnit;
 use App\Models\CustomField;
 use App\Models\FeeItem;
 use App\Models\FormSection;
 use App\Models\Program;
 use App\Models\SecurityEvent;
 use App\Models\Setting;
+use App\Models\Subject;
 use App\Models\User;
 use App\Support\SecurityPosture;
 use App\Support\SystemHealth;
@@ -245,58 +245,60 @@ class SettingsController extends Controller
 
     /* ------------------------- Competency standards (TESDA) ------------------------- */
 
-    public function competencies(Request $request): Response
+    public function subjects(Request $request): Response
     {
         abort_unless($request->user()->can('settings'), 403);
 
-        $programs = Program::with('competencyUnits')->orderBy('title')->get()
+        $programs = Program::with('subjects')->orderBy('title')->get()
             ->map(fn (Program $p) => [
                 'id' => $p->id,
                 'title' => $p->title,
                 'level' => $p->level,
-                'units' => $p->competencyUnits->map(fn (CompetencyUnit $u) => [
-                    'id' => $u->id, 'code' => $u->code, 'title' => $u->title, 'type' => $u->type,
+                'subjects' => $p->subjects->map(fn (Subject $s) => [
+                    'id' => $s->id, 'code' => $s->code, 'title' => $s->title, 'category' => $s->category, 'units' => $s->units,
                 ])->values(),
             ]);
 
-        return Inertia::render('Settings/Competencies', [
+        return Inertia::render('Settings/Subjects', [
             'programs' => $programs,
-            'types' => CompetencyUnit::TYPES,
+            'categories' => Subject::CATEGORIES,
         ]);
     }
 
-    /** Replace one program's Units of Competency. Rows with an id are kept (so
-     *  existing ratings survive); rows omitted are deleted (cascading ratings). */
-    public function updateCompetencies(Request $request, Program $program): RedirectResponse
+    /** Replace one program's subjects. Rows with an id are kept (so existing
+     *  grades survive); rows omitted are deleted (cascading grades). */
+    public function updateSubjects(Request $request, Program $program): RedirectResponse
     {
         abort_unless($request->user()->can('settings'), 403);
 
         $data = $request->validate([
-            'units' => ['present', 'array'],
-            'units.*.id' => ['nullable', 'integer'],
-            'units.*.code' => ['nullable', 'string', 'max:60'],
-            'units.*.title' => ['required', 'string', 'max:160'],
-            'units.*.type' => ['required', Rule::in(CompetencyUnit::TYPES)],
+            'subjects' => ['present', 'array'],
+            'subjects.*.id' => ['nullable', 'integer'],
+            'subjects.*.code' => ['nullable', 'string', 'max:60'],
+            'subjects.*.title' => ['required', 'string', 'max:160'],
+            'subjects.*.category' => ['required', Rule::in(Subject::CATEGORIES)],
+            'subjects.*.units' => ['required', 'integer', 'min:1', 'max:20'],
         ]);
 
         $keptIds = [];
-        foreach (array_values($data['units']) as $sort => $row) {
-            $unit = $program->competencyUnits()->updateOrCreate(
+        foreach (array_values($data['subjects']) as $sort => $row) {
+            $subject = $program->subjects()->updateOrCreate(
                 ['id' => $row['id'] ?? null],
                 [
                     'code' => trim((string) ($row['code'] ?? '')) ?: null,
                     'title' => trim($row['title']),
-                    'type' => $row['type'],
+                    'category' => $row['category'],
+                    'units' => (int) $row['units'],
                     'sort' => $sort,
                 ],
             );
-            $keptIds[] = $unit->id;
+            $keptIds[] = $subject->id;
         }
 
-        // Remove units the admin deleted (their ratings cascade away).
-        $program->competencyUnits()->whereNotIn('id', $keptIds)->delete();
+        // Remove subjects the admin deleted (their grades cascade away).
+        $program->subjects()->whereNotIn('id', $keptIds)->delete();
 
-        return back()->with('success', "Competency standards saved for {$program->title}.");
+        return back()->with('success', "Subjects saved for {$program->title}.");
     }
 
     /* --------------------------- Extra fee schedule ---------------------------- */
