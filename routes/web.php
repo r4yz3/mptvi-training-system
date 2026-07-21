@@ -11,6 +11,7 @@ use App\Http\Controllers\DownloadController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\FormBuilderController;
 use App\Http\Controllers\IdController;
+use App\Http\Controllers\ImportController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\ProgramController;
 use App\Http\Controllers\ReportController;
@@ -106,6 +107,14 @@ Route::middleware('auth')->group(function () {
         Route::get('/idsystem/sheet', [IdController::class, 'sheet'])->name('idsystem.sheet');
         Route::get('/idsystem/{applicant}', [IdController::class, 'card'])->name('idsystem.card');
         Route::put('/idsystem/{applicant}/issue', [IdController::class, 'issue'])->name('idsystem.issue');
+    });
+
+    // Excel/CSV import (trainees + grades) — admin/registrar; per-type caps inside.
+    Route::middleware('module:import')->group(function () {
+        Route::get('/import', [ImportController::class, 'index'])->name('import.index');
+        Route::get('/import/{type}/template', [ImportController::class, 'template'])->name('import.template');
+        Route::post('/import/{type}/preview', [ImportController::class, 'preview'])->name('import.preview');
+        Route::post('/import/{type}/commit', [ImportController::class, 'commit'])->name('import.commit');
     });
 
     // Reports (P10) — admin/secretary. Payments CSV additionally gated finance.view.

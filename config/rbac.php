@@ -80,6 +80,7 @@ return [
         ['id' => 'idsystem',   'label' => 'ID system',             'icon' => 'id-card',          'group' => 'Training',       'roles' => ['admin', 'manager', 'registrar']],
         ['id' => 'messages',   'label' => 'Messages',              'icon' => 'message-square',   'group' => 'Communication',  'roles' => ['admin', 'manager', 'registrar', 'cashier', 'coordinator']],
         ['id' => 'events',     'label' => 'Calendar & events',     'icon' => 'megaphone',        'group' => 'Communication',  'roles' => ['admin', 'manager', 'registrar', 'cashier', 'coordinator']],
+        ['id' => 'import',     'label' => 'Import (Excel/CSV)',    'icon' => 'upload',           'group' => 'Administration', 'roles' => ['admin', 'manager', 'registrar']],
         ['id' => 'reports',    'label' => 'Reports',               'icon' => 'bar-chart-3',      'group' => 'Administration', 'roles' => ['admin', 'manager', 'registrar']],
         ['id' => 'downloads',  'label' => 'Downloads',             'icon' => 'download',         'group' => 'Administration', 'roles' => ['admin', 'manager', 'registrar', 'cashier']],
         ['id' => 'activity',   'label' => 'Activity log',          'icon' => 'history',          'group' => 'Administration', 'roles' => ['admin', 'manager', 'registrar']],

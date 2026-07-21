@@ -17,6 +17,7 @@ import {
     SlidersHorizontal,
     UserCog,
     Download,
+    Upload,
     Menu,
     X,
     LogOut,
@@ -42,6 +43,7 @@ const ICONS: Record<string, LucideIcon> = {
     sliders: SlidersHorizontal,
     'user-cog': UserCog,
     download: Download,
+    upload: Upload,
 };
 
 /** Build a `:root` override of the --brand-* channels from a single primary hex. */
