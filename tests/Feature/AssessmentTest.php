@@ -34,42 +34,51 @@ class AssessmentTest extends TestCase
         ]);
     }
 
-    public function test_competent_result_certifies_and_issues_cert_number(): void
-    {
-        $a = $this->trainee();
-        $this->actingAs($this->as('coordinator'))
-            ->post("/assessment/{$a->id}/result", ['result' => 'Competent', 'assessed_at' => '2026-08-01'])
-            ->assertRedirect();
-
-        $a->refresh();
-        $this->assertSame('Certified', $a->status);
-        $this->assertStringStartsWith('CK2-', $a->cert_number);
-        $this->assertNotNull($a->certified_at);
-    }
-
-    public function test_not_yet_competent_stays_for_assessment(): void
-    {
-        $a = $this->trainee();
-        $this->actingAs($this->as('coordinator'))
-            ->post("/assessment/{$a->id}/result", ['result' => 'Not Yet Competent', 'assessed_at' => '2026-08-01'])
-            ->assertRedirect();
-        $this->assertSame('For assessment', $a->fresh()->status);
-        $this->assertNull($a->fresh()->cert_number);
-    }
-
-    public function test_endorse_moves_in_training_to_for_assessment(): void
+    public function test_admin_registrar_set_assessment_result_on_the_profile(): void
     {
         $a = $this->trainee('In training');
-        $this->actingAs($this->as('coordinator'))
-            ->put("/assessment/{$a->id}/for-assessment")
+
+        $this->actingAs($this->as('registrar'))
+            ->put("/applicants/{$a->id}/assessment", ['assessment_result' => 'Competent'])
             ->assertRedirect();
-        $this->assertSame('For assessment', $a->fresh()->status);
+        $this->assertSame('Competent', $a->fresh()->assessment_result);
+        // Result is independent of the pipeline status — status is unchanged.
+        $this->assertSame('In training', $a->fresh()->status);
+
+        // Re-mark and clear.
+        $this->actingAs($this->as('admin'))
+            ->put("/applicants/{$a->id}/assessment", ['assessment_result' => 'Not Yet Competent'])
+            ->assertRedirect();
+        $this->assertSame('Not Yet Competent', $a->fresh()->assessment_result);
+
+        $this->actingAs($this->as('admin'))
+            ->put("/applicants/{$a->id}/assessment", ['assessment_result' => null])
+            ->assertRedirect();
+        $this->assertNull($a->fresh()->assessment_result);
     }
 
-    public function test_cashier_cannot_assess(): void
+    public function test_invalid_result_is_rejected(): void
     {
-        $a = $this->trainee();
+        $a = $this->trainee('In training');
+        $this->actingAs($this->as('admin'))
+            ->put("/applicants/{$a->id}/assessment", ['assessment_result' => 'Maybe'])
+            ->assertSessionHasErrors('assessment_result');
+    }
+
+    public function test_cashier_cannot_set_assessment_or_view_the_roster(): void
+    {
+        $a = $this->trainee('In training');
+        // cashier lacks the 'assess' cap and the assessment module.
+        $this->actingAs($this->as('cashier'))
+            ->put("/applicants/{$a->id}/assessment", ['assessment_result' => 'Competent'])
+            ->assertForbidden();
         $this->actingAs($this->as('cashier'))->get('/assessment')->assertForbidden();
         $this->actingAs($this->as('coordinator'))->get('/assessment')->assertOk();
+    }
+
+    public function test_certificate_route_is_gone(): void
+    {
+        $a = $this->trainee('Certified');
+        $this->actingAs($this->as('admin'))->get("/assessment/{$a->id}/certificate")->assertNotFound();
     }
 }

@@ -53,6 +53,8 @@ Route::middleware('auth')->group(function () {
         Route::delete('/applicants/{applicant}', [ApplicantController::class, 'destroy'])->name('applicants.destroy');
         Route::put('/applicants/{applicant}/active', [ApplicantController::class, 'toggleActive'])->name('applicants.toggleActive');
         Route::put('/applicants/{applicant}/trainee-status', [ApplicantController::class, 'updateTraineeStatus'])->name('applicants.traineeStatus');
+        // Manual assessment result (Competent / Not Yet Competent) — gated by 'assess'.
+        Route::put('/applicants/{applicant}/assessment', [ApplicantController::class, 'updateAssessment'])->name('applicants.assessment');
 
         // Competency rating + printable report card (moved off the old Training
         // module). The controller gates writing/printing behind the 'assess' cap.
@@ -93,13 +95,9 @@ Route::middleware('auth')->group(function () {
         Route::put('/cashier/payments/{payment}/void', [CashierController::class, 'void'])->name('cashier.void');
     });
 
-    // Assessment & certs (P8) — admin/secretary/coordinator; assess cap gates actions.
+    // Assessment (P8) — read-only roster; the result is set on the trainee profile.
     Route::middleware('module:assessment')->group(function () {
         Route::get('/assessment', [AssessmentController::class, 'index'])->name('assessment.index');
-        Route::put('/assessment/{applicant}/for-assessment', [AssessmentController::class, 'markForAssessment'])->name('assessment.mark');
-        Route::post('/assessment/{applicant}/result', [AssessmentController::class, 'record'])->name('assessment.record');
-        Route::put('/assessment/{applicant}/assessor', [AssessmentController::class, 'updateAssessor'])->name('assessment.assessor');
-        Route::get('/assessment/{applicant}/certificate', [AssessmentController::class, 'certificate'])->name('assessment.certificate');
     });
 
     // ID system (P9) — admin/secretary/registrar; id.issue cap gates issuing.

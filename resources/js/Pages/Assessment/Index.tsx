@@ -1,19 +1,18 @@
-import { useState } from 'react';
-import { Head, Link, router, useForm } from '@inertiajs/react';
-import { Award, ClipboardList, GraduationCap, BadgeCheck, Printer, Pencil, X, ChevronRight } from 'lucide-react';
+import { Head, Link } from '@inertiajs/react';
+import { ClipboardList, GraduationCap, BadgeCheck, ChevronRight, ChevronRight as Arrow } from 'lucide-react';
 import AppShell from '@/Layouts/AppShell';
 import StatusBadge from '@/Components/StatusBadge';
 
+interface Competency { total: number; competent: number; complete: boolean }
 interface Row {
     id: number; name: string; program: string | null; level: string | null;
-    status: string; cert_number: string | null; last_result: string | null;
-    cert_assessor: string | null; assessor: string | null;
+    status: string; result: string | null; competency: Competency;
 }
 
 const STAGES = [
     { key: 'In training', label: 'In training', icon: GraduationCap, tile: 'bg-indigo-50 text-indigo-600' },
     { key: 'For assessment', label: 'For assessment', icon: ClipboardList, tile: 'bg-amber-50 text-amber-600' },
-    { key: 'Certified', label: 'Certified', icon: BadgeCheck, tile: 'bg-emerald-50 text-emerald-600' },
+    { key: 'Certified', label: 'Competent', icon: BadgeCheck, tile: 'bg-emerald-50 text-emerald-600' },
 ];
 
 function initials(name: string) {
@@ -21,22 +20,28 @@ function initials(name: string) {
     return ((p[0]?.[0] ?? '') + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase();
 }
 
-export default function AssessmentIndex({ applicants, canAssess, canEditAssessor, defaultAssessor }: { applicants: Row[]; canAssess: boolean; canEditAssessor: boolean; defaultAssessor: string }) {
-    const [recording, setRecording] = useState<Row | null>(null);
-    const [editingAssessor, setEditingAssessor] = useState<Row | null>(null);
-    const count = (key: string) => applicants.filter((a) => a.status === key).length;
+function resultBadge(result: string | null) {
+    if (result === 'Competent') return 'bg-emerald-50 text-emerald-700';
+    if (result === 'Not Yet Competent') return 'bg-amber-50 text-amber-700';
+    return 'bg-slate-100 text-slate-400';
+}
+
+export default function AssessmentIndex({ applicants }: { applicants: Row[] }) {
+    const competentCount = applicants.filter((a) => a.result === 'Competent').length;
 
     return (
-        <AppShell title="Assessment & certifications">
+        <AppShell title="Assessment">
             <Head title="Assessment" />
 
-            {/* Pipeline summary */}
+            {/* Summary */}
             <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
                 {STAGES.map((s, i) => (
                     <div key={s.key} className="relative flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
                         <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${s.tile}`}><s.icon className="h-5 w-5" /></span>
                         <div>
-                            <div className="text-2xl font-semibold leading-none text-slate-800">{count(s.key)}</div>
+                            <div className="text-2xl font-semibold leading-none text-slate-800">
+                                {s.key === 'Certified' ? competentCount : applicants.filter((a) => a.status === s.key).length}
+                            </div>
                             <div className="mt-1 text-xs font-medium text-slate-400">{s.label}</div>
                         </div>
                         {i < STAGES.length - 1 && (
@@ -45,6 +50,10 @@ export default function AssessmentIndex({ applicants, canAssess, canEditAssessor
                     </div>
                 ))}
             </div>
+
+            <p className="mb-3 text-xs text-slate-400">
+                Open a trainee to set their assessment result (Competent / Not Yet Competent) — admin &amp; registrar only.
+            </p>
 
             {/* Roster */}
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -55,9 +64,9 @@ export default function AssessmentIndex({ applicants, canAssess, canEditAssessor
                                 <th className="px-4 py-3">Trainee</th>
                                 <th className="px-4 py-3">Program</th>
                                 <th className="px-4 py-3">Stage</th>
-                                <th className="px-4 py-3">Certificate</th>
-                                <th className="px-4 py-3">Assessor</th>
-                                <th className="px-4 py-3 text-right">Action</th>
+                                <th className="px-4 py-3">Competency</th>
+                                <th className="px-4 py-3">Assessment result</th>
+                                <th className="px-4 py-3 text-right" />
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -66,168 +75,36 @@ export default function AssessmentIndex({ applicants, canAssess, canEditAssessor
                                     <td className="px-4 py-3">
                                         <div className="flex items-center gap-3">
                                             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-semibold text-brand-700">{initials(a.name)}</span>
-                                            <div>
-                                                <Link href={`/applicants/${a.id}`} className="font-medium text-slate-800 hover:text-brand-600">{a.name}</Link>
-                                            </div>
+                                            <span className="font-medium text-slate-800">{a.name}</span>
                                         </div>
                                     </td>
-                                    <td className="px-4 py-3 text-slate-600">{a.program ?? '—'} {a.level && <span className="text-slate-400">{a.level}</span>}</td>
+                                    <td className="px-4 py-3 text-slate-600">{a.program ?? '—'}{a.level ? ` (${a.level})` : ''}</td>
                                     <td className="px-4 py-3"><StatusBadge status={a.status} /></td>
-                                    <td className="px-4 py-3">
-                                        {a.cert_number
-                                            ? <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 font-mono text-xs font-medium text-emerald-700"><BadgeCheck className="h-3.5 w-3.5" />{a.cert_number}</span>
-                                            : <span className="text-xs text-slate-300">—</span>}
+                                    <td className="px-4 py-3 text-slate-500">
+                                        {a.competency.total > 0
+                                            ? <span className={a.competency.complete ? 'font-medium text-emerald-600' : ''}>{a.competency.competent}/{a.competency.total} competent</span>
+                                            : <span className="text-slate-300">— no units —</span>}
                                     </td>
                                     <td className="px-4 py-3">
-                                        <div className="flex items-center gap-1.5">
-                                            <span className={`text-xs ${a.assessor ? 'text-slate-600' : 'text-slate-300'}`}>{a.assessor ?? '—'}</span>
-                                            {canEditAssessor && (
-                                                <button onClick={() => setEditingAssessor(a)} className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-brand-600" title="Edit certificate assessor">
-                                                    <Pencil className="h-3.5 w-3.5" />
-                                                </button>
-                                            )}
-                                        </div>
+                                        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${resultBadge(a.result)}`}>{a.result ?? 'Not yet assessed'}</span>
                                     </td>
-                                    <td className="px-4 py-3">
-                                        <div className="flex justify-end gap-2">
-                                            {canAssess && a.status === 'In training' && (
-                                                <button onClick={() => router.put(`/assessment/${a.id}/for-assessment`, {}, { preserveScroll: true })}
-                                                    className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
-                                                    <ClipboardList className="h-3.5 w-3.5" /> Endorse
-                                                </button>
-                                            )}
-                                            {canAssess && a.status === 'For assessment' && (
-                                                <button onClick={() => setRecording(a)}
-                                                    className="inline-flex items-center gap-1 rounded-md bg-brand-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-brand-700">
-                                                    <Award className="h-3.5 w-3.5" /> Record result
-                                                </button>
-                                            )}
-                                            {a.status === 'Certified' && (
-                                                <a href={`/assessment/${a.id}/certificate`} target="_blank" rel="noopener"
-                                                    className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100">
-                                                    <Printer className="h-3.5 w-3.5" /> Print certificate
-                                                </a>
-                                            )}
-                                            {!canAssess && a.status !== 'Certified' && (
-                                                <span className="text-xs text-slate-300">—</span>
-                                            )}
-                                        </div>
+                                    <td className="px-4 py-3 text-right">
+                                        <Link href={`/applicants/${a.id}`} className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:underline">
+                                            Open <Arrow className="h-3.5 w-3.5" />
+                                        </Link>
                                     </td>
                                 </tr>
                             ))}
                             {applicants.length === 0 && (
                                 <tr><td colSpan={6} className="px-4 py-14 text-center text-sm text-slate-400">
-                                    <Award className="mx-auto mb-2 h-8 w-8 text-slate-300" />
-                                    No trainees in the assessment pipeline yet.
+                                    <ClipboardList className="mx-auto mb-2 h-8 w-8 text-slate-300" />
+                                    No trainees in the assessment phase yet.
                                 </td></tr>
                             )}
                         </tbody>
                     </table>
                 </div>
             </div>
-
-            {recording && <ResultModal applicant={recording} defaultAssessor={defaultAssessor} onClose={() => setRecording(null)} />}
-            {editingAssessor && <AssessorModal applicant={editingAssessor} defaultAssessor={defaultAssessor} onClose={() => setEditingAssessor(null)} />}
         </AppShell>
-    );
-}
-
-function AssessorModal({ applicant, defaultAssessor, onClose }: { applicant: Row; defaultAssessor: string; onClose: () => void }) {
-    const { data, setData, put, processing } = useForm({ assessor: applicant.cert_assessor ?? '' });
-    const submit = (e: React.FormEvent) => {
-        e.preventDefault();
-        put(`/assessment/${applicant.id}/assessor`, { preserveScroll: true, onSuccess: onClose });
-    };
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div className="w-full max-w-md overflow-hidden rounded-xl bg-white shadow-xl">
-                <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-                    <div className="flex items-center gap-2.5">
-                        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 text-brand-600"><Award className="h-5 w-5" /></span>
-                        <div>
-                            <h3 className="text-base font-semibold text-slate-800">Certificate assessor</h3>
-                            <p className="text-xs text-slate-500">{applicant.name}</p>
-                        </div>
-                    </div>
-                    <button onClick={onClose} className="rounded-md p-1 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>
-                </div>
-                <form onSubmit={submit} className="space-y-3 px-5 py-4">
-                    <label className="block"><span className="mb-1 block text-xs font-medium text-slate-600">Accredited assessor (prints on this trainee's certificate)</span>
-                        <input className="input" value={data.assessor} placeholder={defaultAssessor || 'Full name of assessor'} onChange={(e) => setData('assessor', e.target.value)} autoFocus />
-                    </label>
-                    <p className="rounded-md bg-slate-50 px-2.5 py-1.5 text-xs text-slate-500">
-                        Leave blank to fall back to the assessment's recorded assessor, then the default in Settings → Signatories{defaultAssessor ? ` (${defaultAssessor})` : ''}.
-                    </p>
-                    <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
-                        <button type="button" onClick={onClose} className="btn-ghost">Cancel</button>
-                        <button type="submit" disabled={processing} className="btn-primary">Save assessor</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    );
-}
-
-function ResultModal({ applicant, defaultAssessor, onClose }: { applicant: Row; defaultAssessor: string; onClose: () => void }) {
-    const { data, setData, post, processing, errors } = useForm({
-        result: 'Competent', assessed_at: new Date().toISOString().slice(0, 10), assessor: defaultAssessor ?? '', remarks: '',
-    });
-    const competent = data.result === 'Competent';
-    const submit = (e: React.FormEvent) => {
-        e.preventDefault();
-        post(`/assessment/${applicant.id}/result`, { preserveScroll: true, onSuccess: onClose });
-    };
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div className="w-full max-w-md overflow-hidden rounded-xl bg-white shadow-xl">
-                <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-                    <div className="flex items-center gap-2.5">
-                        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 text-brand-600"><Award className="h-5 w-5" /></span>
-                        <div>
-                            <h3 className="text-base font-semibold text-slate-800">Record assessment</h3>
-                            <p className="text-xs text-slate-500">{applicant.name} · {applicant.program}</p>
-                        </div>
-                    </div>
-                    <button onClick={onClose} className="rounded-md p-1 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>
-                </div>
-                <form onSubmit={submit} className="space-y-4 px-5 py-4">
-                    <div>
-                        <span className="mb-1.5 block text-xs font-medium text-slate-600">Result</span>
-                        <div className="grid grid-cols-2 gap-2">
-                            <button type="button" onClick={() => setData('result', 'Competent')}
-                                className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${competent ? 'border-emerald-500 bg-emerald-50 text-emerald-700 ring-1 ring-emerald-500' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
-                                Competent
-                            </button>
-                            <button type="button" onClick={() => setData('result', 'Not Yet Competent')}
-                                className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${!competent ? 'border-amber-500 bg-amber-50 text-amber-700 ring-1 ring-amber-500' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
-                                Not Yet Competent
-                            </button>
-                        </div>
-                        <p className={`mt-2 flex items-start gap-1.5 rounded-md px-2.5 py-1.5 text-xs ${competent ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-50 text-slate-500'}`}>
-                            <BadgeCheck className="mt-px h-3.5 w-3.5 shrink-0" />
-                            {competent
-                                ? 'Issues a certificate number and certifies the trainee.'
-                                : 'Returns the trainee to the For-assessment stage for re-evaluation.'}
-                        </p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                        <label className="block"><span className="mb-1 block text-xs font-medium text-slate-600">Date assessed</span>
-                            <input type="date" className="input" value={data.assessed_at} onChange={(e) => setData('assessed_at', e.target.value)} />
-                        </label>
-                        <label className="block"><span className="mb-1 block text-xs font-medium text-slate-600">Assessor</span>
-                            <input className="input" placeholder="Name" value={data.assessor} onChange={(e) => setData('assessor', e.target.value)} />
-                        </label>
-                    </div>
-                    <label className="block"><span className="mb-1 block text-xs font-medium text-slate-600">Remarks</span>
-                        <input className="input" placeholder="Optional" value={data.remarks} onChange={(e) => setData('remarks', e.target.value)} />
-                    </label>
-                    {errors.result && <span className="block text-xs text-rose-600">{errors.result}</span>}
-                    <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
-                        <button type="button" onClick={onClose} className="btn-ghost">Cancel</button>
-                        <button type="submit" disabled={processing} className="btn-primary">Save result</button>
-                    </div>
-                </form>
-            </div>
-        </div>
     );
 }

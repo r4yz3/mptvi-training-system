@@ -3,7 +3,7 @@ import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import {
     ArrowLeft, Pencil, Trash2, Lock, UserCircle2, Power, Printer, Check, XCircle,
     CalendarDays, MapPin, Phone, User, IdCard, HeartPulse, Users2, Landmark,
-    GraduationCap, ListChecks, LifeBuoy, FileSignature, Sparkles, FileText, Banknote, type LucideIcon,
+    GraduationCap, ListChecks, LifeBuoy, FileSignature, Sparkles, FileText, Banknote, Award, type LucideIcon,
 } from 'lucide-react';
 import AppShell from '@/Layouts/AppShell';
 import StatusBadge from '@/Components/StatusBadge';
@@ -54,7 +54,7 @@ interface FeeRow { category: string; expected: number; paid: number; balance: nu
 interface Fees { school_year: string | null; misc: FeeRow; extras: FeeRow[] }
 
 export default function ApplicantShow({
-    applicant, pii, documents, canVerifyDocs, customFields, traineeStatuses, eduLevels, competencyInfo, canGrade, fees,
+    applicant, pii, documents, canVerifyDocs, customFields, traineeStatuses, eduLevels, competencyInfo, canGrade, assessmentResult, fees,
 }: {
     applicant: Applicant;
     pii: boolean;
@@ -65,6 +65,7 @@ export default function ApplicantShow({
     eduLevels: { key: string; label: string }[];
     competencyInfo: CompetencyInfo;
     canGrade: boolean;
+    assessmentResult: string | null;
     fees: Fees | null;
 }) {
     const { auth } = usePage<PageProps>().props;
@@ -172,6 +173,11 @@ export default function ApplicantShow({
             {/* Pipeline progress */}
             <div className="mt-6">
                 <PipelineStepper status={applicant.status} />
+            </div>
+
+            {/* Assessment result — manually set by admin / registrar */}
+            <div className="mt-6">
+                <AssessmentControl applicantId={applicant.id} result={assessmentResult} canAssess={canGrade} />
             </div>
 
             {/* Training grades — job data, visible to pii and non-pii roles alike */}
@@ -428,6 +434,52 @@ const UNIT_TYPE_STYLE: Record<string, string> = {
     Common: 'bg-violet-50 text-violet-700',
     Core: 'bg-emerald-50 text-emerald-700',
 };
+
+function AssessmentControl({ applicantId, result, canAssess }: { applicantId: number; result: string | null; canAssess: boolean }) {
+    const set = (value: string | null) =>
+        router.put(`/applicants/${applicantId}/assessment`, { assessment_result: value }, { preserveScroll: true });
+
+    const tone = result === 'Competent'
+        ? 'bg-emerald-50 text-emerald-700'
+        : result === 'Not Yet Competent' ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-500';
+
+    return (
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600"><Award className="h-4 w-4" /></span>
+                    <div>
+                        <h3 className="text-sm font-semibold text-slate-700">Assessment result</h3>
+                        <p className="text-xs text-slate-400">Set by admin / registrar after the competency assessment.</p>
+                    </div>
+                </div>
+                {canAssess ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                        <button
+                            onClick={() => set('Competent')}
+                            className={`rounded-lg px-3 py-1.5 text-xs font-medium ring-1 ring-inset ${result === 'Competent' ? 'bg-emerald-600 text-white ring-emerald-600' : 'bg-white text-emerald-700 ring-emerald-200 hover:bg-emerald-50'}`}
+                        >
+                            Competent
+                        </button>
+                        <button
+                            onClick={() => set('Not Yet Competent')}
+                            className={`rounded-lg px-3 py-1.5 text-xs font-medium ring-1 ring-inset ${result === 'Not Yet Competent' ? 'bg-amber-500 text-white ring-amber-500' : 'bg-white text-amber-700 ring-amber-200 hover:bg-amber-50'}`}
+                        >
+                            Not Yet Competent
+                        </button>
+                        {result && (
+                            <button onClick={() => set(null)} className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-100">
+                                Clear
+                            </button>
+                        )}
+                    </div>
+                ) : (
+                    <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${tone}`}>{result ?? 'Not yet assessed'}</span>
+                )}
+            </div>
+        </div>
+    );
+}
 
 function CompetencyPanel({ info, canGrade, applicantId }: { info: CompetencyInfo; canGrade: boolean; applicantId: number }) {
     // Editable rating state (unit_id -> result), seeded from the current ratings.

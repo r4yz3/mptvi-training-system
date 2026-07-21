@@ -257,6 +257,7 @@ class ApplicantController extends Controller
             ])->values(),
             'competencyInfo' => $applicant->competencySummary(),
             'canGrade' => $request->user()->can('assess'),
+            'assessmentResult' => $applicant->assessment_result,
             'fees' => $canPii ? [
                 'school_year' => $applicant->school_year,
                 'misc' => [
@@ -351,6 +352,25 @@ class ApplicantController extends Controller
         return back()->with('success', $applicant->trainee_status
             ? "Training status set to {$applicant->trainee_status}."
             : 'Training status cleared.');
+    }
+
+    /**
+     * Set the trainee's assessment result (Competent / Not Yet Competent), or
+     * clear it. Manual, admin/registrar (the 'assess' cap). Independent of the
+     * pipeline status — this replaces the old certificate/assessment-record flow.
+     */
+    public function updateAssessment(Request $request, Applicant $applicant): RedirectResponse
+    {
+        abort_unless($request->user()->can('assess'), 403);
+
+        $data = $request->validate([
+            'assessment_result' => ['nullable', Rule::in(['Competent', 'Not Yet Competent'])],
+        ]);
+        $applicant->update(['assessment_result' => $data['assessment_result'] ?? null]);
+
+        return back()->with('success', $applicant->assessment_result
+            ? "Assessment set to {$applicant->assessment_result}."
+            : 'Assessment result cleared.');
     }
 
     // ---------------------------------------------------------------- helpers
