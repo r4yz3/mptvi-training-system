@@ -3,12 +3,13 @@ setlocal enabledelayedexpansion
 title MPTVI - One-click setup
 
 echo ============================================================
-echo   MPTVI Training Management System - Setup
+echo   MPTVI Training Management System - Setup / Update
 echo ============================================================
 echo.
-echo Tip: easiest is to run this from the Laragon Terminal
-echo (Laragon menu - Terminal). Double-clicking also works -
-echo this script will try to locate Laragon's PHP/Composer/Node.
+echo Run this once to INSTALL, or again any time to UPDATE
+echo (after replacing the app files with a newer copy).
+echo Tip: easiest is to run it from the Laragon Terminal
+echo (Laragon menu - Terminal). Double-clicking also works.
 echo.
 
 REM --- Move to the app root (this script lives in deploy\local) ---
@@ -38,13 +39,9 @@ call npm run build || goto :err
 echo [4/8] Environment file...
 if not exist ".env" (
     copy "deploy\local\env.local.example" ".env" >nul
-    echo.
-    echo   ^>^>^> Created .env. APP_URL is already set to http://peso.com -
-    echo       just set a BACKUP_PASSWORD. Then run setup.bat again. ^<^<^<
-    echo.
-    start "" notepad ".env"
-    pause
-    exit /b 0
+    echo       Created .env from the local template.
+) else (
+    echo       .env already present - keeping it.
 )
 
 echo [5/8] Application key...
@@ -55,7 +52,24 @@ if errorlevel 1 (
     echo       key already set - skipping.
 )
 
-echo [6/8] Database...
+echo [6/8] Backup password...
+findstr /r /c:"^BACKUP_PASSWORD=." ".env" >nul 2>&1
+if errorlevel 1 (
+    REM Auto-generate a strong random backup password and save a copy the
+    REM office can store OFF this PC (an unknowable password = no restores).
+    for /f "usebackq delims=" %%K in (`powershell -NoProfile -Command "$a=[char[]](48..57)+[char[]](65..90)+[char[]](97..122); -join (Get-Random -InputObject $a -Count 40)"`) do set "BPW=%%K"
+    powershell -NoProfile -Command "(Get-Content '.env') -replace '^BACKUP_PASSWORD=.*', 'BACKUP_PASSWORD=!BPW!' | Set-Content -Encoding ascii '.env'" >nul 2>&1
+    > "BACKUP-PASSWORD-KEEP-SAFE.txt" echo MPTVI encrypted-backup password ^(generated %DATE% %TIME%^):
+    >> "BACKUP-PASSWORD-KEEP-SAFE.txt" echo !BPW!
+    >> "BACKUP-PASSWORD-KEEP-SAFE.txt" echo.
+    >> "BACKUP-PASSWORD-KEEP-SAFE.txt" echo Store this somewhere OTHER than this PC. Without it, encrypted backups cannot be restored.
+    echo       Generated a backup password - saved to BACKUP-PASSWORD-KEEP-SAFE.txt
+    echo       ^>^>^> Move that file to a safe place ^(USB / cloud^), then delete it here. ^<^<^<
+) else (
+    echo       backup password already set - skipping.
+)
+
+echo [7/8] Database + migrations...
 set "NEWDB="
 if not exist "database\database.sqlite" (
     type nul > "database\database.sqlite"
@@ -63,12 +77,13 @@ if not exist "database\database.sqlite" (
 )
 call php artisan migrate --force || goto :err
 
-echo [7/8] Seed roles + programs...
+echo       Syncing roles + permissions (RbacSeeder - safe to re-run)...
+call php artisan db:seed --class="Database\Seeders\RbacSeeder" --force || goto :err
 if defined NEWDB (
-    call php artisan db:seed --class=Database\Seeders\RbacSeeder --force || goto :err
-    call php artisan db:seed --class=Database\Seeders\ProgramSeeder --force || goto :err
+    echo       Fresh database - seeding the program catalog...
+    call php artisan db:seed --class="Database\Seeders\ProgramSeeder" --force || goto :err
 ) else (
-    echo       existing database - skipping seed.
+    echo       Existing database - programs/data left untouched.
 )
 
 echo [8/8] Finalize ^(storage link + optimize^)...
@@ -120,16 +135,20 @@ echo.
 echo ============================================================
 echo   SETUP COMPLETE
 echo.
-echo   Test on this PC:   http://peso.com/   ^(or http://localhost/^)
+echo   Open on this PC:   http://peso.com/   ^(or http://localhost/^)
+echo   Log in:            admin@peso.com  /  password
 echo.
-echo   Still to do by hand ^(see deploy\local\INSTALL-LOCAL.md^):
-echo     1. Reload Apache in Laragon (if the vhost was just installed)
-echo     2. Give this PC a STATIC IP (so peso.com always points the same place)
-echo     3. On every OTHER office PC, run deploy\local\client-hostname.bat
-echo        (as administrator) so http://peso.com/ reaches this server
-echo     4. Right-click deploy\local\install-backup-task.bat - Run as administrator
-echo     5. Open the site, log in (admin@peso.com / password),
-echo        create real staff and DELETE the demo accounts
+if defined NEWDB (
+    echo   FIRST-TIME to-do ^(see deploy\local\INSTALL-LOCAL.md^):
+    echo     1. Reload Apache in Laragon if the vhost was just installed
+    echo     2. Give this PC a STATIC IP so peso.com stays put
+    echo     3. On every OTHER office PC, run deploy\local\client-hostname.bat as admin
+    echo     4. Right-click deploy\local\install-backup-task.bat - Run as administrator
+    echo     5. Log in, create real staff, then DELETE the demo accounts
+    echo     6. Move BACKUP-PASSWORD-KEEP-SAFE.txt off this PC, then delete it
+) else (
+    echo   Update applied: files rebuilt, database migrated, permissions re-synced.
+)
 echo ============================================================
 echo.
 pause

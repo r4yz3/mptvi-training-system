@@ -60,14 +60,19 @@ npm ci && npm run build
 ### One-click (recommended)
 
 In the app folder, run **`deploy\local\setup.bat`** (double-click, or from the Laragon
-Terminal — run it **as administrator** to get the extras). On the **first** run it
-creates `.env` from the template and opens it — `APP_URL` is already `http://peso.com`,
-so just set `BACKUP_PASSWORD`, save, then **run `setup.bat` again** to finish. It does
-composer install, npm build, key generate, database create + migrate + seed (RBAC +
-Programs), storage link, optimize, installs the Apache vhost, maps `peso.com` on this PC,
-sets **Laragon to auto-start on boot**, and adds the firewall rule. Then skip to
-**step 4**. (Steps 2 and 5 are handled by the script; static IP and the backup task are
-still manual — steps 6 and 8.)
+Terminal — run it **as administrator** to get the extras). It finishes in **one run** —
+no editing needed: it creates `.env` from the template (`APP_URL` is already
+`http://peso.com`), **auto-generates the app key and a strong `BACKUP_PASSWORD`**
+(saved to `BACKUP-PASSWORD-KEEP-SAFE.txt` — move that file off this PC, then delete it),
+then does composer install, npm build, database create + migrate + **seed/sync
+roles & permissions** (and the Programs catalog on a fresh DB), storage link, optimize,
+installs the Apache vhost, maps `peso.com` on this PC, sets **Laragon to auto-start on
+boot**, and adds the firewall rule. Then skip to **step 4**. (Static IP and the backup
+task are still manual — steps 6 and 8.)
+
+> **Updating later:** just replace the app files with the newer copy and run
+> `setup.bat` again. It rebuilds, migrates, and **re-syncs roles/permissions**, but
+> leaves your existing database and `.env` untouched.
 
 ### Or do it manually
 
