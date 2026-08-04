@@ -2,8 +2,8 @@ import { Fragment, ReactNode, useState } from 'react';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import {
     ArrowLeft, Pencil, Trash2, Lock, UserCircle2, Power, Printer, Check, XCircle,
-    CalendarDays, MapPin, Phone, User, IdCard, HeartPulse, Users2, Landmark,
-    GraduationCap, ListChecks, LifeBuoy, FileSignature, Sparkles, FileText, Banknote, Award, type LucideIcon,
+    CalendarDays, MapPin, Phone, User, IdCard, HeartPulse, Users2, Landmark, ClipboardList,
+    GraduationCap, ListChecks, LifeBuoy, FileSignature, Sparkles, ShieldCheck, Banknote, Award, type LucideIcon,
 } from 'lucide-react';
 import AppShell from '@/Layouts/AppShell';
 import StatusBadge from '@/Components/StatusBadge';
@@ -13,20 +13,33 @@ import { PageProps } from '@/types';
 
 const STAGES = ['Registered', 'Enrolled', 'In training'];
 
+// Keyed by category key (same map the registration form uses), so renamed or
+// admin-created categories still get a sensible icon.
 const SECTION_ICON: Record<string, LucideIcon> = {
-    'Enrollment': GraduationCap,
-    'Personal information': IdCard,
-    'Address & contact': MapPin,
-    'Course & schedule': GraduationCap,
-    'Health': HeartPulse,
-    'Family background': Users2,
-    'Government-issued IDs': Landmark,
-    'Emergency contact': LifeBuoy,
-    'Classification & disability': ListChecks,
-    'Additional Information': Sparkles,
-    'Remarks': FileText,
-    '10 · Verification': FileSignature,
+    'sec-profile': User, 'sec-address': MapPin, 'sec-contact': Phone, 'sec-personal': IdCard,
+    'sec-health': HeartPulse, 'sec-family': Users2, 'sec-govids': Landmark, 'sec-course': GraduationCap,
+    'sec-classification': ListChecks, 'sec-disability': LifeBuoy, 'sec-additional': Sparkles,
+    'sec-consent': ShieldCheck, 'sec-verify': FileSignature,
 };
+
+interface SectionDef { key: string; label: string; note: string | null }
+interface FieldDef {
+    kind: 'builtin' | 'custom';
+    key: string;
+    label: string;
+    section: string;
+    required: boolean;
+    colspan?: 'full' | number | null;
+    // built-in
+    widget?: string;
+    source?: string | null;
+    signatory?: string | null;
+    // custom
+    type?: string;
+    options?: string[] | null;
+}
+interface Signatory { name: string; title: string }
+interface Layout { sections: SectionDef[]; fields: FieldDef[] }
 
 interface Applicant {
     id: number;
@@ -54,7 +67,7 @@ interface FeeRow { category: string; expected: number; paid: number; balance: nu
 interface Fees { school_year: string | null; misc: FeeRow; extras: FeeRow[] }
 
 export default function ApplicantShow({
-    applicant, pii, documents, canVerifyDocs, customFields, traineeStatuses, eduLevels, gradeInfo, canGrade, assessmentResult, fees,
+    applicant, pii, documents, canVerifyDocs, traineeStatuses, eduLevels, gradeInfo, canGrade, assessmentResult, fees, layout, signatories,
 }: {
     applicant: Applicant;
     pii: boolean;
@@ -67,6 +80,8 @@ export default function ApplicantShow({
     canGrade: boolean;
     assessmentResult: string | null;
     fees: Fees | null;
+    layout: Layout | null;
+    signatories: { checked_by: Signatory; approved_by: Signatory } | null;
 }) {
     const { auth } = usePage<PageProps>().props;
     const toggle = useForm({});
@@ -193,7 +208,7 @@ export default function ApplicantShow({
 
             {pii ? (
                 <>
-                    <FullProfile a={applicant} customFields={customFields ?? []} eduLevels={eduLevels} />
+                    <FullProfile a={applicant} layout={layout} eduLevels={eduLevels} signatories={signatories} />
                     {documents && (
                         <div className="mt-6">
                             <DocumentChecklist
@@ -235,145 +250,146 @@ function LimitedNotice({ a }: { a: Applicant }) {
     );
 }
 
-function FullProfile({ a, customFields, eduLevels }: { a: Applicant; customFields: CustomFieldDef[]; eduLevels: { key: string; label: string }[] }) {
-    const v = (k: string) => (a[k] as string | null) || '—';
-    const classifications = (a.classifications as string[] | null) ?? [];
-    const customData = (a.custom_data as Record<string, unknown> | null) ?? {};
-    const fmtCustom = (val: unknown) => (typeof val === 'boolean' ? (val ? 'Yes' : 'No') : (val == null || val === '' ? '—' : String(val)));
+/**
+ * Renders the profile straight from the admin-configured form layout, so the
+ * categories, labels, order and set of fields match the registration form
+ * exactly — hide, rename, move or add a field in the Form Builder and it
+ * changes here too, with no code change.
+ */
+function FullProfile({ a, layout, eduLevels, signatories }: {
+    a: Applicant;
+    layout: Layout | null;
+    eduLevels: { key: string; label: string }[];
+    signatories: { checked_by: Signatory; approved_by: Signatory } | null;
+}) {
+    if (!layout) return null;
+
+    // The 2×2 photo is already shown in the header, so it isn't repeated here.
+    const visible = layout.fields.filter((f) => f.widget !== 'photo');
+    const fieldsOf = (key: string) => visible.filter((f) => f.section === key);
+    const sections = layout.sections.filter((sec) => fieldsOf(sec.key).length > 0);
 
     return (
         <div className="mt-6 space-y-6">
-            <Section title="Personal information">
-                <Field label="Sex">{v('sex')}</Field>
-                <Field label="Age">{a.age ? `${a.age}` : '—'}</Field>
-                <Field label="Civil status">{v('civil_status')}</Field>
-                <Field label="Birthdate">{v('birthdate')}</Field>
-                <Field label="Birthplace">{[v('birthplace_city'), a.birthplace_province, a.birthplace_region].filter((x) => x && x !== '—').join(', ') || '—'}</Field>
-                <Field label="Nationality">{v('nationality')}</Field>
-                <Field label="Religion">{v('religion')}</Field>
-                <Field label="Ethnic group">{v('ethnic_group')}</Field>
-                <Field label="Education">{v('education')}</Field>
-                <Field label="School last attended">{v('school_last_attended')}</Field>
-                <Field label="Year graduated">{v('year_graduated')}</Field>
-            </Section>
-
-            <EducationBackground levels={eduLevels} history={(a.education_history as Record<string, Record<string, string>> | null) ?? {}} />
-
-            <Section title="Address & contact">
-                <Field label="Street">{v('street')}</Field>
-                <Field label="Barangay">{v('barangay')}</Field>
-                <Field label="City / Municipality">{v('city')}</Field>
-                <Field label="Province">{v('province')}</Field>
-                <Field label="Region">{v('region')}</Field>
-                <Field label="Contact no.">{v('contact')}</Field>
-                <Field label="Email / FB">{v('email')}</Field>
-            </Section>
-
-            <Section title="Course & schedule">
-                <Field label="Program">{a.program?.title ?? '—'}</Field>
-                <Field label="NC level">{a.program?.level ?? '—'}</Field>
-                <Field label="Scholarship">{v('scholarship')}</Field>
-                <Field label="Class session">{v('class_session')}</Field>
-                <Field label="School year">{v('school_year')}</Field>
-                <Field label="Employment (pre-training)">{v('emp_status')}</Field>
-                <Field label="Employer / position">{[v('employer_name'), a.employer_position].filter((x) => x && x !== '—').join(' · ') || '—'}</Field>
-            </Section>
-
-            <Section title="Health">
-                <Field label="Height">{v('height')}</Field>
-                <Field label="Weight">{v('weight')}</Field>
-                <Field label="Blood type">{v('blood_type')}</Field>
-                <Field label="Eyesight">{v('eyesight')}</Field>
-                <Field label="Hearing">{v('hearing')}</Field>
-                <Field label="Medical issues">{v('medical')}</Field>
-            </Section>
-
-            <Section title="Family background">
-                <Field label="Father">{v('father_name')}</Field>
-                <Field label="Father's occupation">{v('father_occupation')}</Field>
-                <Field label="Mother">{v('mother_name')}</Field>
-                <Field label="Mother's maiden name">{v('mother_maiden_name')}</Field>
-                <Field label="Mother's occupation">{v('mother_occupation')}</Field>
-                <Field label="Spouse">{v('spouse_name')}</Field>
-                <Field label="Spouse's occupation">{v('spouse_occupation')}</Field>
-                <Field label="Guardian">{v('guardian_name')}</Field>
-            </Section>
-
-            <Section title="Government-issued IDs">
-                <Field label="SSS No.">{v('sss_no')}</Field>
-                <Field label="GSIS No.">{v('gsis_no')}</Field>
-                <Field label="TIN">{v('tin_no')}</Field>
-                <Field label="PhilHealth No.">{v('philhealth_no')}</Field>
-            </Section>
-
-            <Section title="Emergency contact">
-                <Field label="Contact person">{v('emergency_name')}</Field>
-                <Field label="Relationship">{v('emergency_relationship')}</Field>
-                <Field label="Contact no.">{v('emergency_contact')}</Field>
-                <Field label="Address">{v('emergency_address')}</Field>
-            </Section>
-
-            {(classifications.length > 0 || Boolean(a.classification_other) || Boolean(a.disability_type)) && (
-                <Section title="Classification & disability">
-                    <div className="col-span-full flex flex-wrap gap-2">
-                        {classifications.map((c) => (
-                            <span key={c} className="rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-medium text-sky-700">{c}</span>
-                        ))}
-                        {a.classification_other ? (
-                            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs text-slate-600">{a.classification_other as string}</span>
-                        ) : null}
-                        {classifications.length === 0 && !a.classification_other && (
-                            <span className="text-sm text-slate-400">No classifications</span>
-                        )}
-                    </div>
-                    {a.disability_type ? (
-                        <>
-                            <Field label="Disability type">{v('disability_type')}</Field>
-                            <Field label="Cause">{v('disability_cause')}</Field>
-                        </>
-                    ) : null}
-                </Section>
-            )}
-
-            {a.remarks ? (
-                <Section title="Remarks">
-                    <p className="col-span-full text-sm text-slate-600">{a.remarks as string}</p>
-                </Section>
-            ) : null}
-
-            {customFields.length > 0 && (
-                <Section title="Additional Information">
-                    {customFields.map((f) => (
-                        <Field key={f.key} label={f.label}>{fmtCustom(customData[f.key])}</Field>
+            {sections.map((sec) => (
+                <Section key={sec.key} sectionKey={sec.key} title={sec.label} note={sec.note}>
+                    {fieldsOf(sec.key).map((f) => (
+                        <FieldValue key={f.key} field={f} a={a} eduLevels={eduLevels} signatories={signatories} />
                     ))}
                 </Section>
-            )}
-
-            <Section title="10 · Verification">
-                <Field label="Date accomplished">{v('date_accomplished').slice(0, 10)}</Field>
-                <Field label="Date received">{v('date_received').slice(0, 10)}</Field>
-                <div className="col-span-full grid grid-cols-1 gap-5 md:grid-cols-3">
-                    <NameView label="Interviewed by" name={v('interviewed_by')} />
-                    <NameView label="Checked by" name={v('checked_by')} />
-                    <NameView label="Approved by" name={v('approved_by')} />
-                </div>
-            </Section>
+            ))}
         </div>
     );
 }
 
-function NameView({ label, name }: { label: string; name: string }) {
-    return (
-        <div>
-            <div className="mb-1 text-center text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</div>
-            <div className="flex h-16 items-end justify-center border-b border-slate-200 pb-1 text-[10px] text-slate-300">
-                signature on printed form
-            </div>
-            {name && name !== '—' && (
-                <div className="mt-1 pt-1 text-center text-xs font-medium text-slate-600">{name}</div>
-            )}
-        </div>
-    );
+/** Mirrors the form's colspan rules so the read view lines up with the inputs. */
+function spanClass(c: FieldDef['colspan']): string {
+    if (c === 'full') return 'col-span-2 md:col-span-4';
+    if (c === 2) return 'md:col-span-2';
+    return '';
+}
+
+/** Read-only counterpart of the form's FieldRenderer — one widget per case. */
+function FieldValue({ field, a, eduLevels, signatories }: {
+    field: FieldDef;
+    a: Applicant;
+    eduLevels: { key: string; label: string }[];
+    signatories: { checked_by: Signatory; approved_by: Signatory } | null;
+}) {
+    const span = spanClass(field.colspan);
+
+    // Custom fields live in custom_data, same as the form reads them.
+    if (field.kind === 'custom') {
+        const custom = (a.custom_data as Record<string, unknown> | null) ?? {};
+        const val = custom[field.key];
+        const text = typeof val === 'boolean'
+            ? (val ? 'Yes' : 'No')
+            : (val == null || val === '' ? '—' : String(val));
+        return <Field label={field.label} span={span}>{text}</Field>;
+    }
+
+    const raw = a[field.key];
+    const text = raw == null || raw === '' ? '—' : String(raw);
+
+    switch (field.widget) {
+        case 'program':
+            return (
+                <Field label={field.label} span={span || 'md:col-span-2'}>
+                    {a.program
+                        ? <>{a.program.title}{a.program.level && <span className="ml-1.5 rounded bg-brand-50 px-1.5 py-0.5 text-xs font-medium text-brand-700">{a.program.level}</span>}</>
+                        : '—'}
+                </Field>
+            );
+
+        case 'classifications': {
+            const list = (raw as string[] | null) ?? [];
+            return (
+                <div className={span || 'col-span-2 md:col-span-4'}>
+                    <div className="text-xs font-medium text-slate-400">{field.label}</div>
+                    <div className="mt-1 flex flex-wrap gap-2">
+                        {list.length > 0
+                            ? list.map((c) => (
+                                <span key={c} className="rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-medium text-sky-700">{c}</span>
+                            ))
+                            : <span className="text-sm text-slate-400">None</span>}
+                    </div>
+                </div>
+            );
+        }
+
+        case 'consent':
+            return (
+                <div className={span || 'col-span-2 md:col-span-4'}>
+                    <div className="flex items-start gap-2 text-sm text-slate-600">
+                        {raw
+                            ? <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                            : <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-slate-300" />}
+                        <span className={raw ? '' : 'text-slate-400'}>{field.label}</span>
+                    </div>
+                </div>
+            );
+
+        case 'education_history':
+            return (
+                <EducationBackground
+                    label={field.label}
+                    levels={eduLevels}
+                    history={(raw as Record<string, Record<string, string>> | null) ?? {}}
+                />
+            );
+
+        case 'signature': {
+            const title = field.signatory && signatories
+                ? signatories[field.signatory as 'checked_by' | 'approved_by']?.title
+                : null;
+            return (
+                <div className={span}>
+                    <div className="mb-1 text-center text-xs font-semibold uppercase tracking-wide text-slate-400">{field.label}</div>
+                    <div className="flex h-16 items-end justify-center border-b border-slate-200 pb-1 text-[10px] text-slate-300">
+                        signature on printed form
+                    </div>
+                    {text !== '—' && (
+                        <div className="mt-1 pt-1 text-center text-xs font-medium text-slate-600">{text}</div>
+                    )}
+                    {title && <div className="mt-0.5 text-center text-[11px] italic text-slate-400">{title}</div>}
+                </div>
+            );
+        }
+
+        case 'date':
+            return <Field label={field.label} span={span}>{text.slice(0, 10)}</Field>;
+
+        case 'textarea':
+            return (
+                <div className={span || 'col-span-2 md:col-span-4'}>
+                    <div className="text-xs font-medium text-slate-400">{field.label}</div>
+                    <p className="mt-0.5 whitespace-pre-line text-sm font-medium text-slate-800">{text}</p>
+                </div>
+            );
+
+        default:
+            return <Field label={field.label} span={span}>{text}</Field>;
+    }
 }
 
 function Pill({ icon: Icon, value }: { icon: LucideIcon; value: string | null }) {
@@ -612,70 +628,71 @@ function FeesPanel({ fees }: { fees: Fees }) {
     );
 }
 
-function EducationBackground({ levels, history }: { levels: { key: string; label: string }[]; history: Record<string, Record<string, string>> }) {
+/** The education grid, read-only. Only levels the applicant actually filled in. */
+function EducationBackground({ label, levels, history }: { label: string; levels: { key: string; label: string }[]; history: Record<string, Record<string, string>> }) {
     const rows = levels
-        .map(({ key, label }) => {
+        .map(({ key, label: lvl }) => {
             const r = history[key] ?? {};
-            return { key, label, school: r.school ?? '', started: r.started ?? '', graduated: r.graduated ?? '', status: r.status ?? '' };
+            return { key, label: lvl, school: r.school ?? '', started: r.started ?? '', graduated: r.graduated ?? '', status: r.status ?? '' };
         })
         .filter((r) => r.school || r.started || r.graduated || r.status);
-    if (rows.length === 0) return null;
 
     return (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-            <div className="flex items-center gap-2.5 border-b border-slate-100 bg-slate-50/60 px-5 py-3">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600"><GraduationCap className="h-4 w-4" /></span>
-                <h3 className="text-sm font-semibold text-slate-700">Educational background</h3>
-            </div>
-            <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                    <thead>
-                        <tr className="text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
-                            <th className="px-5 py-2">Level</th>
-                            <th className="px-5 py-2">School / Institution</th>
-                            <th className="px-5 py-2">Started</th>
-                            <th className="px-5 py-2">Graduated</th>
-                            <th className="px-5 py-2">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                        {rows.map((r) => (
-                            <tr key={r.key}>
-                                <td className="whitespace-nowrap px-5 py-2.5 font-medium text-slate-600">{r.label}</td>
-                                <td className="px-5 py-2.5 text-slate-800">{r.school || '—'}</td>
-                                <td className="px-5 py-2.5 text-slate-600">{r.started || '—'}</td>
-                                <td className="px-5 py-2.5 text-slate-600">{r.graduated || '—'}</td>
-                                <td className="px-5 py-2.5">
-                                    {r.status
-                                        ? <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${EDU_STATUS_STYLE[r.status] ?? 'bg-slate-100 text-slate-600'}`}>{r.status}</span>
-                                        : <span className="text-slate-400">—</span>}
-                                </td>
+        <div className="col-span-2 md:col-span-4">
+            <div className="mb-1 text-xs font-medium text-slate-400">{label}</div>
+            {rows.length === 0 ? (
+                <div className="text-sm font-medium text-slate-800">—</div>
+            ) : (
+                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                    <table className="min-w-full text-sm">
+                        <thead>
+                            <tr className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                <th className="px-3 py-2">Level</th>
+                                <th className="px-3 py-2">School / Institution</th>
+                                <th className="px-3 py-2">Year started</th>
+                                <th className="px-3 py-2">Year graduated</th>
+                                <th className="px-3 py-2">Status</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {rows.map((r) => (
+                                <tr key={r.key}>
+                                    <td className="whitespace-nowrap px-3 py-2.5 font-medium text-slate-600">{r.label}</td>
+                                    <td className="px-3 py-2.5 text-slate-800">{r.school || '—'}</td>
+                                    <td className="px-3 py-2.5 text-slate-600">{r.started || '—'}</td>
+                                    <td className="px-3 py-2.5 text-slate-600">{r.graduated || '—'}</td>
+                                    <td className="px-3 py-2.5">
+                                        {r.status
+                                            ? <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${EDU_STATUS_STYLE[r.status] ?? 'bg-slate-100 text-slate-600'}`}>{r.status}</span>
+                                            : <span className="text-slate-400">—</span>}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
         </div>
     );
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
-    const Icon = SECTION_ICON[title];
-    const clean = title.replace(/^\d+\s·\s/, '');
+function Section({ title, sectionKey, note, children }: { title: string; sectionKey?: string; note?: string | null; children: ReactNode }) {
+    const Icon = sectionKey ? SECTION_ICON[sectionKey] ?? ClipboardList : undefined;
     return (
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
             <div className="flex items-center gap-2.5 border-b border-slate-100 bg-slate-50/60 px-5 py-3">
                 {Icon && <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600"><Icon className="h-4 w-4" /></span>}
-                <h3 className="text-sm font-semibold text-slate-700">{clean}</h3>
+                <h3 className="text-sm font-semibold text-slate-700">{title}</h3>
             </div>
+            {note && <p className="px-5 pt-3 text-center text-sm italic text-slate-500">{note}</p>}
             <div className="grid grid-cols-2 gap-x-6 gap-y-4 p-5 md:grid-cols-4">{children}</div>
         </div>
     );
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function Field({ label, span, children }: { label: string; span?: string; children: ReactNode }) {
     return (
-        <div>
+        <div className={span}>
             <div className="text-xs font-medium text-slate-400">{label}</div>
             <div className="mt-0.5 text-sm font-medium text-slate-800">{children}</div>
         </div>

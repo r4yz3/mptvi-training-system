@@ -258,6 +258,17 @@ class ApplicantController extends Controller
             'eduLevels' => collect(config('lpf.education_levels'))->map(fn ($l) => [
                 'key' => $l['key'], 'label' => $l['label'],
             ])->values(),
+            // Same admin-configured layout the registration form renders from, so
+            // the profile shows exactly the fields (and categories, labels and
+            // order) that were filled in on the form — nothing hardcoded.
+            'layout' => $canPii ? [
+                'sections' => FormLayout::sections()
+                    ->where('enabled', true)
+                    ->map(fn ($s) => ['key' => $s->key, 'label' => $s->label, 'note' => $s->note])
+                    ->values(),
+                'fields' => FormLayout::formFields(),
+            ] : null,
+            'signatories' => $canPii ? Setting::signatories() : null,
             'gradeInfo' => $applicant->gradeSummary(),
             'canGrade' => $request->user()->can('assess'),
             'assessmentResult' => $applicant->assessment_result,

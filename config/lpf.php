@@ -20,10 +20,11 @@ return [
     // Educational background grid — one row per level.
     'education_levels' => [
         ['key' => 'elementary',  'label' => 'Elementary'],
+        ['key' => 'highschool',  'label' => 'Highschool'],
         ['key' => 'junior_high', 'label' => 'Junior High School'],
         ['key' => 'senior_high', 'label' => 'Senior High School'],
-        ['key' => 'college',     'label' => 'College / Vocational'],
-        ['key' => 'postgrad',    'label' => 'Post-Graduate'],
+        ['key' => 'vocational',  'label' => 'Vocational'],
+        ['key' => 'college',     'label' => 'College'],
     ],
     'education_statuses' => ['Graduate', 'Undergraduate', 'Ongoing'],
 
