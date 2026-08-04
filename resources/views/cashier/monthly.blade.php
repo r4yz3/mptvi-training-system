@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Daily Cash Report — {{ $date->format('M j, Y') }}</title>
+<title>Monthly Cash Report — {{ $month->format('F Y') }}</title>
 <style>
     @page { size: A4 portrait; margin: 12mm; }
     * { box-sizing: border-box; font-family: Arial, Helvetica, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -31,6 +31,8 @@
     td { border-bottom: 1px solid #e2e8f0; padding: 4px 6px; font-size: 9.5px; }
     tr:nth-child(even) td { background: #f8fafc; }
     tfoot td { font-weight: bold; border-top: 2px solid #15366B; background: #eef3fb; }
+    thead { display: table-header-group; }
+    tr { page-break-inside: avoid; }
     .void { color: #94a3b8; text-decoration: line-through; }
     .badge { font-size: 7.5px; padding: 1px 4px; border-radius: 3px; background: #fee2e2; color: #b91c1c; }
     .sign { margin-top: 28px; display: flex; justify-content: space-between; gap: 40px; }
@@ -46,21 +48,22 @@
         <div class="t">
             <h1>MAXIMINO PELLERIN SR. TECHNICAL AND VOCATIONAL INSTITUTE</h1>
             <div class="s">PESO Magsaysay · Davao del Sur</div>
-            <div class="title">DAILY CASH COLLECTION REPORT</div>
+            <div class="title">MONTHLY CASH COLLECTION REPORT</div>
         </div>
         <img src="/mptvi-logo.png" alt="">
     </div>
 
     <div class="meta">
-        <div>Date: <b>{{ $date->format('F j, Y') }}</b>@if($cashierName) &nbsp;·&nbsp; Cashier: <b>{{ $cashierName }}</b>@else &nbsp;·&nbsp; <b>All cashiers</b>@endif</div>
+        <div>Period: <b>{{ $month->format('F Y') }}</b> ({{ $month->format('M j') }}&ndash;{{ $month->copy()->endOfMonth()->format('M j, Y') }})@if($cashierName) &nbsp;·&nbsp; Cashier: <b>{{ $cashierName }}</b>@else &nbsp;·&nbsp; <b>All cashiers</b>@endif</div>
         <div>OR range: <b>{{ $orFrom ?? '—' }}</b> &ndash; <b>{{ $orTo ?? '—' }}</b></div>
     </div>
 
     <div class="summ">
         <div class="card"><div class="k">Total collected</div><div class="v">&#8369;{{ number_format($collected) }}</div></div>
         <div class="card"><div class="k">Payments</div><div class="v">{{ $count }}</div></div>
+        <div class="card"><div class="k">Days with collections</div><div class="v">{{ $byDay->count() }}</div></div>
         @if($voidedCount > 0)<div class="card"><div class="k">Voided (excluded)</div><div class="v" style="color:#e11d48">{{ $voidedCount }}</div></div>@endif
-        <div class="card"><div class="k">Generated</div><div class="v" style="font-size:11px">{{ now()->format('g:i A') }}</div></div>
+        <div class="card"><div class="k">Generated</div><div class="v" style="font-size:11px">{{ now()->format('M j, g:i A') }}</div></div>
     </div>
 
     <div class="cols">
@@ -94,6 +97,24 @@
         </div>
     </div>
 
+    <div class="sec">Daily breakdown</div>
+    <table>
+        <thead><tr><th>Date</th><th>Day</th><th class="r">Payments</th><th class="r">Amount</th></tr></thead>
+        <tbody>
+            @forelse($byDay as $d)
+                <tr>
+                    <td>{{ $d['date']->format('M j, Y') }}</td>
+                    <td>{{ $d['date']->format('l') }}</td>
+                    <td class="r">{{ $d['count'] }}</td>
+                    <td class="r">&#8369;{{ number_format($d['total']) }}</td>
+                </tr>
+            @empty
+                <tr><td colspan="4" style="text-align:center;color:#94a3b8">No collections this month.</td></tr>
+            @endforelse
+        </tbody>
+        <tfoot><tr><td colspan="2">Total</td><td class="r">{{ $count }}</td><td class="r">&#8369;{{ number_format($collected) }}</td></tr></tfoot>
+    </table>
+
     @if($byCashier->isNotEmpty())
         <div class="sec">By cashier</div>
         <table>
@@ -111,7 +132,7 @@
     <table>
         <thead>
             <tr>
-                <th>OR No.</th><th>Learner</th><th>Category</th><th>Method</th><th>Type</th>
+                <th>Date</th><th>OR No.</th><th>Learner</th><th>Category</th><th>Method</th><th>Type</th>
                 @if($showCashierCol)<th>Cashier</th>@endif
                 <th class="r">Amount</th>
             </tr>
@@ -119,6 +140,7 @@
         <tbody>
             @forelse($rows as $p)
                 <tr class="{{ $p->isVoided() ? 'void' : '' }}">
+                    <td>{{ $p->paid_at?->format('M j') ?? '—' }}</td>
                     <td>{{ $p->or_number ?? '—' }}</td>
                     <td>{{ $p->applicant?->display_name ?? '—' }}</td>
                     <td>{{ $p->category }}@if($p->isVoided()) <span class="badge">VOID</span>@endif</td>
@@ -128,12 +150,12 @@
                     <td class="r">&#8369;{{ number_format($p->amount) }}</td>
                 </tr>
             @empty
-                <tr><td colspan="{{ $showCashierCol ? 7 : 6 }}" style="text-align:center;color:#94a3b8;padding:14px">No transactions on this date.</td></tr>
+                <tr><td colspan="{{ $showCashierCol ? 8 : 7 }}" style="text-align:center;color:#94a3b8;padding:14px">No transactions this month.</td></tr>
             @endforelse
         </tbody>
         <tfoot>
             <tr>
-                <td colspan="{{ $showCashierCol ? 6 : 5 }}">Total collected (excludes voided)</td>
+                <td colspan="{{ $showCashierCol ? 7 : 6 }}">Total collected (excludes voided)</td>
                 <td class="r">&#8369;{{ number_format($collected) }}</td>
             </tr>
         </tfoot>
@@ -145,8 +167,8 @@
     </div>
 
     <div class="foot">
-        Cash on hand should reconcile to the total collected above. Voided payments are listed but excluded from all totals.
-        @if($voidedCount > 0) Voided today: {{ $voidedCount }} (&#8369;{{ number_format($voidedTotal) }}).@endif
+        Cash collected should reconcile to the total above. Voided payments are listed but excluded from all totals.
+        @if($voidedCount > 0) Voided this month: {{ $voidedCount }} (&#8369;{{ number_format($voidedTotal) }}).@endif
     </div>
 </body>
 </html>

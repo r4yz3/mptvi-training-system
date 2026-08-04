@@ -7,6 +7,7 @@ use App\Models\Payment;
 use App\Models\Program;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -312,22 +313,27 @@ class CashierController extends Controller
     }
 
     /**
-     * End-of-day cash report for reconciliation. Finance sees all cashiers (with
-     * an optional cashier filter); a plain cashier sees only their own day.
+     * End-of-month cash report for reconciliation. Finance sees all cashiers (with
+     * an optional cashier filter); a plain cashier sees only their own collections.
+     * `?month=YYYY-MM` picks the period; defaults to the current month.
      */
-    public function daily(Request $request): \Illuminate\Contracts\View\View
+    public function monthly(Request $request): \Illuminate\Contracts\View\View
     {
         abort_unless($request->user()->can('payment.record') || $request->user()->can('finance.view'), 403);
 
         $canFinance = $request->user()->can('finance.view');
-        $date = $request->date('date') ?? now();
+        $month = rescue(
+            fn () => Carbon::createFromFormat('Y-m', (string) $request->string('month'))->startOfMonth(),
+            fn () => now()->startOfMonth(),
+            report: false,
+        );
         $cashierId = $canFinance ? $request->integer('cashier') : $request->user()->id;
 
         $payments = Payment::query()
             ->with(['applicant:id,first_name,last_name,middle_name,ext_name', 'cashier:id,name'])
-            ->whereDate('paid_at', $date)
+            ->whereBetween('paid_at', [$month->copy()->startOfMonth(), $month->copy()->endOfMonth()])
             ->when($cashierId, fn ($q) => $q->where('cashier_id', $cashierId))
-            ->orderBy('or_number')->orderBy('id')
+            ->orderBy('paid_at')->orderBy('or_number')->orderBy('id')
             ->get();
 
         $valid = $payments->reject->isVoided();
@@ -347,10 +353,16 @@ class CashierController extends Controller
                 ->sortByDesc('total')->values()
             : collect();
 
+        // Per-day totals — the reconciliation detail a month-long report needs.
+        $byDay = $valid->groupBy(fn (Payment $p) => $p->paid_at->format('Y-m-d'))
+            ->map(fn ($g, $d) => ['date' => Carbon::parse($d), 'count' => $g->count(), 'total' => (int) $g->sum('amount')])
+            ->sortBy(fn ($r) => $r['date'])->values();
+
         $ors = $valid->pluck('or_number')->filter()->sort()->values();
 
-        return view('cashier.daily', [
-            'date' => $date,
+        return view('cashier.monthly', [
+            'month' => $month,
+            'byDay' => $byDay,
             'rows' => $payments,
             'collected' => (int) $valid->sum('amount'),
             'count' => $valid->count(),

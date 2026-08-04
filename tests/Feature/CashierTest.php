@@ -190,7 +190,7 @@ class CashierTest extends TestCase
         $this->actingAs($this->as('coordinator'))->get("/cashier/{$a->id}/statement")->assertForbidden();
     }
 
-    public function test_daily_cash_report_renders_and_is_module_gated(): void
+    public function test_monthly_cash_report_renders_and_is_module_gated(): void
     {
         $a = $this->qualified();
         $cashier = $this->as('cashier');
@@ -198,10 +198,40 @@ class CashierTest extends TestCase
             'amount' => 500, 'type' => 'Partial', 'method' => 'Cash', 'paid_at' => now()->toDateString(),
         ]);
 
-        $this->actingAs($cashier)->get('/cashier/daily')
-            ->assertOk()->assertSee('DAILY CASH COLLECTION REPORT', false);
+        $this->actingAs($cashier)->get('/cashier/monthly')
+            ->assertOk()
+            ->assertSee('MONTHLY CASH COLLECTION REPORT', false)
+            ->assertSee(now()->format('F Y'), false)
+            ->assertSee('500');
 
-        $this->actingAs($this->as('coordinator'))->get('/cashier/daily')->assertForbidden();
+        $this->actingAs($this->as('coordinator'))->get('/cashier/monthly')->assertForbidden();
+    }
+
+    public function test_monthly_cash_report_covers_the_whole_month_and_honours_the_month_param(): void
+    {
+        $a = $this->qualified();
+        $cashier = $this->as('cashier');
+
+        // Two payments in the same month, one in the month before.
+        foreach ([['2026-06-03', 500], ['2026-06-28', 300], ['2026-05-20', 900]] as [$date, $amount]) {
+            $this->actingAs($cashier)->post("/cashier/{$a->id}/payments", [
+                'amount' => $amount, 'type' => 'Partial', 'method' => 'Cash', 'paid_at' => $date,
+            ]);
+        }
+
+        // June totals both June payments and excludes the May one.
+        $this->actingAs($cashier)->get('/cashier/monthly?month=2026-06')
+            ->assertOk()
+            ->assertSee('June 2026', false)
+            ->assertSee('800')      // 500 + 300
+            ->assertDontSee('900');
+
+        $this->actingAs($cashier)->get('/cashier/monthly?month=2026-05')
+            ->assertOk()->assertSee('May 2026', false)->assertSee('900');
+
+        // Garbage month falls back to the current month instead of erroring.
+        $this->actingAs($cashier)->get('/cashier/monthly?month=not-a-month')
+            ->assertOk()->assertSee(now()->format('F Y'), false);
     }
 
     public function test_cashier_has_no_finance_analytics_and_only_own_ledger(): void

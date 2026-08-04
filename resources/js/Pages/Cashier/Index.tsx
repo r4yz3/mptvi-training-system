@@ -93,8 +93,8 @@ export default function CashierIndex(props: Props) {
                         </button>
                     )}
                     {(canRecord || canFinance) && (
-                        <a href="/cashier/daily" target="_blank" rel="noopener noreferrer" className="btn-ghost">
-                            <CalendarClock className="h-4 w-4" /> Daily report
+                        <a href="/cashier/monthly" target="_blank" rel="noopener noreferrer" className="btn-ghost">
+                            <CalendarClock className="h-4 w-4" /> Monthly report
                         </a>
                     )}
                     {canFinance && (

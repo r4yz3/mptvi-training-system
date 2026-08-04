@@ -88,8 +88,8 @@ Route::middleware('auth')->group(function () {
         // Direct download is admin-only; other staff route through the Downloads approval queue.
         Route::get('/cashier/report', [CashierController::class, 'report'])->middleware('can:download.approve')->name('cashier.report');
         Route::get('/cashier/export.csv', [CashierController::class, 'exportCsv'])->middleware('can:download.approve')->name('cashier.export');
-        // Daily cash report — cashiers may print their own day; finance sees all.
-        Route::get('/cashier/daily', [CashierController::class, 'daily'])->name('cashier.daily');
+        // Monthly cash report — cashiers may print their own collections; finance sees all.
+        Route::get('/cashier/monthly', [CashierController::class, 'monthly'])->name('cashier.monthly');
         Route::post('/cashier/{applicant}/payments', [CashierController::class, 'record'])->name('cashier.record');
         Route::get('/cashier/{applicant}/statement', [CashierController::class, 'statement'])->name('cashier.statement');
         Route::get('/cashier/payments/{payment}/receipt', [CashierController::class, 'receipt'])->name('cashier.receipt');
